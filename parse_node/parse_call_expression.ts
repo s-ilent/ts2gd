@@ -530,7 +530,7 @@ export class Test extends Area2D {
   expected: `
 extends Area2D
 class_name Test
-func _ready():
+func _init():
   self.connect("body_entered", self, "on_body_entered")
 func on_body_entered(_body):
   pass
@@ -553,7 +553,7 @@ extends Area2D
 class_name Test
 func __gen(body, captures):
   print(body)
-func _ready():
+func _init():
   var _x: int = 5
   self.connect("body_entered", self, "__gen", [{}])
 `,
@@ -577,7 +577,7 @@ func __gen(_body, captures):
   var x = captures.x
   var y = captures.y
   print(x + y)
-func _ready():
+func _init():
   var x: int = 1
   var y: int = 2
   self.connect("body_entered", self, "__gen", [{"x": x, "y": y}])`,
@@ -602,7 +602,7 @@ func __gen(_body, captures):
   var x = captures.x
   var y = captures.y
   self.print(x + y)
-func _ready():
+func _init():
   var x: int = 1
   var y: int = 2
   self.connect("body_entered", self, "__gen", [{"x": x, "y": y}])`,
@@ -802,7 +802,7 @@ class_name Test
 func __gen(captures):
   print("OK")
 signal mysig
-func _ready():
+func _init():
   self.connect("mysig", self, "__gen", [{}])
 `,
 }
@@ -832,7 +832,7 @@ func __gen(captures):
   print("OK")
 signal mysig
 var test
-func _ready():
+func _init():
   self.test.connect("mysig", self, "__gen", [{}])
   self.test.emit_signal("mysig")
   self.emit_signal("mysig", 1, 2, 3)
@@ -872,7 +872,7 @@ func rpc_me_2():
   pass
 func rpc_me_3():
   pass
-func _ready():
+func _init():
   self.rpc("rpc_me")
   self.rpc("rpc_me_2", 1, 2, 3)
   self.rpc_id(1, "rpc_me_3", "egg")
@@ -905,7 +905,7 @@ func __gen1(captures):
   pass
 func fn(other):
   other[0].call_func(other[1])
-func _ready():
+func _init():
   var fnObject = [funcref(self, "__gen"), {}]
   self.fn([funcref(self, "__gen1"), {}])
   fnObject[0].call_func(fnObject[1])

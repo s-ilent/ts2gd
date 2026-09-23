@@ -457,7 +457,7 @@ class Test extends Area2D {
   expected: `
 extends Area2D
 class_name Test
-func _ready():
+func _init():
   self.test()
 static func test():
   print("static")

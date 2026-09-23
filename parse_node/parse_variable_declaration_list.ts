@@ -41,7 +41,7 @@ export class Test extends Area2D {
   expected: `
 extends Area2D
 class_name Test
-func _ready():
+func _init():
   var _x: int = 1
   var _y: int = 2
   self.print(1)

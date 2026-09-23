@@ -75,7 +75,7 @@ export class Hello {
         expected: `
 class_name Hello
 const MyEnum = preload("res://compiled/Test_MyEnum.gd").MyEnum
-func _ready():
+func _init():
   print(MyEnum.A)
       `,
       },
@@ -113,7 +113,7 @@ export class Hello {
         expected: `
 class_name Hello
 const TestEnum = preload("res://compiled/Test_TestEnum.gd").TestEnum
-func _ready():
+func _init():
   print(TestEnum.A)
       `,
       },
