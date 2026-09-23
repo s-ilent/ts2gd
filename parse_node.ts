@@ -224,7 +224,6 @@ export function combine(args: {
       node.kind === SyntaxKind.EnumDeclaration
 
     let formattedContent = content
-    let lines = content.split("\n") // .filter(x => x !== '');
 
     if (isStatement) {
       if (extraLines.length > 0) {
@@ -246,6 +245,10 @@ export function combine(args: {
         parsedNode.extraLines = []
       }
     }
+
+    // Computed after the statement merge so that the added indentation
+    // covers every line of the statement, including emitted extra lines.
+    let lines = formattedContent.split("\n")
 
     if (addIndent) {
       if (lines.length > 1) {

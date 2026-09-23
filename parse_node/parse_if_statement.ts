@@ -222,3 +222,22 @@ if true:
   print(1)
   `,
 }
+
+export const testIfBodyWithStatementExtraLines: Test = {
+  ts: `
+type Sink = (id: int) => void
+let sink: Sink | null = null
+
+function go(): void {
+  if (wasSeated) sink?.(0)
+}
+  `,
+  expected: `
+class_name __Mod_Test_4064or
+static var sink = null
+static func go():
+  if wasSeated:
+    var __gen = sink[0].call(0,sink[1]) if sink != null else null
+    __gen
+  `,
+}
