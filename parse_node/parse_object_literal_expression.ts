@@ -24,6 +24,7 @@ export const parseObjectLiteralExpression = (
 
   type SegmentMeta =
     | { kind: "pair"; keyIsIdentifier: boolean }
+    | { kind: "shorthand"; keyText: string }
     | { kind: "spread" }
     | { kind: "method"; key: string; value: string }
 
@@ -156,9 +157,11 @@ ${unwrapCapturedScope}
     } else if (prop.kind === SyntaxKind.ShorthandPropertyAssignment) {
       const shorthand = prop as ts.ShorthandPropertyAssignment
 
+      // The name node is the value reference; the key is the literal text.
+      // (Parsing the name twice would run the key through identifier
+      // rewriting as well, mangling the key.)
       flatNodes.push(shorthand.name)
-      flatNodes.push(shorthand.name)
-      segmentMeta.push({ kind: "pair", keyIsIdentifier: true })
+      segmentMeta.push({ kind: "shorthand", keyText: shorthand.name.text })
     } else if (prop.kind === SyntaxKind.SpreadAssignment) {
       const spread = prop as ts.SpreadAssignment
 
@@ -181,6 +184,23 @@ ${unwrapCapturedScope}
       const segments: Segment[] = []
 
       for (const meta of segmentMeta) {
+        if (meta.kind === "shorthand") {
+          const value = strings[stringIndex++]
+          const key = `"${meta.keyText}"`
+          const last = segments[segments.length - 1]
+
+          if (last && last.kind === "literal") {
+            last.pairs.push([key, value])
+          } else {
+            segments.push({
+              kind: "literal",
+              pairs: [[key, value]],
+            })
+          }
+
+          continue
+        }
+
         if (meta.kind === "spread") {
           segments.push({ kind: "spread", expr: strings[stringIndex++] })
           continue
@@ -310,6 +330,25 @@ let x = { a: 1 }
   expected: `
 class_name __Mod_Test_4064or
 static var _x = { "a": 1 }
+  `,
+}
+
+export const testObjectLiteralShorthandFunctionReference: Test = {
+  ts: `
+export function make(): any {
+  function tick(state: int): bool {
+    return state > 0
+  }
+
+  return { tick }
+}
+  `,
+  expected: `
+class_name __Mod_Test_4064or
+static func __nested_tick(state: int, captures):
+  return state > 0
+static func make():
+  return { "tick": [Callable(__Mod_Test_4064or, "__nested_tick"), {}] }
   `,
 }
 

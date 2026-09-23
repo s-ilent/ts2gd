@@ -102,6 +102,39 @@ export const parseIdentifier = (
         return props.importedBindings.get(symbol)!
       }
 
+      // A shorthand property assignment references its variable through the
+      // property name, whose own symbol is the synthesized property rather
+      // than the referenced binding. Resolve the value symbol to pick up
+      // function-value rewrites and imported bindings.
+      if (
+        node.parent.kind === SyntaxKind.ShorthandPropertyAssignment &&
+        (node.parent as ts.ShorthandPropertyAssignment).name === node
+      ) {
+        const valueSymbol = props.program
+          .getTypeChecker()
+          .getShorthandAssignmentValueSymbol(
+            node.parent as ts.ShorthandPropertyAssignment
+          )
+
+        if (valueSymbol) {
+          if (props.nestedFunctionBindings?.has(valueSymbol)) {
+            const binding = props.nestedFunctionBindings.get(valueSymbol)!
+            const callableTarget =
+              props.inStaticContext && props.moduleClassName
+                ? props.moduleClassName
+                : "self"
+
+            return `[Callable(${callableTarget}, "${
+              binding.name
+            }"), ${binding.captures()}]`
+          }
+
+          if (props.importedBindings?.has(valueSymbol)) {
+            return props.importedBindings.get(valueSymbol)!
+          }
+        }
+      }
+
       // Nested (inner) function declarations are values as [Callable,
       // captures] tuples so closed-over variables travel with them.
       if (symbol && props.nestedFunctionBindings?.has(symbol)) {

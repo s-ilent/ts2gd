@@ -1304,7 +1304,7 @@ static func __ts_array_map(arr, f):
   return out
 static func __ts_call_fn(f, args):
   if f is Array and f.size() == 2 and f[0] is Callable:
-    var all_args := args.duplicate()
+    var all_args: Array = args.duplicate()
     if f[1] is Dictionary and not f[1].is_empty():
       all_args.append(f[1])
     return f[0].callv(all_args)
