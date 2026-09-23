@@ -199,7 +199,7 @@ Declaration not provided for arrow function. This is an internal ts2gd bug. Plea
 
   // NOTE: parse_call_expression expects all arrow functions to be declared on self.
   return {
-    content: `[funcref(self, "${name}"), ${capturedScopeObject}]`,
+    content: `[Callable(self, "${name}"), ${capturedScopeObject}]`,
     hoistedArrowFunctions: [
       {
         name,

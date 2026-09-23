@@ -1,6 +1,7 @@
 import ts from "typescript"
 
 import { ParseNodeType, ParseState, combine } from "../parse_node"
+import { ensureOptionalParametersLast } from "../ts_utils"
 import { Test } from "../tests/test"
 
 const specialMethods = [
@@ -46,7 +47,9 @@ export const parseMethodDeclaration = (
     props,
     addIndent: true,
     parsedStrings: (body) => {
-      let joinedParams = compiledParameters.content
+      let joinedParams = ensureOptionalParametersLast(
+        compiledParameters.content
+      )
 
       const specialMethod = specialMethods.find(
         (method) => method.name === funcName

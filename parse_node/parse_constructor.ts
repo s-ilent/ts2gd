@@ -1,6 +1,7 @@
 import ts from "typescript"
 
 import { ParseState, combine, ParseNodeType } from "../parse_node"
+import { ensureOptionalParametersLast } from "../ts_utils"
 import { Test } from "../tests/test"
 
 const getParameterText = (node: ts.ConstructorDeclaration): string => {
@@ -35,7 +36,7 @@ export const parseConstructor = (
       props,
       addIndent: true,
       parsedStrings: (body) => `
-func _init(${getParameterText(node)}):
+func _init(${ensureOptionalParametersLast(getParameterText(node))}):
   ${body.trim().length > 0 ? body : "pass"}
 `,
     })

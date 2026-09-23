@@ -457,3 +457,29 @@ export const findContainingClassDeclaration = (
 
   return ts.isClassDeclaration(node) ? node : null
 }
+
+/**
+ * Godot requires optional parameters to come after mandatory ones. TypeScript
+ * does not, and defaulted parameters are emitted with a sentinel default, so
+ * any mandatory parameter that follows a defaulted one is given a null
+ * default to keep the generated signature valid.
+ */
+export const ensureOptionalParametersLast = (paramString: string): string => {
+  const params = paramString.split(", ").filter((p) => p.trim() !== "")
+  let seenDefault = false
+
+  return params
+    .map((param) => {
+      if (param.includes("=")) {
+        seenDefault = true
+        return param
+      }
+
+      if (seenDefault) {
+        return param + " = null"
+      }
+
+      return param
+    })
+    .join(", ")
+}

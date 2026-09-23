@@ -143,7 +143,7 @@ export const parsePropertyAccessExpression = (
               },
               {
                 type: "before",
-                line: `var ${exprName} = [funcref(self, "${rhs}_vec_lib") if ${lhsName} != null else null, {}, ${lhsName}]`,
+                line: `var ${exprName} = [Callable(self, "${rhs}_vec_lib") if ${lhsName} != null else null, {}, ${lhsName}]`,
                 lineType: ExtraLineType.NullableIntermediateExpression,
               },
             ]
@@ -159,7 +159,7 @@ export const parsePropertyAccessExpression = (
             },
             {
               type: "before",
-              line: `var ${exprName} = [funcref(${lhsName}, "${rhs}") if ${lhsName} != null else null, {}, null]`,
+              line: `var ${exprName} = [Callable(${lhsName}, "${rhs}") if ${lhsName} != null else null, {}, null]`,
               lineType: ExtraLineType.NullableIntermediateExpression,
             },
           ]
@@ -418,8 +418,8 @@ class_name Test
 func test():
   var foo = null
   var __gen = foo
-  var __gen1 = [funcref(__gen, "test") if __gen != null else null, {}, null]
-  var __gen2 = __gen1[0].call_func() if __gen1 != null else null
+  var __gen1 = [Callable(__gen, "test") if __gen != null else null, {}, null]
+  var __gen2 = __gen1[0].call() if __gen1 != null else null
   print(__gen2)
   `,
 }
@@ -438,8 +438,8 @@ class_name Test
 func test(_x: int):
   var foo = null
   var __gen = foo
-  var __gen1 = [funcref(__gen, "test") if __gen != null else null, {}, null]
-  var __gen2 = __gen1[0].call_func(1) if __gen1 != null else null
+  var __gen1 = [Callable(__gen, "test") if __gen != null else null, {}, null]
+  var __gen2 = __gen1[0].call(1) if __gen1 != null else null
   print(__gen2)
   `,
 }
@@ -463,7 +463,7 @@ func foo(arg):
   pass
 
 func bar():
-  this.foo(funcref(self, "foo"))
+  this.foo(Callable(self, "foo"))
   `,
 
   expectFail: true,
@@ -485,8 +485,8 @@ class_name Test
 func test():
   var maybeVec = Vector2(0, 0) if randi() else null
   var __gen = maybeVec
-  var __gen1 = [funcref(self, "mul_vec_lib") if __gen != null else null, {}, __gen]
-  var __gen2 = __gen1[0].call_func(__gen1[2], 4) if __gen1 != null else null
+  var __gen1 = [Callable(self, "mul_vec_lib") if __gen != null else null, {}, __gen]
+  var __gen2 = __gen1[0].call(__gen1[2], 4) if __gen1 != null else null
   var _foo = __gen2
 `,
 }

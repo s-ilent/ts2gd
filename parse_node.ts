@@ -398,6 +398,13 @@ export const parseNode = (
       )
     case SyntaxKind.NonNullExpression:
       return parseNode((genericNode as ts.NonNullExpression).expression, props)
+    case SyntaxKind.AwaitExpression:
+      return combine({
+        parent: genericNode,
+        nodes: [(genericNode as ts.AwaitExpression).expression],
+        props,
+        parsedStrings: (expr) => `await ${expr}`,
+      })
     case SyntaxKind.VariableStatement:
       return parseVariableStatement(genericNode as ts.VariableStatement, props)
     case SyntaxKind.VariableDeclaration:

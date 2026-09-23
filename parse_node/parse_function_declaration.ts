@@ -1,6 +1,7 @@
 import ts from "typescript"
 
 import { ParseNodeType, ParseState, combine } from "../parse_node"
+import { ensureOptionalParametersLast } from "../ts_utils"
 import { Test } from "../tests/test"
 
 /**
@@ -43,7 +44,9 @@ export const parseFunctionDeclaration = (
     props,
     addIndent: true,
     parsedStrings: (body) => {
-      const joinedParams = compiledParameters.content
+      const joinedParams = ensureOptionalParametersLast(
+        compiledParameters.content
+      )
 
       let bodyLines = [
         ...(compiledParameters.extraLines?.map((param) => param.line) ?? []),
@@ -142,5 +145,36 @@ function greet(name: string = "world"): string {
 static func greet(name = "[no value passed in]"):
   name = ("world" if (typeof(name) == TYPE_STRING and name == "[no value passed in]") else name)
   return "hi " + name
+  `,
+}
+
+export const testAwaitExpression: Test = {
+  ts: `
+async function loadThing(): Promise<int> {
+  return 5
+}
+
+function useThing(): int {
+  return await loadThing()
+}
+  `,
+  expected: `
+static func loadThing():
+  return 5
+static func useThing():
+  return await loadThing()
+  `,
+}
+
+export const testOptionalParamsLast: Test = {
+  ts: `
+export function mix(a = 1, b: int): int {
+  return a + b
+}
+  `,
+  expected: `
+static func mix(a = "[no value passed in]", b: int = null):
+  a = (1 if (typeof(a) == TYPE_STRING and a == "[no value passed in]") else a)
+  return a + b
   `,
 }

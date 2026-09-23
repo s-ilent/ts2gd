@@ -80,7 +80,7 @@ ${unwrapCapturedScope}
 
     return {
       name,
-      value: `[funcref(self, "${name}"), ${capturedScopeObject}]`,
+      value: `[Callable(self, "${name}"), ${capturedScopeObject}]`,
       content: parsed.content,
     }
   }
@@ -398,7 +398,7 @@ func __gen(x: int, captures):
   return x + 1
 var _strategies = {
   "name": "a",
-  "apply": [funcref(self, "__gen"), {}],
+  "apply": [Callable(self, "__gen"), {}],
 }
   `,
 }
@@ -417,7 +417,7 @@ func __gen(captures):
   return self.total * 2
 var _obj = {
   "total": 5,
-  "doubled": [funcref(self, "__gen"), {}],
+  "doubled": [Callable(self, "__gen"), {}],
 }
   `,
 }

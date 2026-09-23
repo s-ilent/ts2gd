@@ -112,7 +112,7 @@ func ${name}(list, fn):
   var result = []
 
   for item in list:
-    result.append(fn[0].call_func(item, fn[1]))
+    result.append(fn[0].call(item, fn[1]))
 
   return result
     `,
@@ -144,7 +144,7 @@ func ${name}(list, fn):
   var result = []
 
   for item in list:
-    if fn[0].call_func(item, fn[1]):
+    if fn[0].call(item, fn[1]):
       result.append(item)
 
   return result
@@ -163,7 +163,7 @@ func ${name}(list, fn):
   var best_score = -INF
 
   for item in list:
-    var score = fn[0].call_func(item, fn[1])
+    var score = fn[0].call(item, fn[1])
 
     if score > best_score:
       best_score = score
@@ -185,7 +185,7 @@ func ${name}(list, fn):
   var best_score = INF
 
   for item in list:
-    var score = fn[0].call_func(item, fn[1])
+    var score = fn[0].call(item, fn[1])
 
     if score < best_score:
       best_score = score

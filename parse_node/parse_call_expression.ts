@@ -343,7 +343,7 @@ export const parseCallExpression = (
         nullCoalesce = [
           {
             type: "before",
-            line: `var ${newName} = ${parsedExpr.content}[0].call_func(${
+            line: `var ${newName} = ${parsedExpr.content}[0].call(${
               needsExplicitSelfArg ? parsedExpr.content + "[2], " : ""
             }${parsedStringArgs}) if ${parsedExpr.content} != null else null`,
             lineType: ExtraLineType.NullableIntermediateExpression,
@@ -354,9 +354,7 @@ export const parseCallExpression = (
       }
 
       if (isFunctionObject) {
-        return `${parsedExpr.content}[0].call_func(${parsedStringArgs.join(
-          ", "
-        )})`
+        return `${parsedExpr.content}[0].call(${parsedStringArgs.join(", ")})`
       } else {
         return `${parsedExpr.content}(${parsedStringArgs.join(", ")})`
       }
@@ -440,9 +438,9 @@ func __gen(captures):
 func __gen1(captures):
   pass
 func a():
-  var _a = [funcref(self, "__gen"), {}]
+  var _a = [Callable(self, "__gen"), {}]
 func b():
-  var _b = [funcref(self, "__gen1"), {}]
+  var _b = [Callable(self, "__gen1"), {}]
 `,
 }
 
@@ -454,8 +452,8 @@ test()
   expected: `
 func __gen(captures):
   return 5
-var test = [funcref(self, "__gen"), {}]
-test[0].call_func(test[1])
+var test = [Callable(self, "__gen"), {}]
+test[0].call(test[1])
 `,
 }
 
@@ -469,7 +467,7 @@ ${LibraryFunctions.map.definition("__map")}
 func __gen(y: String, captures):
   return y + "1"
 var x = ["a", "b", "c"]
-__map(x, [funcref(self, "__gen"), {}])
+__map(x, [Callable(self, "__gen"), {}])
 `,
 }
 
@@ -491,7 +489,7 @@ func __gen(y: int, captures):
 var x = [1, 2, 3]
 var z: int = 5
 var big = { "a": 6 }
-__map(x, [funcref(self, "__gen"), {"z": z, "big": big}])
+__map(x, [Callable(self, "__gen"), {"z": z, "big": big}])
 `,
 }
 
@@ -674,7 +672,7 @@ func __gen(x: String, captures):
 func __gen1(x: String, captures):
   return x
 var a = []
-__map(__filter(a, [funcref(self, "__gen"), {}]), [funcref(self, "__gen1"), {}])
+__map(__filter(a, [Callable(self, "__gen"), {}]), [Callable(self, "__gen1"), {}])
 `,
 }
 
@@ -725,7 +723,7 @@ func __gen(captures):
   return big.a + big.a
 var big = { "a": 6 }
 var x = []
-__map(x, [funcref(self, "__gen"), {"big": big}])
+__map(x, [Callable(self, "__gen"), {"big": big}])
 `,
 }
 
@@ -904,11 +902,11 @@ func __gen(captures):
 func __gen1(captures):
   pass
 func fn(other):
-  other[0].call_func(other[1])
+  other[0].call(other[1])
 func _init():
-  var fnObject = [funcref(self, "__gen"), {}]
-  self.fn([funcref(self, "__gen1"), {}])
-  fnObject[0].call_func(fnObject[1])
+  var fnObject = [Callable(self, "__gen"), {}]
+  self.fn([Callable(self, "__gen1"), {}])
+  fnObject[0].call(fnObject[1])
 `,
 }
 
@@ -922,7 +920,7 @@ func __random_element(list):
     return null
   return list[randi() % len(list)]
 var __gen = __random_element([Vector2.UP, Vector2.DOWN])
-var __gen1 = [funcref(self, "mul_vec_lib") if __gen != null else null, {}, __gen]
-var __gen2 = __gen1[0].call_func(__gen1[2], 5) if __gen1 != null else null
+var __gen1 = [Callable(self, "mul_vec_lib") if __gen != null else null, {}, __gen]
+var __gen2 = __gen1[0].call(__gen1[2], 5) if __gen1 != null else null
 var _test = __gen2`,
 }
