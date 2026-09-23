@@ -252,6 +252,11 @@ export const parseNode = (
   props: ParseState
 ): ParseNodeType => {
   switch (genericNode.kind) {
+    case SyntaxKind.InterfaceDeclaration:
+      // Interfaces do not exist in GDScript; emit nothing for them.
+      return { content: "" }
+    case SyntaxKind.DebuggerStatement:
+      return { content: "breakpoint\n" }
     case SyntaxKind.SourceFile:
       return parseSourceFile(genericNode as ts.SourceFile, props)
     case SyntaxKind.ImportDeclaration:

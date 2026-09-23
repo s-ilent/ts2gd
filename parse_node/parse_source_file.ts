@@ -19,12 +19,14 @@ const getClassDeclarationHeader = (
   let extendsFrom = ""
 
   if (node.heritageClauses) {
-    // TODO: Ensure there's only one of each here
+    // Only `extends` may be emitted; `implements` clauses reference TS
+    // interfaces, which do not exist in GDScript.
+    const extendsClause = node.heritageClauses.find(
+      (clause) => clause.token === SyntaxKind.ExtendsKeyword
+    )
+    const type = extendsClause?.types[0]
 
-    const clause = node.heritageClauses[0] as ts.HeritageClause
-    const type = clause.types[0]
-
-    extendsFrom = type.getText()
+    extendsFrom = type?.getText() ?? ""
   }
 
   const isTool = !!node.decorators?.find(
@@ -230,4 +232,44 @@ export class Test2 { }
       },
     ],
   },
+}
+
+export const testImplementsClauseIgnored: Test = {
+  ts: `
+interface Shape {
+  area(): int
+}
+
+export class Circle implements Shape {
+  area(): int {
+    return 1
+  }
+}
+  `,
+  expected: {
+    type: "multiple-files",
+    files: [
+      {
+        fileName: "/Users/johnfn/MyGame/compiled/Circle.gd",
+        expected: `class_name Circle
+func area():
+  return 1`,
+      },
+    ],
+  },
+}
+
+export const testDebuggerStatement: Test = {
+  ts: `
+export class Test {
+  go() {
+    debugger
+  }
+}
+  `,
+  expected: `
+class_name Test
+func go():
+  breakpoint
+`,
 }
