@@ -3,6 +3,8 @@ import ts, { SyntaxKind } from "typescript"
 import { ParseNodeType, ParseState, combine } from "../parse_node"
 import { Test } from "../tests/test"
 
+import { LibraryFunctions } from "./library_functions"
+
 export const parseBinaryExpression = (
   node: ts.BinaryExpression,
   props: ParseState
@@ -125,4 +127,20 @@ static var a
 static var b  
 a != b
 `,
+}
+
+export const testBitwiseTokens: Test = {
+  ts: `
+let a = (x >> 2) | (y << 3)
+let b = 8 >>> 1
+flags &= ~mask
+  `,
+  expected: `
+class_name __Mod_Test_4064or
+${LibraryFunctions.ts_shr_unsigned.definition("__ts_shr_unsigned")}
+static var _a = (x >> 2) | (y << 3)
+static var _b = __ts_shr_unsigned(8, 1)
+static var flags
+flags &= ~mask
+  `,
 }

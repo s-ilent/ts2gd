@@ -18,6 +18,7 @@ export type LibraryFunctionName =
   | "ts_new_map"
   | "ts_new_weak_set"
   | "ts_new_weak_map"
+  | "ts_shr_unsigned"
   | "add_vec_lib"
   | "sub_vec_lib"
   | "mul_vec_lib"
@@ -173,6 +174,14 @@ static func __ts_new_weak_set(initial = null):
     definition: () => `
 static func __ts_new_weak_map(initial = null):
   return load("res://_ts_shims/ts_weak_map.gd").new(initial)
+`,
+  },
+
+  ts_shr_unsigned: {
+    name: "ts_shr_unsigned",
+    definition: () => `
+static func __ts_shr_unsigned(a, b):
+  return (a & 0xFFFFFFFF) >> b
 `,
   },
 

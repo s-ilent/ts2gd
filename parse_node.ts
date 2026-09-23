@@ -484,6 +484,39 @@ export const parseNode = (
       return { content: "*" }
     case SyntaxKind.AsteriskAsteriskToken:
       return { content: "**" }
+    case SyntaxKind.AsteriskAsteriskEqualsToken:
+      return { content: "**=" }
+    case SyntaxKind.AmpersandEqualsToken:
+      return { content: "&=" }
+    case SyntaxKind.BarEqualsToken:
+      return { content: "|=" }
+    case SyntaxKind.CaretEqualsToken:
+      return { content: "^=" }
+    case SyntaxKind.LessThanLessThanToken:
+      return { content: "<<" }
+    case SyntaxKind.GreaterThanGreaterThanToken:
+      return { content: ">>" }
+    case SyntaxKind.GreaterThanGreaterThanEqualsToken:
+      return { content: ">>=" }
+    case SyntaxKind.LessThanLessThanEqualsToken:
+      return { content: "<<=" }
+    case SyntaxKind.GreaterThanGreaterThanGreaterThanToken: {
+      // GDScript has no unsigned right shift; compile through a helper.
+      const binary = genericNode.parent as ts.BinaryExpression
+
+      const shifted = combine({
+        parent: genericNode,
+        nodes: [binary.left, binary.right],
+        props,
+        parsedStrings: (l, r) => `__ts_shr_unsigned(${l}, ${r})`,
+      })
+
+      shifted.hoistedLibraryFunctions =
+        shifted.hoistedLibraryFunctions ?? new Set()
+      shifted.hoistedLibraryFunctions.add("ts_shr_unsigned")
+
+      return shifted
+    }
     case SyntaxKind.PercentToken:
       return { content: "%" }
     case SyntaxKind.PlusToken:
