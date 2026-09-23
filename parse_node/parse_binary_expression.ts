@@ -151,6 +151,7 @@ export const testBitwiseTokens: Test = {
   ts: `
 let a = (x >> 2) | (y << 3)
 let b = 8 >>> 1
+let flags = 0
 flags &= ~mask
   `,
   expected: `
