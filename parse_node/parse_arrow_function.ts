@@ -296,6 +296,7 @@ Declaration not provided for arrow function. This is an internal ts2gd bug. Plea
 
   return {
     content: `[Callable(${callableTarget}, "${name}"), ${capturedScopeObject}]`,
+    hoistedLibraryFunctions: parsed.hoistedLibraryFunctions,
     hoistedArrowFunctions: [
       {
         name,

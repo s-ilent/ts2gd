@@ -4,6 +4,7 @@ import { ParseNodeType, ParseState, combine } from "../parse_node"
 import { ensureOptionalParametersLast } from "../ts_utils"
 import { Test } from "../tests/test"
 
+import { LibraryFunctions } from "./library_functions"
 import { getCapturedScope } from "./parse_arrow_function"
 
 /**
@@ -191,6 +192,7 @@ ${indentedBody.trim() === "" ? "  pass" : indentedBody}
     // The declaration site emits nothing; the hoisted function carries it.
     return {
       content: "",
+      hoistedLibraryFunctions: result.hoistedLibraryFunctions,
       hoistedArrowFunctions: [
         {
           name: nestedBinding.name,
@@ -203,6 +205,26 @@ ${indentedBody.trim() === "" ? "  pass" : indentedBody}
   }
 
   return result
+}
+
+export const testNestedFunctionHoistsLibraryHelper: Test = {
+  ts: `
+export function make(): any {
+  function fresh(): any {
+    return new Map()
+  }
+
+  return fresh
+}
+  `,
+  expected: `
+class_name __Mod_Test_4064or
+${LibraryFunctions.ts_new_map.definition("__ts_new_map")}
+static func __nested_fresh(captures):
+  return __ts_new_map()
+static func make():
+  return [Callable(__Mod_Test_4064or, "__nested_fresh"), {}]
+  `,
 }
 
 export const testTopLevelFunction: Test = {
