@@ -30,6 +30,24 @@ export const parseBinaryExpression = (
   //   }
   // }
 
+  // GDScript has no unsigned right shift; compile through a helper.
+  if (
+    node.operatorToken.kind ===
+    SyntaxKind.GreaterThanGreaterThanGreaterThanToken
+  ) {
+    const result = combine({
+      parent: node,
+      nodes: [node.left, node.right],
+      props,
+      parsedStrings: (l, r) => `__ts_shr_unsigned(${l}, ${r})`,
+    })
+
+    result.hoistedLibraryFunctions = result.hoistedLibraryFunctions ?? new Set()
+    result.hoistedLibraryFunctions.add("ts_shr_unsigned")
+
+    return result
+  }
+
   const checker = props.program.getTypeChecker()
 
   const leftType = checker.getTypeAtLocation(node.left)
