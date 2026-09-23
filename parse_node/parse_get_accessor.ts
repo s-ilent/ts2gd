@@ -3,19 +3,19 @@ import ts from "typescript"
 import { ParseState, combine, ParseNodeType } from "../parse_node"
 import { Test } from "../tests/test"
 
+/**
+ * Get accessors are assembled into Godot 4 property blocks by the class
+ * declaration emitter; this only produces the accessor body.
+ */
 export const parseGetAccessor = (
   node: ts.GetAccessorDeclaration,
   props: ParseState
 ): ParseNodeType => {
   return combine({
     parent: node,
-    nodes: [node.name, node.body, ...node.parameters],
-    addIndent: true,
+    nodes: [node.body, ...node.parameters],
     props,
-    parsedStrings: (name, body, ...params) => `
-func ${name}_get(${params.join(", ")}):
-  ${body || "pass"}
-`,
+    parsedStrings: (body) => body || "pass",
   })
 }
 
@@ -28,10 +28,10 @@ export class Foo {
   `,
   expected: `
 class_name Foo
-var x setget , x_get
+var x:
+  get:
+    return self._x
 var _x
-func x_get():
-  return self._x
   `,
 }
 
@@ -52,13 +52,13 @@ export class Test {
   `,
   expected: `
 class_name Test
-@export var label setget label_set, label_get
-func label_set(text: String):
-  if self.LI:
-    self.LI.text = text
-func label_get():
-  var __gen = self.LI
-  return ((__gen.text if __gen != null else null) if ((__gen.text if __gen != null else null)) != null else "")
+@export var label: String:
+  get:
+    var __gen = self.LI
+    return ((__gen.text if __gen != null else null) if ((__gen.text if __gen != null else null)) != null else "")
+  set(text):
+    if self.LI:
+      self.LI.text = text
 `,
 }
 
@@ -76,12 +76,11 @@ export class Test {
   `,
   expected: `
 class_name Test
-@export var label setget label_set, label_get
-func label_set(_text: String):
-  pass
-func label_get():
-  return ""
-
+@export var label: String:
+  get:
+    return ""
+  set(text):
+    pass
 `,
 }
 
@@ -101,10 +100,41 @@ export class Test {
   `,
   expected: `
 class_name Test
-@export var label setget label_set, label_get
-func label_set(_text: String):
-  pass
-func label_get():
-  return ""
+@export var label: String:
+  get:
+    return ""
+  set(text):
+    pass
 `,
+}
+
+export const testGetSetMultiLineBody: Test = {
+  ts: `
+export class Foo {
+  _x: float;
+
+  get x(): float {
+    if (this._x > 10) {
+      return 10
+    }
+
+    return this._x
+  }
+
+  set x(value: float) {
+    this._x = value
+  }
+}
+  `,
+  expected: `
+class_name Foo
+var x: float:
+  get:
+    if self._x > 10:
+      return 10
+    return self._x
+  set(value):
+    self._x = value
+var _x: float
+  `,
 }

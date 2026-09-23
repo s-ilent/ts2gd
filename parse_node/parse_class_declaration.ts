@@ -99,28 +99,100 @@ export const parseClassDeclaration = (
     })
   }
 
-  // Preprocess set/get to make setget declarations
+  // Preprocess set/get accessors into Godot 4 property blocks. The bodies
+  // themselves are emitted by the accessor parsers; here they are assembled
+  // under their property declaration with proper indentation.
   const settersAndGetters = getSettersAndGetters(node.members, props)
-  const parsedSetterGetters = settersAndGetters
-    .map(({ setter, getter, name, exportText }) => {
-      return `${exportText ?? ""}var ${name} setget ${
-        setter ? name + "_set" : ""
-      }, ${getter ? name + "_get" : ""}`
-    })
-    .join("\n")
 
-  // NOTE: Since extends and class_name *must* come first in the file,
-  // they are added ahead of time by parse_source_file.ts.
+  const isAccessorMember = (member: ts.ClassElement) =>
+    member.kind === SyntaxKind.GetAccessor ||
+    member.kind === SyntaxKind.SetAccessor
 
   return combine({
     parent: node,
     nodes: node.members,
     props,
-    parsedStrings: (...members) => {
-      return `
-${parsedSetterGetters}
-${members.join("")}
-`
+    parsedObjs: (...objs) => {
+      const bodyFor = (member: ts.ClassElement | undefined): string => {
+        if (!member) {
+          return ""
+        }
+
+        const idx = node.members.indexOf(member)
+
+        return idx >= 0 ? objs[idx]?.content ?? "" : ""
+      }
+
+      const indentBody = (body: string): string[] => {
+        const bodyLines = body.split("\n").filter((l) => l.trim() !== "")
+
+        if (bodyLines.length === 0) {
+          return ["    pass"]
+        }
+
+        return bodyLines.map((l) => "    " + l)
+      }
+
+      const blocks = settersAndGetters.map((pair) => {
+        const lines: string[] = []
+
+        // A property with accessors needs a type hint whenever @export is
+        // present; Godot can't infer the type of an exported accessor
+        // property without one.
+        let typeHint: string | null | undefined
+
+        if (pair.getter) {
+          typeHint = getGodotType(
+            pair.getter,
+            props.program.getTypeChecker().getTypeAtLocation(pair.getter),
+            props,
+            false,
+            undefined,
+            pair.getter.type
+          )
+        } else if (pair.setter) {
+          const param = pair.setter.parameters[0]
+
+          if (param) {
+            typeHint = getGodotType(
+              param,
+              props.program.getTypeChecker().getTypeAtLocation(param),
+              props,
+              false,
+              undefined,
+              param.type
+            )
+          }
+        }
+
+        const exportText = typeHint ? pair.exportText ?? "" : ""
+
+        lines.push(
+          `${exportText}var ${pair.name}${typeHint ? `: ${typeHint}` : ""}:`
+        )
+
+        if (pair.getter) {
+          lines.push("  get:")
+          lines.push(...indentBody(bodyFor(pair.getter)))
+        }
+
+        if (pair.setter) {
+          const paramName = pair.setter.parameters[0]?.name.getText() ?? "value"
+
+          lines.push(`  set(${paramName}):`)
+          lines.push(...indentBody(bodyFor(pair.setter)))
+        }
+
+        return lines.join("\n")
+      })
+
+      const memberStrs = objs
+        .filter(
+          (_, i) => !node.members[i] || !isAccessorMember(node.members[i])
+        )
+        .map((o) => o.content)
+
+      return `\n${blocks.join("\n")}\n${memberStrs.join("")}\n`
     },
   })
 }
@@ -158,12 +230,15 @@ class Foo {
 
   }
 }`,
+  // PackedScene<Node2D>[] cannot produce a type hint (arrays are hinted
+  // without one by convention), and an untyped property cannot carry
+  // @export, so the annotation is dropped here.
   expected: `
 class_name Foo
-@export var nodes setget nodes_set, nodes_get
-func nodes_get():
-  return []
-func nodes_set(_v):
-  pass
+var nodes:
+  get:
+    return []
+  set(v):
+    pass
 `,
 }

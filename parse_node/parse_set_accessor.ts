@@ -3,20 +3,19 @@ import ts from "typescript"
 import { ParseNodeType, ParseState, combine } from "../parse_node"
 import { Test } from "../tests/test"
 
+/**
+ * Set accessors are assembled into Godot 4 property blocks by the class
+ * declaration emitter; this only produces the accessor body.
+ */
 export const parseSetAccessor = (
   node: ts.SetAccessorDeclaration,
   props: ParseState
 ): ParseNodeType => {
   return combine({
     parent: node,
-    nodes: [node.name, node.body, ...node.parameters],
+    nodes: [node.body, ...node.parameters],
     props,
-    addIndent: true,
-    parsedStrings: (name, body, ...params) =>
-      `
-func ${name}_set(${params.join(", ")}):
-  ${body || "pass"}
-`,
+    parsedStrings: (body) => body || "pass",
   })
 }
 
@@ -29,9 +28,9 @@ class Foo {
   `,
   expected: `
 class_name Foo
-var x setget x_set,
+var x: float:
+  set(value):
+    _x = value
 var _x: float
-func x_set(value: float):
-  _x = value
   `,
 }
