@@ -283,8 +283,16 @@ export class TsGdProject {
     const assetsToCompile = this.assets.filter(
       (a): a is AssetSourceFile => a instanceof AssetSourceFile
     )
+    // One broken file should not abort the whole batch: log and move on
+    // so the remaining files still compile.
     await Promise.all(
-      assetsToCompile.map((asset) => asset.compile(this.program))
+      assetsToCompile.map(async (asset) => {
+        try {
+          await asset.compile(this.program)
+        } catch (e) {
+          console.error(`Failed to compile ${asset.fsPath}:`, e)
+        }
+      })
     )
     return !displayErrors(this.args, "Compiling all source files...")
   }
