@@ -27,6 +27,21 @@ export const parseIdentifier = (
     })
   }
 
+  // Global parseInt maps onto the shared radix-aware helper.
+  if (name === "parseInt") {
+    const result = combine({
+      parent: node,
+      nodes: [],
+      props,
+      parsedStrings: () => "__ts_parse_int",
+    })
+
+    result.hoistedLibraryFunctions = result.hoistedLibraryFunctions ?? new Set()
+    result.hoistedLibraryFunctions.add("ts_parse_int")
+
+    return result
+  }
+
   return combine({
     parent: node,
     nodes: [],

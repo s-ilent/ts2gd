@@ -13,11 +13,21 @@ export type LibraryFunctionName =
   | "ts_fround"
   | "ts_imul"
   | "ts_is_integer"
+  | "ts_is_safe_integer"
+  | "ts_parse_int"
   | "ts_number"
   | "ts_new_set"
   | "ts_new_map"
   | "ts_new_weak_set"
   | "ts_new_weak_map"
+  | "ts_new_float32"
+  | "ts_new_float64"
+  | "ts_new_int32"
+  | "ts_new_uint32"
+  | "ts_new_int16"
+  | "ts_new_uint16"
+  | "ts_new_int8"
+  | "ts_new_uint8"
   | "ts_shr_unsigned"
   | "add_vec_lib"
   | "sub_vec_lib"
@@ -150,6 +160,122 @@ static func __ts_number(x):
     definition: () => `
 static func __ts_new_set(initial = null):
   return load("res://_ts_shims/ts_set.gd").new(initial)
+`,
+  },
+
+  ts_is_safe_integer: {
+    name: "ts_is_safe_integer",
+    definition: () => `
+static func __ts_is_safe_integer(x):
+  return typeof(x) == TYPE_INT and abs(x) <= 9007199254740991
+`,
+  },
+
+  ts_parse_int: {
+    name: "ts_parse_int",
+    definition: () => `
+static func __ts_parse_int(s, radix = 10):
+  if radix == 16:
+    return str(s).trim_prefix("0x").hex_to_int()
+  if radix == 2:
+    return str(s).bin_to_int()
+  return int(str(s))
+`,
+  },
+
+  ts_new_float32: {
+    name: "ts_new_float32",
+    definition: () => `
+static func __ts_new_float32(size = null):
+  if size is int or size is float:
+    var a := PackedFloat32Array()
+    a.resize(int(size))
+    return a
+  return PackedFloat32Array(size) if size != null else PackedFloat32Array()
+`,
+  },
+
+  ts_new_float64: {
+    name: "ts_new_float64",
+    definition: () => `
+static func __ts_new_float64(size = null):
+  if size is int or size is float:
+    var a := PackedFloat64Array()
+    a.resize(int(size))
+    return a
+  return PackedFloat64Array(size) if size != null else PackedFloat64Array()
+`,
+  },
+
+  ts_new_int32: {
+    name: "ts_new_int32",
+    definition: () => `
+static func __ts_new_int32(size = null):
+  if size is int or size is float:
+    var a := PackedInt32Array()
+    a.resize(int(size))
+    return a
+  return PackedInt32Array(size) if size != null else PackedInt32Array()
+`,
+  },
+
+  ts_new_uint32: {
+    name: "ts_new_uint32",
+    definition: () => `
+static func __ts_new_uint32(size = null):
+  if size is int or size is float:
+    var a := PackedInt64Array()
+    a.resize(int(size))
+    return a
+  return PackedInt64Array(size) if size != null else PackedInt64Array()
+`,
+  },
+
+  ts_new_int16: {
+    name: "ts_new_int16",
+    definition: () => `
+static func __ts_new_int16(size = null):
+  if size is int or size is float:
+    var a := PackedInt32Array()
+    a.resize(int(size))
+    return a
+  return PackedInt32Array(size) if size != null else PackedInt32Array()
+`,
+  },
+
+  ts_new_uint16: {
+    name: "ts_new_uint16",
+    definition: () => `
+static func __ts_new_uint16(size = null):
+  if size is int or size is float:
+    var a := PackedInt32Array()
+    a.resize(int(size))
+    return a
+  return PackedInt32Array(size) if size != null else PackedInt32Array()
+`,
+  },
+
+  ts_new_int8: {
+    name: "ts_new_int8",
+    definition: () => `
+static func __ts_new_int8(size = null):
+  if size is int or size is float:
+    var a := PackedInt32Array()
+    a.resize(int(size))
+    return a
+  return PackedInt32Array(size) if size != null else PackedInt32Array()
+`,
+  },
+
+  ts_new_uint8: {
+    name: "ts_new_uint8",
+    definition: () => `
+static func __ts_new_uint8(size = null):
+  if size is int or size is float:
+    var a := PackedByteArray()
+    a.resize(int(size))
+    return a
+  return PackedByteArray(size) if size != null else PackedByteArray()
 `,
   },
 

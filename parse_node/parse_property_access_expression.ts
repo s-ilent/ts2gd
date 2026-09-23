@@ -166,6 +166,63 @@ export const parsePropertyAccessExpression = (
 
       return result
     }
+
+    if (name === "isSafeInteger") {
+      const result = combine({
+        parent: node,
+        nodes: [],
+        props,
+        parsedStrings: () => "__ts_is_safe_integer",
+      })
+
+      result.hoistedLibraryFunctions =
+        result.hoistedLibraryFunctions ?? new Set()
+      result.hoistedLibraryFunctions.add("ts_is_safe_integer")
+
+      return result
+    }
+
+    if (name === "parseInt") {
+      const result = combine({
+        parent: node,
+        nodes: [],
+        props,
+        parsedStrings: () => "__ts_parse_int",
+      })
+
+      result.hoistedLibraryFunctions =
+        result.hoistedLibraryFunctions ?? new Set()
+      result.hoistedLibraryFunctions.add("ts_parse_int")
+
+      return result
+    }
+
+    if (name === "MAX_SAFE_INTEGER") {
+      return combine({
+        parent: node,
+        nodes: [],
+        props,
+        parsedStrings: () => "9007199254740991",
+      })
+    }
+
+    if (name === "POSITIVE_INFINITY") {
+      return combine({
+        parent: node,
+        nodes: [],
+        props,
+        parsedStrings: () => "INF",
+      })
+    }
+
+    if (name === "NEGATIVE_INFINITY") {
+      return combine({
+        parent: node,
+        nodes: [],
+        props,
+        parsedStrings: () => "-INF",
+      })
+    }
   }
 
   let result = combine({
