@@ -27,6 +27,18 @@ const typedArrayShims: Record<string, LibraryFunctionName> = {
   Uint8Array: "ts_new_uint8",
 }
 
+/**
+ * JavaScript environment constructors map onto generated helpers backed by
+ * shim scripts under _ts_shims.
+ */
+const environmentShims: Record<string, LibraryFunctionName> = {
+  Promise: "ts_new_promise",
+  TextEncoder: "ts_new_text_codec",
+  TextDecoder: "ts_new_text_codec",
+  URLSearchParams: "ts_new_url_search_params",
+  Proxy: "ts_new_proxy",
+}
+
 export const parseNewExpression = (
   node: ts.NewExpression,
   props: ParseState
@@ -59,6 +71,28 @@ export const parseNewExpression = (
   ) {
     const callee = (node.expression as ts.Identifier).text
     const libName = typedArrayShims[callee]
+
+    const result = combine({
+      parent: node,
+      nodes: [...(node.arguments ?? [])],
+      props,
+      parsedStrings: (...args) => `__${libName}(${args.join(", ")})`,
+    })
+
+    result.hoistedLibraryFunctions = result.hoistedLibraryFunctions ?? new Set()
+    result.hoistedLibraryFunctions.add(libName)
+
+    return result
+  }
+
+  // Environment constructors build shim objects through generated helpers.
+  // A proxy degrades to its target, so the wrapped object remains usable.
+  if (
+    node.expression.kind === SyntaxKind.Identifier &&
+    (node.expression as ts.Identifier).text in environmentShims
+  ) {
+    const callee = (node.expression as ts.Identifier).text
+    const libName = environmentShims[callee]
 
     const result = combine({
       parent: node,
@@ -154,5 +188,24 @@ ${LibraryFunctions.ts_new_int32.definition("__ts_new_int32")}
 static var _f = __ts_new_float32(9)
 static var _b = __ts_new_uint8(16)
 static var _i = __ts_new_int32(4)
+  `,
+}
+
+export const testNewEnvironmentShims: Test = {
+  ts: `
+let tag = new TextEncoder().encode("abc")
+let params = new URLSearchParams("?a=1&b=2")
+let p = new Proxy({}, {})
+  `,
+  expected: `
+class_name __Mod_Test_4064or
+${LibraryFunctions.ts_new_text_codec.definition("__ts_new_text_codec")}
+${LibraryFunctions.ts_new_url_search_params.definition(
+  "__ts_new_url_search_params"
+)}
+${LibraryFunctions.ts_new_proxy.definition("__ts_new_proxy")}
+static var _tag = __ts_new_text_codec().encode("abc")
+static var _params = __ts_new_url_search_params("?a=1&b=2")
+static var _p = __ts_new_proxy({}, {})
   `,
 }

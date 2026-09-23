@@ -138,6 +138,82 @@ export const parsePropertyAccessExpression = (
     }
   }
 
+  // Promise statics compile to hoisted helpers. all() degrades to returning
+  // its input array (await on a plain value resumes immediately), resolve()
+  // returns its value, reject() logs and yields null.
+  if (ts.isIdentifier(node.expression) && node.expression.text === "Promise") {
+    const promiseStatics: Record<string, LibraryFunctionName> = {
+      all: "ts_promise_all",
+      resolve: "ts_promise_resolve",
+      reject: "ts_promise_reject",
+    }
+
+    const name = node.name.text
+
+    if (name in promiseStatics) {
+      const result = combine({
+        parent: node,
+        nodes: [],
+        props,
+        parsedStrings: () => `__${promiseStatics[name]}`,
+      })
+
+      result.hoistedLibraryFunctions =
+        result.hoistedLibraryFunctions ?? new Set()
+      result.hoistedLibraryFunctions.add(promiseStatics[name])
+
+      return result
+    }
+  }
+
+  // Reflect.* members compile to hoisted helpers with dictionary-friendly
+  // degradation (a member named get/set would collide with Object natives
+  // on the environment shim).
+  if (ts.isIdentifier(node.expression) && node.expression.text === "Reflect") {
+    const reflectStatics: Record<string, LibraryFunctionName> = {
+      get: "ts_reflect_get",
+      set: "ts_reflect_set",
+      has: "ts_reflect_has",
+      ownKeys: "ts_reflect_own_keys",
+    }
+
+    const name = node.name.text
+
+    if (name in reflectStatics) {
+      const result = combine({
+        parent: node,
+        nodes: [],
+        props,
+        parsedStrings: () => `__${reflectStatics[name]}`,
+      })
+
+      result.hoistedLibraryFunctions =
+        result.hoistedLibraryFunctions ?? new Set()
+      result.hoistedLibraryFunctions.add(reflectStatics[name])
+
+      return result
+    }
+  }
+
+  // performance.now() maps onto the engine's millisecond clock.
+  if (
+    ts.isIdentifier(node.expression) &&
+    node.expression.text === "performance" &&
+    node.name.text === "now"
+  ) {
+    const result = combine({
+      parent: node,
+      nodes: [],
+      props,
+      parsedStrings: () => "__ts_perf_now",
+    })
+
+    result.hoistedLibraryFunctions = result.hoistedLibraryFunctions ?? new Set()
+    result.hoistedLibraryFunctions.add("ts_perf_now")
+
+    return result
+  }
+
   // Number.* statics map onto GDScript helpers.
   if (ts.isIdentifier(node.expression) && node.expression.text === "Number") {
     const name = node.name.text
@@ -751,5 +827,56 @@ ${LibraryFunctions.ts_is_integer.definition("__ts_is_integer")}
 ${LibraryFunctions.ts_number.definition("__ts_number")}
 static var _ok = __ts_is_integer(5)
 static var _n = __ts_number("12.5")
+  `,
+}
+
+export const testPromiseStatics: Test = {
+  ts: `
+export function load(): int {
+  return Promise.resolve(7)
+}
+
+export function joinAll(parts): int {
+  return Promise.all(parts)
+}
+  `,
+  expected: `
+class_name __Mod_Test_4064or
+${LibraryFunctions.ts_promise_resolve.definition("__ts_promise_resolve")}
+${LibraryFunctions.ts_promise_all.definition("__ts_promise_all")}
+static func load():
+  return __ts_promise_resolve(7)
+static func joinAll(parts):
+  return __ts_promise_all(parts)
+  `,
+}
+
+export const testReflectStatics: Test = {
+  ts: `
+export function read(target): int {
+  return Reflect.get(target, "x")
+}
+  `,
+  expected: `
+class_name __Mod_Test_4064or
+${LibraryFunctions.ts_reflect_get.definition("__ts_reflect_get")}
+static func read(target):
+  return __ts_reflect_get(target, "x")
+  `,
+}
+
+export const testPerformanceNow: Test = {
+  ts: `
+export class Foo {
+  stamp(): float {
+    return performance.now()
+  }
+}
+  `,
+  expected: `
+class_name Foo
+${LibraryFunctions.ts_perf_now.definition("__ts_perf_now")}
+func stamp():
+  return __ts_perf_now()
   `,
 }

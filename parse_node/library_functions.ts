@@ -35,6 +35,19 @@ export type LibraryFunctionName =
   | "ts_new_int8"
   | "ts_new_uint8"
   | "ts_shr_unsigned"
+  | "ts_env"
+  | "ts_promise_all"
+  | "ts_promise_resolve"
+  | "ts_promise_reject"
+  | "ts_new_promise"
+  | "ts_new_text_codec"
+  | "ts_new_url_search_params"
+  | "ts_new_proxy"
+  | "ts_reflect_get"
+  | "ts_reflect_set"
+  | "ts_reflect_has"
+  | "ts_reflect_own_keys"
+  | "ts_perf_now"
   | "add_vec_lib"
   | "sub_vec_lib"
   | "mul_vec_lib"
@@ -113,6 +126,143 @@ static func __ts_trunc(x):
     definition: () => `
 static func __ts_hypot(a, b):
   return sqrt(a * a + b * b)
+`,
+  },
+
+  ts_env: {
+    name: "ts_env",
+    definition: () => `
+static var __ts_env_instance = null
+
+static func __ts_env():
+  if __ts_env_instance == null:
+    __ts_env_instance = load("res://_ts_shims/ts_env.gd").new()
+  return __ts_env_instance
+`,
+  },
+
+  ts_promise_all: {
+    name: "ts_promise_all",
+    definition: () => `
+static func __ts_promise_all(values):
+  return values if values != null else []
+`,
+  },
+
+  ts_promise_resolve: {
+    name: "ts_promise_resolve",
+    definition: () => `
+static func __ts_promise_resolve(value = null):
+  return value
+`,
+  },
+
+  ts_promise_reject: {
+    name: "ts_promise_reject",
+    definition: () => `
+static func __ts_promise_reject(reason = null):
+  push_error(str(reason))
+  return null
+`,
+  },
+
+  ts_new_promise: {
+    name: "ts_new_promise",
+    definition: () => `
+static func __ts_new_promise(executor):
+  var p = load("res://_ts_shims/ts_promise.gd").new()
+  if executor is Array:
+    executor[0].callv(executor[1], [Callable(p, "resolve"), Callable(p, "reject")])
+  elif executor is Callable:
+    executor.call(Callable(p, "resolve"), Callable(p, "reject"))
+  return p
+`,
+  },
+
+  ts_new_text_codec: {
+    name: "ts_new_text_codec",
+    definition: () => `
+static func __ts_new_text_codec():
+  return load("res://_ts_shims/ts_text_codec.gd").new()
+`,
+  },
+
+  ts_new_url_search_params: {
+    name: "ts_new_url_search_params",
+    definition: () => `
+static func __ts_new_url_search_params(query = null):
+  var params := {}
+  if query is String:
+    var q = query.trim_prefix("?").trim_prefix("#")
+    for pair in q.split("&", false):
+      var kv = pair.split("=", true, 1)
+      if kv.size() == 2:
+        params[kv[0].uri_decode()] = kv[1].uri_decode()
+      elif kv.size() == 1 and kv[0] != "":
+        params[kv[0].uri_decode()] = ""
+  return params
+`,
+  },
+
+  ts_new_proxy: {
+    name: "ts_new_proxy",
+    definition: () => `
+static func __ts_new_proxy(target, _handler = null):
+  return target
+`,
+  },
+
+  ts_reflect_get: {
+    name: "ts_reflect_get",
+    definition: () => `
+static func __ts_reflect_get(target, key, _receiver = null):
+  if target == null:
+    return null
+  return target.get(key)
+`,
+  },
+
+  ts_reflect_set: {
+    name: "ts_reflect_set",
+    definition: () => `
+static func __ts_reflect_set(target, key, value):
+  if target == null:
+    return false
+  if target is Dictionary:
+    target[key] = value
+    return true
+  target.set(key, value)
+  return true
+`,
+  },
+
+  ts_reflect_has: {
+    name: "ts_reflect_has",
+    definition: () => `
+static func __ts_reflect_has(target, key):
+  if target == null:
+    return false
+  if target is Dictionary:
+    return target.has(key)
+  return target.has_method(key)
+`,
+  },
+
+  ts_reflect_own_keys: {
+    name: "ts_reflect_own_keys",
+    definition: () => `
+static func __ts_reflect_own_keys(target):
+  if target is Dictionary:
+    return target.keys()
+  return []
+`,
+  },
+
+  ts_perf_now: {
+    name: "ts_perf_now",
+    definition: () => `
+static func __ts_perf_now():
+  return float(Time.get_ticks_msec())
 `,
   },
 
