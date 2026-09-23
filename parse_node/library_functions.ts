@@ -7,6 +7,7 @@ export type LibraryFunctionName =
   | "entries"
   | "flatten"
   | "random_element"
+  | "dict_merge"
   | "add_vec_lib"
   | "sub_vec_lib"
   | "mul_vec_lib"
@@ -51,6 +52,24 @@ func ${name}(v):
       return "function"
     _:
       return "object"
+`,
+  },
+
+  dict_merge: {
+    name: "dict_merge",
+    definition: () => `
+func __dict_merge(base, extra):
+  var result = {}
+
+  if base != null:
+    for key in base:
+      result[key] = base[key]
+
+  if extra != null:
+    for key in extra:
+      result[key] = extra[key]
+
+  return result
 `,
   },
 

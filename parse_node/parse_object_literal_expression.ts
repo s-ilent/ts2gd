@@ -3,6 +3,8 @@ import ts, { SyntaxKind } from "typescript"
 import { ParseNodeType, ParseState, combine } from "../parse_node"
 import { Test } from "../tests/test"
 
+import { LibraryFunctions } from "./library_functions"
+
 export const parseObjectLiteralExpression = (
   node: ts.ObjectLiteralExpression,
   props: ParseState
@@ -18,66 +20,133 @@ export const parseObjectLiteralExpression = (
 
   const isMultiline = node.getText().includes("\n")
 
-  const unprocessedKeys = node.properties.map((prop) => {
-    if (prop.kind === SyntaxKind.PropertyAssignment) {
-      if (prop.name.kind === SyntaxKind.ComputedPropertyName) {
-        const computedProp = prop.name as ts.ComputedPropertyName
+  type SegmentMeta =
+    | { kind: "pair"; keyIsIdentifier: boolean }
+    | { kind: "spread" }
 
-        return computedProp.expression
+  // A flat node list in property order. Regular properties contribute two
+  // nodes (name and value, or the shorthand name twice); spreads contribute
+  // one (the spread expression).
+  const flatNodes: ts.Node[] = []
+  const segmentMeta: SegmentMeta[] = []
+
+  for (const prop of node.properties) {
+    if (prop.kind === SyntaxKind.PropertyAssignment) {
+      const assignment = prop as ts.PropertyAssignment
+
+      if (assignment.name.kind === SyntaxKind.ComputedPropertyName) {
+        const computedProp = assignment.name as ts.ComputedPropertyName
+
+        flatNodes.push(computedProp.expression)
+        segmentMeta.push({ kind: "pair", keyIsIdentifier: false })
+      } else {
+        flatNodes.push(assignment.name)
+        segmentMeta.push({
+          kind: "pair",
+          keyIsIdentifier: assignment.name.kind === SyntaxKind.Identifier,
+        })
       }
 
-      return prop.name
+      flatNodes.push(assignment.initializer)
     } else if (prop.kind === SyntaxKind.ShorthandPropertyAssignment) {
-      return prop.name
+      const shorthand = prop as ts.ShorthandPropertyAssignment
+
+      flatNodes.push(shorthand.name)
+      flatNodes.push(shorthand.name)
+      segmentMeta.push({ kind: "pair", keyIsIdentifier: true })
+    } else if (prop.kind === SyntaxKind.SpreadAssignment) {
+      const spread = prop as ts.SpreadAssignment
+
+      flatNodes.push(spread.expression)
+      segmentMeta.push({ kind: "spread" })
     } else {
       throw new Error("Unknown property in object.")
     }
-  })
+  }
 
-  const unprocessedValues = node.properties.map((prop) => {
-    if (prop.kind === SyntaxKind.PropertyAssignment) {
-      return prop.initializer
-    } else if (prop.kind === SyntaxKind.ShorthandPropertyAssignment) {
-      return prop.name
-    } else {
-      throw new Error("Unknown property in object.")
-    }
-  })
-
-  return combine({
+  const result = combine({
     parent: node,
-    nodes: [...unprocessedKeys, ...unprocessedValues],
+    nodes: flatNodes,
     props,
-    parsedStrings: (...keysAndValues) => {
-      const keys = keysAndValues.slice(0, keysAndValues.length / 2)
-      const values = keysAndValues.slice(keysAndValues.length / 2)
+    parsedStrings: (...strings) => {
+      let stringIndex = 0
 
-      let pairs: string[][] = []
+      type Segment =
+        | { kind: "literal"; pairs: [string, string][] }
+        | { kind: "spread"; expr: string }
 
-      for (let i = 0; i < values.length; i++) {
-        if (unprocessedKeys[i].kind === SyntaxKind.Identifier) {
-          pairs.push(['"' + keys[i] + '"', values[i]])
+      const segments: Segment[] = []
+
+      for (const meta of segmentMeta) {
+        if (meta.kind === "spread") {
+          segments.push({ kind: "spread", expr: strings[stringIndex++] })
           continue
         }
 
-        // We need to quote identifiers, even though if we compiled an identifier normally it wouldn't be quoted.
+        const key = strings[stringIndex++]
+        const value = strings[stringIndex++]
 
-        pairs.push([keys[i], values[i]])
+        const formattedKey = meta.keyIsIdentifier ? `"${key}"` : key
+
+        const last = segments[segments.length - 1]
+
+        if (last && last.kind === "literal") {
+          last.pairs.push([formattedKey, value])
+        } else {
+          segments.push({
+            kind: "literal",
+            pairs: [[formattedKey, value]],
+          })
+        }
       }
 
-      if (isMultiline) {
-        return `
+      const formatLiteral = (pairs: [string, string][]) => {
+        if (pairs.length === 0) {
+          return "{}"
+        }
+
+        if (isMultiline) {
+          return `
 {
 ${pairs.map(([k, v]) => `  ${k}: ${v},`).join("\n")}
 }      
       `
-      } else {
-        return `
-{ ${pairs.map(([k, v]) => `${k}: ${v}`).join(", ")} }      
-      `
+        } else {
+          return `{ ${pairs.map(([k, v]) => `${k}: ${v}`).join(", ")} }`
+        }
       }
+
+      // Fold the segments left to right. Every spread copies its source, so
+      // later properties can never mutate the spread object - matching
+      // object spread semantics.
+      let accumulator: string | null = null
+
+      for (const segment of segments) {
+        if (segment.kind === "spread") {
+          const copy = `__dict_merge(${segment.expr}, {})`
+
+          accumulator = accumulator
+            ? `__dict_merge(${accumulator}, ${copy})`
+            : copy
+        } else {
+          const literal = formatLiteral(segment.pairs)
+
+          accumulator = accumulator
+            ? `__dict_merge(${accumulator}, ${literal})`
+            : literal
+        }
+      }
+
+      return accumulator ?? "{}"
     },
   })
+
+  if (segmentMeta.some((meta) => meta.kind === "spread")) {
+    result.hoistedLibraryFunctions = result.hoistedLibraryFunctions ?? new Set()
+    result.hoistedLibraryFunctions.add("dict_merge")
+  }
+
+  return result
 }
 
 export const testObjectLiteral: Test = {
@@ -161,4 +230,42 @@ var foo = {
 }
 foo  
 `,
+}
+
+export const testObjectLiteralSpread: Test = {
+  ts: `
+let base = { a: 1 }
+let x = { ...base, b: 2 }
+  `,
+  expected: `
+${LibraryFunctions.dict_merge.definition("__dict_merge")}
+var base = { "a": 1 }
+var _x = __dict_merge(__dict_merge(base, {}), { "b": 2 })
+  `,
+}
+
+export const testObjectLiteralSpreadOnly: Test = {
+  ts: `
+let base = { a: 1 }
+let x = { ...base }
+  `,
+  expected: `
+${LibraryFunctions.dict_merge.definition("__dict_merge")}
+var base = { "a": 1 }
+var _x = __dict_merge(base, {})
+  `,
+}
+
+export const testObjectLiteralDoubleSpread: Test = {
+  ts: `
+let a = { x: 1 }
+let b = { y: 2 }
+let c = { ...a, ...b }
+  `,
+  expected: `
+${LibraryFunctions.dict_merge.definition("__dict_merge")}
+var a = { "x": 1 }
+var b = { "y": 2 }
+var _c = __dict_merge(__dict_merge(a, {}), __dict_merge(b, {}))
+  `,
 }

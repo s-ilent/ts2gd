@@ -37,13 +37,13 @@ const getFreeVariables = (
     const symbol = props.program.getTypeChecker().getSymbolAtLocation(node)
 
     if (symbol) {
-      if (!symbol.declarations) {
+      if (!symbol.declarations || symbol.declarations.length === 0) {
         addError({
           error: ErrorName.DeclarationNotGiven,
           location: node,
           stack: new Error().stack ?? "",
           description: `
-Declaration not provided for free variables. This is an internal ts2gd bug. Please report it. 
+Declaration not provided for free variables. This is an internal ts2gd bug. Please report it.
         `,
         })
         return []
