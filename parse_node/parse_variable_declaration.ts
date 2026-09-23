@@ -29,12 +29,19 @@ export const getDestructuredNamesAndAccessStrings = (
     return obj.elements
       .map((elem, i) => {
         if (elem.kind === SyntaxKind.BindingElement) {
+          const bindingElement = elem as ts.BindingElement
+
+          const elemAccess = bindingElement.dotDotDotToken
+            ? accessSlice(i, access)
+            : access + `[${i}]`
+
           return getDestructuredNamesAndAccessStrings(
-            elem.name,
-            access + `[${i}]`
+            bindingElement.name,
+            elemAccess
           )
         } else {
-          throw new Error("I dont know what this is")
+          // Omitted hole - nothing to bind.
+          return []
         }
       })
       .flat()
@@ -43,6 +50,16 @@ export const getDestructuredNamesAndAccessStrings = (
   throw new Error(
     "Completely and totally impossible. You will never see this. I promise."
   )
+}
+
+/**
+ * The suffix for a rest element at index i, e.g. `.slice(2)` for a top-level
+ * pattern, or `.slice(2)` appended to an existing access chain.
+ */
+const accessSlice = (index: number, access = ""): string => {
+  // access ends with "]" or an identifier chain; slicing applies to the
+  // array reached so far.
+  return `${access}.slice(${index})`
 }
 
 export const parseVariableDeclaration = (

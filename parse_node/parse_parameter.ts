@@ -1,4 +1,4 @@
-import ts from "typescript"
+import ts, { SyntaxKind } from "typescript"
 
 import {
   ExtraLine,
@@ -10,12 +10,41 @@ import {
 import { Test } from "../tests/test"
 import { getGodotType } from "../ts_utils"
 
+import { getDestructuredNamesAndAccessStrings } from "./parse_variable_declaration"
+
 const magic = `"[no value passed in]"`
 
 export const parseParameter = (
   node: ts.ParameterDeclaration,
   props: ParseState
 ): ParseNodeType => {
+  // Destructured parameters (e.g. function f({ a, b })) cannot exist in
+  // GDScript signatures. The signature receives one generated parameter and
+  // the destructured names are bound at the top of the function body.
+  if (node.name.kind !== SyntaxKind.Identifier) {
+    const destructuredNames = getDestructuredNamesAndAccessStrings(node.name)
+    const genName = props.scope.createUniqueName()
+
+    for (const { id } of destructuredNames) {
+      props.scope.addName(id)
+    }
+
+    const result = combine({
+      parent: node,
+      nodes: [],
+      props,
+      parsedStrings: () => genName,
+    })
+
+    result.extraLines = destructuredNames.map(({ id, access }) => ({
+      line: `var ${id.text} = ${genName}${access}`,
+      type: "after" as const,
+      lineType: ExtraLineType.DefaultInitialization,
+    }))
+
+    return result
+  }
+
   const type = getGodotType(
     node,
     props.program.getTypeChecker().getTypeAtLocation(node),
@@ -78,5 +107,40 @@ class_name Test
 
 func test(a: int, _b: String):
   print(a)
+  `,
+}
+
+export const testDestructuredParameter: Test = {
+  ts: `
+export class Test {
+  go(opts: { a: int, b: int }) {
+    print(opts)
+  }
+
+  pick({ a, b }: { a: int, b: int }) {
+    return a + b
+  }
+}
+  `,
+  expected: `
+class_name Test
+func go(opts):
+  print(opts)
+func pick(__gen):
+  var a = __gen.a
+  var b = __gen.b
+  return a + b
+  `,
+}
+
+export const testArrayHoleAndRest: Test = {
+  ts: `
+let [a, , c, ...rest] = [1, 2, 3, 4, 5]
+  `,
+  expected: `
+var __gen = [1, 2, 3, 4, 5]
+var a = __gen[0]
+var c = __gen[2]
+var rest = __gen.slice(3)
   `,
 }
