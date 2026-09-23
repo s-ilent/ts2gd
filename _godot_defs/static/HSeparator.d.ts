@@ -1,28 +1,18 @@
-
 /**
- * Horizontal separator. See [Separator]. Even though it looks horizontal, it is used to separate objects vertically.
+ * A horizontal separator used for separating other controls that are arranged **vertically**. [HSeparator] is purely visual and normally drawn as a [StyleBoxLine].
  *
-*/
-declare class HSeparator extends Separator  {
+ */
+declare class HSeparator extends Separator {
+  /**
+   * A horizontal separator used for separating other controls that are arranged **vertically**. [HSeparator] is purely visual and normally drawn as a [StyleBoxLine].
+   *
+   */
+  new(): HSeparator
+  constructor()
+  static new(): HSeparator
 
-  
-/**
- * Horizontal separator. See [Separator]. Even though it looks horizontal, it is used to separate objects vertically.
- *
-*/
-  new(): HSeparator; 
-  static "new"(): HSeparator 
-
-
-
-
-
-  connect<T extends SignalsOf<HSeparator>>(signal: T, method: SignalFunction<HSeparator[T]>): number;
-
-
-
-
-
-
+  connect<T extends SignalsOf<HSeparator>>(
+    signal: T,
+    method: SignalFunction<HSeparator[T]>
+  ): number
 }
-

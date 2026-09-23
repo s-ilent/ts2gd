@@ -1,239 +1,225 @@
-
 /**
  * A visual shader node able to perform different functions using vectors.
  *
-*/
-declare class VisualShaderNodeVectorFunc extends VisualShaderNode  {
+ */
+declare class VisualShaderNodeVectorFunc extends VisualShaderNodeVectorBase {
+  /**
+   * A visual shader node able to perform different functions using vectors.
+   *
+   */
+  new(): VisualShaderNodeVectorFunc
+  constructor()
+  static new(): VisualShaderNodeVectorFunc
 
-  
-/**
- * A visual shader node able to perform different functions using vectors.
- *
-*/
-  new(): VisualShaderNodeVectorFunc; 
-  static "new"(): VisualShaderNodeVectorFunc 
+  /** The function to be performed. */
+  function: int
 
+  connect<T extends SignalsOf<VisualShaderNodeVectorFunc>>(
+    signal: T,
+    method: SignalFunction<VisualShaderNodeVectorFunc[T]>
+  ): number
 
-/** The function to be performed. See [enum Function] for options. */
-function: int;
+  /**
+   * Normalizes the vector so that it has a length of `1` but points in the same direction.
+   *
+   */
+  static FUNC_NORMALIZE: any
 
+  /**
+   * Clamps the value between `0.0` and `1.0`.
+   *
+   */
+  static FUNC_SATURATE: any
 
+  /**
+   * Returns the opposite value of the parameter.
+   *
+   */
+  static FUNC_NEGATE: any
 
-  connect<T extends SignalsOf<VisualShaderNodeVectorFunc>>(signal: T, method: SignalFunction<VisualShaderNodeVectorFunc[T]>): number;
+  /**
+   * Returns `1/vector`.
+   *
+   */
+  static FUNC_RECIPROCAL: any
 
+  /**
+   * Returns the absolute value of the parameter.
+   *
+   */
+  static FUNC_ABS: any
 
+  /**
+   * Returns the arc-cosine of the parameter.
+   *
+   */
+  static FUNC_ACOS: any
 
-/**
- * Normalizes the vector so that it has a length of `1` but points in the same direction.
- *
-*/
-static FUNC_NORMALIZE: any;
+  /**
+   * Returns the inverse hyperbolic cosine of the parameter.
+   *
+   */
+  static FUNC_ACOSH: any
 
-/**
- * Clamps the value between `0.0` and `1.0`.
- *
-*/
-static FUNC_SATURATE: any;
+  /**
+   * Returns the arc-sine of the parameter.
+   *
+   */
+  static FUNC_ASIN: any
 
-/**
- * Returns the opposite value of the parameter.
- *
-*/
-static FUNC_NEGATE: any;
+  /**
+   * Returns the inverse hyperbolic sine of the parameter.
+   *
+   */
+  static FUNC_ASINH: any
 
-/**
- * Returns `1/vector`.
- *
-*/
-static FUNC_RECIPROCAL: any;
+  /**
+   * Returns the arc-tangent of the parameter.
+   *
+   */
+  static FUNC_ATAN: any
 
-/**
- * Converts RGB vector to HSV equivalent.
- *
-*/
-static FUNC_RGB2HSV: any;
+  /**
+   * Returns the inverse hyperbolic tangent of the parameter.
+   *
+   */
+  static FUNC_ATANH: any
 
-/**
- * Converts HSV vector to RGB equivalent.
- *
-*/
-static FUNC_HSV2RGB: any;
+  /**
+   * Finds the nearest integer that is greater than or equal to the parameter.
+   *
+   */
+  static FUNC_CEIL: any
 
-/**
- * Returns the absolute value of the parameter.
- *
-*/
-static FUNC_ABS: any;
+  /**
+   * Returns the cosine of the parameter.
+   *
+   */
+  static FUNC_COS: any
 
-/**
- * Returns the arc-cosine of the parameter.
- *
-*/
-static FUNC_ACOS: any;
+  /**
+   * Returns the hyperbolic cosine of the parameter.
+   *
+   */
+  static FUNC_COSH: any
 
-/**
- * Returns the inverse hyperbolic cosine of the parameter.
- *
-*/
-static FUNC_ACOSH: any;
+  /**
+   * Converts a quantity in radians to degrees.
+   *
+   */
+  static FUNC_DEGREES: any
 
-/**
- * Returns the arc-sine of the parameter.
- *
-*/
-static FUNC_ASIN: any;
+  /**
+   * Base-e Exponential.
+   *
+   */
+  static FUNC_EXP: any
 
-/**
- * Returns the inverse hyperbolic sine of the parameter.
- *
-*/
-static FUNC_ASINH: any;
+  /**
+   * Base-2 Exponential.
+   *
+   */
+  static FUNC_EXP2: any
 
-/**
- * Returns the arc-tangent of the parameter.
- *
-*/
-static FUNC_ATAN: any;
+  /**
+   * Finds the nearest integer less than or equal to the parameter.
+   *
+   */
+  static FUNC_FLOOR: any
 
-/**
- * Returns the inverse hyperbolic tangent of the parameter.
- *
-*/
-static FUNC_ATANH: any;
+  /**
+   * Computes the fractional part of the argument.
+   *
+   */
+  static FUNC_FRACT: any
 
-/**
- * Finds the nearest integer that is greater than or equal to the parameter.
- *
-*/
-static FUNC_CEIL: any;
+  /**
+   * Returns the inverse of the square root of the parameter.
+   *
+   */
+  static FUNC_INVERSE_SQRT: any
 
-/**
- * Returns the cosine of the parameter.
- *
-*/
-static FUNC_COS: any;
+  /**
+   * Natural logarithm.
+   *
+   */
+  static FUNC_LOG: any
 
-/**
- * Returns the hyperbolic cosine of the parameter.
- *
-*/
-static FUNC_COSH: any;
+  /**
+   * Base-2 logarithm.
+   *
+   */
+  static FUNC_LOG2: any
 
-/**
- * Converts a quantity in radians to degrees.
- *
-*/
-static FUNC_DEGREES: any;
+  /**
+   * Converts a quantity in degrees to radians.
+   *
+   */
+  static FUNC_RADIANS: any
 
-/**
- * Base-e Exponential.
- *
-*/
-static FUNC_EXP: any;
+  /**
+   * Finds the nearest integer to the parameter.
+   *
+   */
+  static FUNC_ROUND: any
 
-/**
- * Base-2 Exponential.
- *
-*/
-static FUNC_EXP2: any;
+  /**
+   * Finds the nearest even integer to the parameter.
+   *
+   */
+  static FUNC_ROUNDEVEN: any
 
-/**
- * Finds the nearest integer less than or equal to the parameter.
- *
-*/
-static FUNC_FLOOR: any;
+  /**
+   * Extracts the sign of the parameter, i.e. returns `-1` if the parameter is negative, `1` if it's positive and `0` otherwise.
+   *
+   */
+  static FUNC_SIGN: any
 
-/**
- * Computes the fractional part of the argument.
- *
-*/
-static FUNC_FRAC: any;
+  /**
+   * Returns the sine of the parameter.
+   *
+   */
+  static FUNC_SIN: any
 
-/**
- * Returns the inverse of the square root of the parameter.
- *
-*/
-static FUNC_INVERSE_SQRT: any;
+  /**
+   * Returns the hyperbolic sine of the parameter.
+   *
+   */
+  static FUNC_SINH: any
 
-/**
- * Natural logarithm.
- *
-*/
-static FUNC_LOG: any;
+  /**
+   * Returns the square root of the parameter.
+   *
+   */
+  static FUNC_SQRT: any
 
-/**
- * Base-2 logarithm.
- *
-*/
-static FUNC_LOG2: any;
+  /**
+   * Returns the tangent of the parameter.
+   *
+   */
+  static FUNC_TAN: any
 
-/**
- * Converts a quantity in degrees to radians.
- *
-*/
-static FUNC_RADIANS: any;
+  /**
+   * Returns the hyperbolic tangent of the parameter.
+   *
+   */
+  static FUNC_TANH: any
 
-/**
- * Finds the nearest integer to the parameter.
- *
-*/
-static FUNC_ROUND: any;
+  /**
+   * Returns a value equal to the nearest integer to the parameter whose absolute value is not larger than the absolute value of the parameter.
+   *
+   */
+  static FUNC_TRUNC: any
 
-/**
- * Finds the nearest even integer to the parameter.
- *
-*/
-static FUNC_ROUNDEVEN: any;
+  /**
+   * Returns `1.0 - vector`.
+   *
+   */
+  static FUNC_ONEMINUS: any
 
-/**
- * Extracts the sign of the parameter, i.e. returns `-1` if the parameter is negative, `1` if it's positive and `0` otherwise.
- *
-*/
-static FUNC_SIGN: any;
-
-/**
- * Returns the sine of the parameter.
- *
-*/
-static FUNC_SIN: any;
-
-/**
- * Returns the hyperbolic sine of the parameter.
- *
-*/
-static FUNC_SINH: any;
-
-/**
- * Returns the square root of the parameter.
- *
-*/
-static FUNC_SQRT: any;
-
-/**
- * Returns the tangent of the parameter.
- *
-*/
-static FUNC_TAN: any;
-
-/**
- * Returns the hyperbolic tangent of the parameter.
- *
-*/
-static FUNC_TANH: any;
-
-/**
- * Returns a value equal to the nearest integer to the parameter whose absolute value is not larger than the absolute value of the parameter.
- *
-*/
-static FUNC_TRUNC: any;
-
-/**
- * Returns `1.0 - vector`.
- *
-*/
-static FUNC_ONEMINUS: any;
-
-
-
+  /**
+   * Represents the size of the [enum Function] enum.
+   *
+   */
+  static FUNC_MAX: any
 }
-

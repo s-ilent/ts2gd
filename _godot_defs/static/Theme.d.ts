@@ -1,308 +1,535 @@
-
 /**
- * A theme for skinning controls. Controls can be skinned individually, but for complex applications, it's more practical to just create a global theme that defines everything. This theme can be applied to any [Control]; the Control and its children will automatically use it.
+ * A resource used for styling/skinning [Control] and [Window] nodes. While individual controls can be styled using their local theme overrides (see [method Control.add_theme_color_override]), theme resources allow you to store and apply the same settings across all controls sharing the same type (e.g. style all [Button]s the same). One theme resource can be used for the entire project, but you can also set a separate theme resource to a branch of control nodes. A theme resource assigned to a control applies to the control itself, as well as all of its direct and indirect children (as long as a chain of controls is uninterrupted).
  *
- * Theme resources can alternatively be loaded by writing them in a `.theme` file, see the documentation for more information.
+ * Use [member ProjectSettings.gui/theme/custom] to set up a project-scope theme that will be available to every control in your project.
  *
-*/
-declare class Theme extends Resource  {
-
-  
-/**
- * A theme for skinning controls. Controls can be skinned individually, but for complex applications, it's more practical to just create a global theme that defines everything. This theme can be applied to any [Control]; the Control and its children will automatically use it.
+ * Use [member Control.theme] of any control node to set up a theme that will be available to that control and all of its direct and indirect children.
  *
- * Theme resources can alternatively be loaded by writing them in a `.theme` file, see the documentation for more information.
- *
-*/
-  new(): Theme; 
-  static "new"(): Theme 
+ */
+declare class Theme extends Resource {
+  /**
+   * A resource used for styling/skinning [Control] and [Window] nodes. While individual controls can be styled using their local theme overrides (see [method Control.add_theme_color_override]), theme resources allow you to store and apply the same settings across all controls sharing the same type (e.g. style all [Button]s the same). One theme resource can be used for the entire project, but you can also set a separate theme resource to a branch of control nodes. A theme resource assigned to a control applies to the control itself, as well as all of its direct and indirect children (as long as a chain of controls is uninterrupted).
+   *
+   * Use [member ProjectSettings.gui/theme/custom] to set up a project-scope theme that will be available to every control in your project.
+   *
+   * Use [member Control.theme] of any control node to set up a theme that will be available to that control and all of its direct and indirect children.
+   *
+   */
+  new(): Theme
+  constructor()
+  static new(): Theme
 
+  /**
+   * The default base scale factor of this theme resource. Used by some controls to scale their visual properties based on the global scale factor. If this value is set to `0.0`, the global scale factor is used (see [member ThemeDB.fallback_base_scale]).
+   *
+   * Use [method has_default_base_scale] to check if this value is valid.
+   *
+   */
+  default_base_scale: float
 
-/**
- * The default font of this [Theme] resource. Used as a fallback value for font items defined in this theme, but having invalid values. If this value is also invalid, the global default value is used.
- *
- * Use [method has_default_font] to check if this value is valid.
- *
-*/
-default_font: Font;
+  /**
+   * The default font of this theme resource. Used as the default value when trying to fetch a font resource that doesn't exist in this theme or is in invalid state. If the default font is also missing or invalid, the engine fallback value is used (see [member ThemeDB.fallback_font]).
+   *
+   * Use [method has_default_font] to check if this value is valid.
+   *
+   */
+  default_font: Font
 
-/** Clears all values on the theme. */
-clear(): void;
+  /**
+   * The default font size of this theme resource. Used as the default value when trying to fetch a font size value that doesn't exist in this theme or is in invalid state. If the default font size is also missing or invalid, the engine fallback value is used (see [member ThemeDB.fallback_font_size]).
+   *
+   * Values below `1` are invalid and can be used to unset the property. Use [method has_default_font_size] to check if this value is valid.
+   *
+   */
+  default_font_size: int
 
-/** Clears the [Color] at [code]name[/code] if the theme has [code]node_type[/code]. */
-clear_color(name: string, node_type: string): void;
+  /**
+   * Adds an empty theme type for every valid data type.
+   *
+   * **Note:** Empty types are not saved with the theme. This method only exists to perform in-memory changes to the resource. Use available `set_*` methods to add theme items.
+   *
+   */
+  add_type(theme_type: StringName): void
 
-/** Clears the constant at [code]name[/code] if the theme has [code]node_type[/code]. */
-clear_constant(name: string, node_type: string): void;
+  /** Removes all the theme properties defined on the theme resource. */
+  clear(): void
 
-/** Clears the [Font] at [code]name[/code] if the theme has [code]node_type[/code]. */
-clear_font(name: string, node_type: string): void;
+  /**
+   * Removes the [Color] property defined by [param name] and [param theme_type], if it exists.
+   *
+   * Fails if it doesn't exist. Use [method has_color] to check for existence.
+   *
+   */
+  clear_color(name: StringName, theme_type: StringName): void
 
-/** Clears the icon at [code]name[/code] if the theme has [code]node_type[/code]. */
-clear_icon(name: string, node_type: string): void;
+  /**
+   * Removes the constant property defined by [param name] and [param theme_type], if it exists.
+   *
+   * Fails if it doesn't exist. Use [method has_constant] to check for existence.
+   *
+   */
+  clear_constant(name: StringName, theme_type: StringName): void
 
-/** Clears [StyleBox] at [code]name[/code] if the theme has [code]node_type[/code]. */
-clear_stylebox(name: string, node_type: string): void;
+  /**
+   * Removes the [Font] property defined by [param name] and [param theme_type], if it exists.
+   *
+   * Fails if it doesn't exist. Use [method has_font] to check for existence.
+   *
+   */
+  clear_font(name: StringName, theme_type: StringName): void
 
-/** Clears the theme item of [code]data_type[/code] at [code]name[/code] if the theme has [code]node_type[/code]. */
-clear_theme_item(data_type: int, name: string, node_type: string): void;
+  /**
+   * Removes the font size property defined by [param name] and [param theme_type], if it exists.
+   *
+   * Fails if it doesn't exist. Use [method has_font_size] to check for existence.
+   *
+   */
+  clear_font_size(name: StringName, theme_type: StringName): void
 
-/** Sets the theme's values to a copy of the default theme values. */
-copy_default_theme(): void;
+  /**
+   * Removes the icon property defined by [param name] and [param theme_type], if it exists.
+   *
+   * Fails if it doesn't exist. Use [method has_icon] to check for existence.
+   *
+   */
+  clear_icon(name: StringName, theme_type: StringName): void
 
-/** Sets the theme's values to a copy of a given theme. */
-copy_theme(other: Theme): void;
+  /**
+   * Removes the [StyleBox] property defined by [param name] and [param theme_type], if it exists.
+   *
+   * Fails if it doesn't exist. Use [method has_stylebox] to check for existence.
+   *
+   */
+  clear_stylebox(name: StringName, theme_type: StringName): void
 
-/** Returns the [Color] at [code]name[/code] if the theme has [code]node_type[/code]. */
-get_color(name: string, node_type: string): Color;
+  /**
+   * Removes the theme property of [param data_type] defined by [param name] and [param theme_type], if it exists.
+   *
+   * Fails if it doesn't exist. Use [method has_theme_item] to check for existence.
+   *
+   * **Note:** This method is analogous to calling the corresponding data type specific method, but can be used for more generalized logic.
+   *
+   */
+  clear_theme_item(
+    data_type: int,
+    name: StringName,
+    theme_type: StringName
+  ): void
 
-/** Returns all the [Color]s as a [PoolStringArray] filled with each [Color]'s name, for use in [method get_color], if the theme has [code]node_type[/code]. */
-get_color_list(node_type: string): PoolStringArray;
+  /** Unmarks [param theme_type] as being a variation of another theme type. See [method set_type_variation]. */
+  clear_type_variation(theme_type: StringName): void
 
-/** Returns all the [Color] types as a [PoolStringArray] filled with unique type names, for use in [method get_color] and/or [method get_color_list]. */
-get_color_types(): PoolStringArray;
+  /**
+   * Returns the [Color] property defined by [param name] and [param theme_type], if it exists.
+   *
+   * Returns the default color value if the property doesn't exist. Use [method has_color] to check for existence.
+   *
+   */
+  get_color(name: StringName, theme_type: StringName): Color
 
-/** Returns the constant at [code]name[/code] if the theme has [code]node_type[/code]. */
-get_constant(name: string, node_type: string): int;
+  /** Returns a list of names for [Color] properties defined with [param theme_type]. Use [method get_color_type_list] to get a list of possible theme type names. */
+  get_color_list(theme_type: string): PackedStringArray
 
-/** Returns all the constants as a [PoolStringArray] filled with each constant's name, for use in [method get_constant], if the theme has [code]node_type[/code]. */
-get_constant_list(node_type: string): PoolStringArray;
+  /** Returns a list of all unique theme type names for [Color] properties. Use [method get_type_list] to get a list of all unique theme types. */
+  get_color_type_list(): PackedStringArray
 
-/** Returns all the constant types as a [PoolStringArray] filled with unique type names, for use in [method get_constant] and/or [method get_constant_list]. */
-get_constant_types(): PoolStringArray;
+  /**
+   * Returns the constant property defined by [param name] and [param theme_type], if it exists.
+   *
+   * Returns `0` if the property doesn't exist. Use [method has_constant] to check for existence.
+   *
+   */
+  get_constant(name: StringName, theme_type: StringName): int
 
-/** Returns the [Font] at [code]name[/code] if the theme has [code]node_type[/code]. */
-get_font(name: string, node_type: string): Font;
+  /** Returns a list of names for constant properties defined with [param theme_type]. Use [method get_constant_type_list] to get a list of possible theme type names. */
+  get_constant_list(theme_type: string): PackedStringArray
 
-/** Returns all the [Font]s as a [PoolStringArray] filled with each [Font]'s name, for use in [method get_font], if the theme has [code]node_type[/code]. */
-get_font_list(node_type: string): PoolStringArray;
+  /** Returns a list of all unique theme type names for constant properties. Use [method get_type_list] to get a list of all unique theme types. */
+  get_constant_type_list(): PackedStringArray
 
-/** Returns all the [Font] types as a [PoolStringArray] filled with unique type names, for use in [method get_font] and/or [method get_font_list]. */
-get_font_types(): PoolStringArray;
+  /**
+   * Returns the [Font] property defined by [param name] and [param theme_type], if it exists.
+   *
+   * Returns the default theme font if the property doesn't exist and the default theme font is set up (see [member default_font]). Use [method has_font] to check for existence of the property and [method has_default_font] to check for existence of the default theme font.
+   *
+   * Returns the engine fallback font value, if neither exist (see [member ThemeDB.fallback_font]).
+   *
+   */
+  get_font(name: StringName, theme_type: StringName): Font
 
-/** Returns the icon [Texture] at [code]name[/code] if the theme has [code]node_type[/code]. */
-get_icon(name: string, node_type: string): Texture;
+  /** Returns a list of names for [Font] properties defined with [param theme_type]. Use [method get_font_type_list] to get a list of possible theme type names. */
+  get_font_list(theme_type: string): PackedStringArray
 
-/** Returns all the icons as a [PoolStringArray] filled with each [Texture]'s name, for use in [method get_icon], if the theme has [code]node_type[/code]. */
-get_icon_list(node_type: string): PoolStringArray;
+  /**
+   * Returns the font size property defined by [param name] and [param theme_type], if it exists.
+   *
+   * Returns the default theme font size if the property doesn't exist and the default theme font size is set up (see [member default_font_size]). Use [method has_font_size] to check for existence of the property and [method has_default_font_size] to check for existence of the default theme font.
+   *
+   * Returns the engine fallback font size value, if neither exist (see [member ThemeDB.fallback_font_size]).
+   *
+   */
+  get_font_size(name: StringName, theme_type: StringName): int
 
-/** Returns all the icon types as a [PoolStringArray] filled with unique type names, for use in [method get_icon] and/or [method get_icon_list]. */
-get_icon_types(): PoolStringArray;
+  /** Returns a list of names for font size properties defined with [param theme_type]. Use [method get_font_size_type_list] to get a list of possible theme type names. */
+  get_font_size_list(theme_type: string): PackedStringArray
 
-/**
- * Returns the [StyleBox] at `name` if the theme has `node_type`.
- *
- * Valid `name`s may be found using [method get_stylebox_list]. Valid `node_type`s may be found using [method get_stylebox_types].
- *
-*/
-get_stylebox(name: string, node_type: string): StyleBox;
+  /** Returns a list of all unique theme type names for font size properties. Use [method get_type_list] to get a list of all unique theme types. */
+  get_font_size_type_list(): PackedStringArray
 
-/**
- * Returns all the [StyleBox]s as a [PoolStringArray] filled with each [StyleBox]'s name, for use in [method get_stylebox], if the theme has `node_type`.
- *
- * Valid `node_type`s may be found using [method get_stylebox_types].
- *
-*/
-get_stylebox_list(node_type: string): PoolStringArray;
+  /** Returns a list of all unique theme type names for [Font] properties. Use [method get_type_list] to get a list of all unique theme types. */
+  get_font_type_list(): PackedStringArray
 
-/** Returns all the [StyleBox] types as a [PoolStringArray] filled with unique type names, for use in [method get_stylebox] and/or [method get_stylebox_list]. */
-get_stylebox_types(): PoolStringArray;
+  /**
+   * Returns the icon property defined by [param name] and [param theme_type], if it exists.
+   *
+   * Returns the engine fallback icon value if the property doesn't exist (see [member ThemeDB.fallback_icon]). Use [method has_icon] to check for existence.
+   *
+   */
+  get_icon(name: StringName, theme_type: StringName): Texture2D
 
-/**
- * Returns the theme item of `data_type` at `name` if the theme has `node_type`.
- *
- * Valid `name`s may be found using [method get_theme_item_list] or a data type specific method. Valid `node_type`s may be found using [method get_theme_item_types] or a data type specific method.
- *
-*/
-get_theme_item(data_type: int, name: string, node_type: string): any;
+  /** Returns a list of names for icon properties defined with [param theme_type]. Use [method get_icon_type_list] to get a list of possible theme type names. */
+  get_icon_list(theme_type: string): PackedStringArray
 
-/**
- * Returns all the theme items of `data_type` as a [PoolStringArray] filled with each theme items's name, for use in [method get_theme_item] or a data type specific method, if the theme has `node_type`.
- *
- * Valid `node_type`s may be found using [method get_theme_item_types] or a data type specific method.
- *
-*/
-get_theme_item_list(data_type: int, node_type: string): PoolStringArray;
+  /** Returns a list of all unique theme type names for icon properties. Use [method get_type_list] to get a list of all unique theme types. */
+  get_icon_type_list(): PackedStringArray
 
-/** Returns all the theme items of [code]data_type[/code] types as a [PoolStringArray] filled with unique type names, for use in [method get_theme_item], [method get_theme_item_list] or data type specific methods. */
-get_theme_item_types(data_type: int): PoolStringArray;
+  /**
+   * Returns the [StyleBox] property defined by [param name] and [param theme_type], if it exists.
+   *
+   * Returns the engine fallback stylebox value if the property doesn't exist (see [member ThemeDB.fallback_stylebox]). Use [method has_stylebox] to check for existence.
+   *
+   */
+  get_stylebox(name: StringName, theme_type: StringName): StyleBox
 
-/**
- * Returns all the theme types as a [PoolStringArray] filled with unique type names, for use in other `get_*` functions of this theme.
- *
- * **Note:** `node_type` has no effect and will be removed in future version.
- *
-*/
-get_type_list(node_type: string): PoolStringArray;
+  /** Returns a list of names for [StyleBox] properties defined with [param theme_type]. Use [method get_stylebox_type_list] to get a list of possible theme type names. */
+  get_stylebox_list(theme_type: string): PackedStringArray
 
-/**
- * Returns `true` if [Color] with `name` is in `node_type`.
- *
- * Returns `false` if the theme does not have `node_type`.
- *
-*/
-has_color(name: string, node_type: string): boolean;
+  /** Returns a list of all unique theme type names for [StyleBox] properties. Use [method get_type_list] to get a list of all unique theme types. */
+  get_stylebox_type_list(): PackedStringArray
 
-/**
- * Returns `true` if constant with `name` is in `node_type`.
- *
- * Returns `false` if the theme does not have `node_type`.
- *
-*/
-has_constant(name: string, node_type: string): boolean;
+  /**
+   * Returns the theme property of [param data_type] defined by [param name] and [param theme_type], if it exists.
+   *
+   * Returns the engine fallback value if the property doesn't exist (see [ThemeDB]). Use [method has_theme_item] to check for existence.
+   *
+   * **Note:** This method is analogous to calling the corresponding data type specific method, but can be used for more generalized logic.
+   *
+   */
+  get_theme_item(data_type: int, name: StringName, theme_type: StringName): any
 
-/** Returns [code]true[/code] if this theme has a valid [member default_font] value. */
-has_default_font(): boolean;
+  /**
+   * Returns a list of names for properties of [param data_type] defined with [param theme_type]. Use [method get_theme_item_type_list] to get a list of possible theme type names.
+   *
+   * **Note:** This method is analogous to calling the corresponding data type specific method, but can be used for more generalized logic.
+   *
+   */
+  get_theme_item_list(data_type: int, theme_type: string): PackedStringArray
 
-/**
- * Returns `true` if [Font] with `name` is in `node_type`.
- *
- * Returns `false` if the theme does not have `node_type`.
- *
-*/
-has_font(name: string, node_type: string): boolean;
+  /**
+   * Returns a list of all unique theme type names for [param data_type] properties. Use [method get_type_list] to get a list of all unique theme types.
+   *
+   * **Note:** This method is analogous to calling the corresponding data type specific method, but can be used for more generalized logic.
+   *
+   */
+  get_theme_item_type_list(data_type: int): PackedStringArray
 
-/**
- * Returns `true` if icon [Texture] with `name` is in `node_type`.
- *
- * Returns `false` if the theme does not have `node_type`.
- *
-*/
-has_icon(name: string, node_type: string): boolean;
+  /** Returns a list of all unique theme type names. Use the appropriate [code]get_*_type_list[/code] method to get a list of unique theme types for a single data type. */
+  get_type_list(): PackedStringArray
 
-/**
- * Returns `true` if [StyleBox] with `name` is in `node_type`.
- *
- * Returns `false` if the theme does not have `node_type`.
- *
-*/
-has_stylebox(name: string, node_type: string): boolean;
+  /** Returns the name of the base theme type if [param theme_type] is a valid variation type. Returns an empty string otherwise. */
+  get_type_variation_base(theme_type: StringName): StringName
 
-/**
- * Returns `true` if a theme item of `data_type` with `name` is in `node_type`.
- *
- * Returns `false` if the theme does not have `node_type`.
- *
-*/
-has_theme_item(data_type: int, name: string, node_type: string): boolean;
+  /** Returns a list of all type variations for the given [param base_type]. */
+  get_type_variation_list(base_type: StringName): PackedStringArray
 
-/**
- * Adds missing and overrides existing definitions with values from the `other` [Theme].
- *
- * **Note:** This modifies the current theme. If you want to merge two themes together without modifying either one, create a new empty theme and merge the other two into it one after another.
- *
-*/
-merge_with(other: Theme): void;
+  /**
+   * Returns `true` if the [Color] property defined by [param name] and [param theme_type] exists.
+   *
+   * Returns `false` if it doesn't exist. Use [method set_color] to define it.
+   *
+   */
+  has_color(name: StringName, theme_type: StringName): boolean
 
-/** Renames the [Color] at [code]old_name[/code] to [code]name[/code] if the theme has [code]node_type[/code]. If [code]name[/code] is already taken, this method fails. */
-rename_color(old_name: string, name: string, node_type: string): void;
+  /**
+   * Returns `true` if the constant property defined by [param name] and [param theme_type] exists.
+   *
+   * Returns `false` if it doesn't exist. Use [method set_constant] to define it.
+   *
+   */
+  has_constant(name: StringName, theme_type: StringName): boolean
 
-/** Renames the constant at [code]old_name[/code] to [code]name[/code] if the theme has [code]node_type[/code]. If [code]name[/code] is already taken, this method fails. */
-rename_constant(old_name: string, name: string, node_type: string): void;
+  /**
+   * Returns `true` if [member default_base_scale] has a valid value.
+   *
+   * Returns `false` if it doesn't. The value must be greater than `0.0` to be considered valid.
+   *
+   */
+  has_default_base_scale(): boolean
 
-/** Renames the [Font] at [code]old_name[/code] to [code]name[/code] if the theme has [code]node_type[/code]. If [code]name[/code] is already taken, this method fails. */
-rename_font(old_name: string, name: string, node_type: string): void;
+  /**
+   * Returns `true` if [member default_font] has a valid value.
+   *
+   * Returns `false` if it doesn't.
+   *
+   */
+  has_default_font(): boolean
 
-/** Renames the icon at [code]old_name[/code] to [code]name[/code] if the theme has [code]node_type[/code]. If [code]name[/code] is already taken, this method fails. */
-rename_icon(old_name: string, name: string, node_type: string): void;
+  /**
+   * Returns `true` if [member default_font_size] has a valid value.
+   *
+   * Returns `false` if it doesn't. The value must be greater than `0` to be considered valid.
+   *
+   */
+  has_default_font_size(): boolean
 
-/** Renames [StyleBox] at [code]old_name[/code] to [code]name[/code] if the theme has [code]node_type[/code]. If [code]name[/code] is already taken, this method fails. */
-rename_stylebox(old_name: string, name: string, node_type: string): void;
+  /**
+   * Returns `true` if the [Font] property defined by [param name] and [param theme_type] exists, or if the default theme font is set up (see [method has_default_font]).
+   *
+   * Returns `false` if neither exist. Use [method set_font] to define the property.
+   *
+   */
+  has_font(name: StringName, theme_type: StringName): boolean
 
-/** Renames the theme item of [code]data_type[/code] at [code]old_name[/code] to [code]name[/code] if the theme has [code]node_type[/code]. If [code]name[/code] is already taken, this method fails. */
-rename_theme_item(data_type: int, old_name: string, name: string, node_type: string): void;
+  /**
+   * Returns `true` if the font size property defined by [param name] and [param theme_type] exists, or if the default theme font size is set up (see [method has_default_font_size]).
+   *
+   * Returns `false` if neither exist. Use [method set_font_size] to define the property.
+   *
+   */
+  has_font_size(name: StringName, theme_type: StringName): boolean
 
-/**
- * Sets the theme's [Color] to `color` at `name` in `node_type`.
- *
- * Creates `node_type` if the theme does not have it.
- *
-*/
-set_color(name: string, node_type: string, color: Color): void;
+  /**
+   * Returns `true` if the icon property defined by [param name] and [param theme_type] exists.
+   *
+   * Returns `false` if it doesn't exist. Use [method set_icon] to define it.
+   *
+   */
+  has_icon(name: StringName, theme_type: StringName): boolean
 
-/**
- * Sets the theme's constant to `constant` at `name` in `node_type`.
- *
- * Creates `node_type` if the theme does not have it.
- *
-*/
-set_constant(name: string, node_type: string, constant: int): void;
+  /**
+   * Returns `true` if the [StyleBox] property defined by [param name] and [param theme_type] exists.
+   *
+   * Returns `false` if it doesn't exist. Use [method set_stylebox] to define it.
+   *
+   */
+  has_stylebox(name: StringName, theme_type: StringName): boolean
 
-/**
- * Sets the theme's [Font] to `font` at `name` in `node_type`.
- *
- * Creates `node_type` if the theme does not have it.
- *
-*/
-set_font(name: string, node_type: string, font: Font): void;
+  /**
+   * Returns `true` if the theme property of [param data_type] defined by [param name] and [param theme_type] exists.
+   *
+   * Returns `false` if it doesn't exist. Use [method set_theme_item] to define it.
+   *
+   * **Note:** This method is analogous to calling the corresponding data type specific method, but can be used for more generalized logic.
+   *
+   */
+  has_theme_item(
+    data_type: int,
+    name: StringName,
+    theme_type: StringName
+  ): boolean
 
-/**
- * Sets the theme's icon [Texture] to `texture` at `name` in `node_type`.
- *
- * Creates `node_type` if the theme does not have it.
- *
-*/
-set_icon(name: string, node_type: string, texture: Texture): void;
+  /** Returns [code]true[/code] if [param theme_type] is marked as a variation of [param base_type]. */
+  is_type_variation(theme_type: StringName, base_type: StringName): boolean
 
-/**
- * Sets theme's [StyleBox] to `stylebox` at `name` in `node_type`.
- *
- * Creates `node_type` if the theme does not have it.
- *
-*/
-set_stylebox(name: string, node_type: string, texture: StyleBox): void;
+  /**
+   * Adds missing and overrides existing definitions with values from the [param other] theme resource.
+   *
+   * **Note:** This modifies the current theme. If you want to merge two themes together without modifying either one, create a new empty theme and merge the other two into it one after another.
+   *
+   */
+  merge_with(other: Theme): void
 
-/**
- * Sets the theme item of `data_type` to `value` at `name` in `node_type`.
- *
- * Does nothing if the `value` type does not match `data_type`.
- *
- * Creates `node_type` if the theme does not have it.
- *
-*/
-set_theme_item(data_type: int, name: string, node_type: string, value: any): void;
+  /** Removes the theme type, gracefully discarding defined theme items. If the type is a variation, this information is also erased. If the type is a base for type variations, those variations lose their base. */
+  remove_type(theme_type: StringName): void
 
-  connect<T extends SignalsOf<Theme>>(signal: T, method: SignalFunction<Theme[T]>): number;
+  /**
+   * Renames the [Color] property defined by [param old_name] and [param theme_type] to [param name], if it exists.
+   *
+   * Fails if it doesn't exist, or if a similar property with the new name already exists. Use [method has_color] to check for existence, and [method clear_color] to remove the existing property.
+   *
+   */
+  rename_color(
+    old_name: StringName,
+    name: StringName,
+    theme_type: StringName
+  ): void
 
+  /**
+   * Renames the constant property defined by [param old_name] and [param theme_type] to [param name], if it exists.
+   *
+   * Fails if it doesn't exist, or if a similar property with the new name already exists. Use [method has_constant] to check for existence, and [method clear_constant] to remove the existing property.
+   *
+   */
+  rename_constant(
+    old_name: StringName,
+    name: StringName,
+    theme_type: StringName
+  ): void
 
+  /**
+   * Renames the [Font] property defined by [param old_name] and [param theme_type] to [param name], if it exists.
+   *
+   * Fails if it doesn't exist, or if a similar property with the new name already exists. Use [method has_font] to check for existence, and [method clear_font] to remove the existing property.
+   *
+   */
+  rename_font(
+    old_name: StringName,
+    name: StringName,
+    theme_type: StringName
+  ): void
 
-/**
- * Theme's [Color] item type.
- *
-*/
-static DATA_TYPE_COLOR: any;
+  /**
+   * Renames the font size property defined by [param old_name] and [param theme_type] to [param name], if it exists.
+   *
+   * Fails if it doesn't exist, or if a similar property with the new name already exists. Use [method has_font_size] to check for existence, and [method clear_font_size] to remove the existing property.
+   *
+   */
+  rename_font_size(
+    old_name: StringName,
+    name: StringName,
+    theme_type: StringName
+  ): void
 
-/**
- * Theme's constant item type.
- *
-*/
-static DATA_TYPE_CONSTANT: any;
+  /**
+   * Renames the icon property defined by [param old_name] and [param theme_type] to [param name], if it exists.
+   *
+   * Fails if it doesn't exist, or if a similar property with the new name already exists. Use [method has_icon] to check for existence, and [method clear_icon] to remove the existing property.
+   *
+   */
+  rename_icon(
+    old_name: StringName,
+    name: StringName,
+    theme_type: StringName
+  ): void
 
-/**
- * Theme's [Font] item type.
- *
-*/
-static DATA_TYPE_FONT: any;
+  /**
+   * Renames the [StyleBox] property defined by [param old_name] and [param theme_type] to [param name], if it exists.
+   *
+   * Fails if it doesn't exist, or if a similar property with the new name already exists. Use [method has_stylebox] to check for existence, and [method clear_stylebox] to remove the existing property.
+   *
+   */
+  rename_stylebox(
+    old_name: StringName,
+    name: StringName,
+    theme_type: StringName
+  ): void
 
-/**
- * Theme's icon [Texture] item type.
- *
-*/
-static DATA_TYPE_ICON: any;
+  /**
+   * Renames the theme property of [param data_type] defined by [param old_name] and [param theme_type] to [param name], if it exists.
+   *
+   * Fails if it doesn't exist, or if a similar property with the new name already exists. Use [method has_theme_item] to check for existence, and [method clear_theme_item] to remove the existing property.
+   *
+   * **Note:** This method is analogous to calling the corresponding data type specific method, but can be used for more generalized logic.
+   *
+   */
+  rename_theme_item(
+    data_type: int,
+    old_name: StringName,
+    name: StringName,
+    theme_type: StringName
+  ): void
 
-/**
- * Theme's [StyleBox] item type.
- *
-*/
-static DATA_TYPE_STYLEBOX: any;
+  /**
+   * Renames the theme type [param old_theme_type] to [param theme_type], if the old type exists and the new one doesn't exist.
+   *
+   * **Note:** Renaming a theme type to an empty name or a variation to a type associated with a built-in class removes type variation connections in a way that cannot be undone by reversing the rename alone.
+   *
+   */
+  rename_type(old_theme_type: StringName, theme_type: StringName): void
 
-/**
- * Maximum value for the DataType enum.
- *
-*/
-static DATA_TYPE_MAX: any;
+  /** Creates or changes the value of the [Color] property defined by [param name] and [param theme_type]. Use [method clear_color] to remove the property. */
+  set_color(name: StringName, theme_type: StringName, color: Color): void
 
+  /** Creates or changes the value of the constant property defined by [param name] and [param theme_type]. Use [method clear_constant] to remove the property. */
+  set_constant(name: StringName, theme_type: StringName, constant: int): void
 
+  /** Creates or changes the value of the [Font] property defined by [param name] and [param theme_type]. Use [method clear_font] to remove the property. */
+  set_font(name: StringName, theme_type: StringName, font: Font): void
 
+  /** Creates or changes the value of the font size property defined by [param name] and [param theme_type]. Use [method clear_font_size] to remove the property. */
+  set_font_size(name: StringName, theme_type: StringName, font_size: int): void
+
+  /** Creates or changes the value of the icon property defined by [param name] and [param theme_type]. Use [method clear_icon] to remove the property. */
+  set_icon(name: StringName, theme_type: StringName, texture: Texture2D): void
+
+  /** Creates or changes the value of the [StyleBox] property defined by [param name] and [param theme_type]. Use [method clear_stylebox] to remove the property. */
+  set_stylebox(
+    name: StringName,
+    theme_type: StringName,
+    texture: StyleBox
+  ): void
+
+  /**
+   * Creates or changes the value of the theme property of [param data_type] defined by [param name] and [param theme_type]. Use [method clear_theme_item] to remove the property.
+   *
+   * Fails if the [param value] type is not accepted by [param data_type].
+   *
+   * **Note:** This method is analogous to calling the corresponding data type specific method, but can be used for more generalized logic.
+   *
+   */
+  set_theme_item(
+    data_type: int,
+    name: StringName,
+    theme_type: StringName,
+    value: any
+  ): void
+
+  /**
+   * Marks [param theme_type] as a variation of [param base_type].
+   *
+   * This adds [param theme_type] as a suggested option for [member Control.theme_type_variation] on a [Control] that is of the [param base_type] class.
+   *
+   * Variations can also be nested, i.e. [param base_type] can be another variation. If a chain of variations ends with a [param base_type] matching the class of the [Control], the whole chain is going to be suggested as options.
+   *
+   * **Note:** Suggestions only show up if this theme resource is set as the project default theme. See [member ProjectSettings.gui/theme/custom].
+   *
+   */
+  set_type_variation(theme_type: StringName, base_type: StringName): void
+
+  connect<T extends SignalsOf<Theme>>(
+    signal: T,
+    method: SignalFunction<Theme[T]>
+  ): number
+
+  /**
+   * Theme's [Color] item type.
+   *
+   */
+  static DATA_TYPE_COLOR: any
+
+  /**
+   * Theme's constant item type.
+   *
+   */
+  static DATA_TYPE_CONSTANT: any
+
+  /**
+   * Theme's [Font] item type.
+   *
+   */
+  static DATA_TYPE_FONT: any
+
+  /**
+   * Theme's font size item type.
+   *
+   */
+  static DATA_TYPE_FONT_SIZE: any
+
+  /**
+   * Theme's icon [Texture2D] item type.
+   *
+   */
+  static DATA_TYPE_ICON: any
+
+  /**
+   * Theme's [StyleBox] item type.
+   *
+   */
+  static DATA_TYPE_STYLEBOX: any
+
+  /**
+   * Maximum value for the DataType enum.
+   *
+   */
+  static DATA_TYPE_MAX: any
 }
-

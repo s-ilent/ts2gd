@@ -1,123 +1,107 @@
-
 /**
- * A 6-sided 3D texture typically used for faking reflections. It can be used to make an object look as if it's reflecting its surroundings. This usually delivers much better performance than other reflection methods.
+ * A cubemap is made of 6 textures organized in layers. They are typically used for faking reflections in 3D rendering (see [ReflectionProbe]). It can be used to make an object look as if it's reflecting its surroundings. This usually delivers much better performance than other reflection methods.
  *
-*/
-declare class CubeMap extends Resource  {
-
-  
-/**
- * A 6-sided 3D texture typically used for faking reflections. It can be used to make an object look as if it's reflecting its surroundings. This usually delivers much better performance than other reflection methods.
+ * This resource is typically used as a uniform in custom shaders. Few core Godot methods make use of [Cubemap] resources.
  *
-*/
-  new(): CubeMap; 
-  static "new"(): CubeMap 
-
-
-/** The render flags for the [CubeMap]. See the [enum Flags] constants for details. */
-flags: int;
-
-/** The lossy storage quality of the [CubeMap] if the storage mode is set to [constant STORAGE_COMPRESS_LOSSY]. */
-lossy_storage_quality: float;
-
-/** The [CubeMap]'s storage mode. See [enum Storage] constants. */
-storage_mode: int;
-
-/** Returns the [CubeMap]'s height. */
-get_height(): int;
-
-/** Returns an [Image] for a side of the [CubeMap] using one of the [enum Side] constants. */
-get_side(side: int): Image;
-
-/** Returns the [CubeMap]'s width. */
-get_width(): int;
-
-/** Sets an [Image] for a side of the [CubeMap] using one of the [enum Side] constants. */
-set_side(side: int, image: Image): void;
-
-  connect<T extends SignalsOf<CubeMap>>(signal: T, method: SignalFunction<CubeMap[T]>): number;
-
-
-
-/**
- * Store the [CubeMap] without any compression.
+ * To create such a texture file yourself, reimport your image files using the Godot Editor import presets. To create a Cubemap from code, use [method ImageTextureLayered.create_from_images] on an instance of the Cubemap class.
  *
-*/
-static STORAGE_RAW: any;
-
-/**
- * Store the [CubeMap] with strong compression that reduces image quality.
+ * The expected image order is X+, X-, Y+, Y-, Z+, Z- (in Godot's coordinate system, so Y+ is "up" and Z- is "forward"). You can use one of the following templates as a base:
  *
-*/
-static STORAGE_COMPRESS_LOSSY: any;
-
-/**
- * Store the [CubeMap] with moderate compression that doesn't reduce image quality.
+ * - [url=https://raw.githubusercontent.com/godotengine/godot-docs/master/tutorials/assets_pipeline/img/cubemap_template_2x3.webp]2×3 cubemap template (default layout option)[/url]
  *
-*/
-static STORAGE_COMPRESS_LOSSLESS: any;
-
-/**
- * Identifier for the left face of the [CubeMap].
+ * - [url=https://raw.githubusercontent.com/godotengine/godot-docs/master/tutorials/assets_pipeline/img/cubemap_template_3x2.webp]3×2 cubemap template[/url]
  *
-*/
-static SIDE_LEFT: any;
-
-/**
- * Identifier for the right face of the [CubeMap].
+ * - [url=https://raw.githubusercontent.com/godotengine/godot-docs/master/tutorials/assets_pipeline/img/cubemap_template_1x6.webp]1×6 cubemap template[/url]
  *
-*/
-static SIDE_RIGHT: any;
-
-/**
- * Identifier for the bottom face of the [CubeMap].
+ * - [url=https://raw.githubusercontent.com/godotengine/godot-docs/master/tutorials/assets_pipeline/img/cubemap_template_6x1.webp]6×1 cubemap template[/url]
  *
-*/
-static SIDE_BOTTOM: any;
-
-/**
- * Identifier for the top face of the [CubeMap].
+ * **Note:** Godot doesn't support using cubemaps in a [PanoramaSkyMaterial]. To use a cubemap as a skybox, convert the default [PanoramaSkyMaterial] to a [ShaderMaterial] using the **Convert to ShaderMaterial** resource dropdown option, then replace its code with the following:
  *
-*/
-static SIDE_TOP: any;
-
-/**
- * Identifier for the front face of the [CubeMap].
+ * [codeblock lang=text]
  *
-*/
-static SIDE_FRONT: any;
-
-/**
- * Identifier for the back face of the [CubeMap].
+ * shader_type sky;
  *
-*/
-static SIDE_BACK: any;
-
-/**
- * Generate mipmaps, to enable smooth zooming out of the texture.
+ * uniform samplerCube source_panorama : filter_linear, source_color, hint_default_black;
  *
-*/
-static FLAG_MIPMAPS: any;
-
-/**
- * Repeat (instead of clamp to edge).
+ * uniform float exposure : hint_range(0, 128) = 1.0;
  *
-*/
-static FLAG_REPEAT: any;
-
-/**
- * Turn on magnifying filter, to enable smooth zooming in of the texture.
+ * void sky() {
  *
-*/
-static FLAG_FILTER: any;
-
-/**
- * Default flags. Generate mipmaps, repeat, and filter are enabled.
+ * 	// If importing a cubemap from another engine, you may need to flip one of the `EYEDIR` components below
  *
-*/
-static FLAGS_DEFAULT: any;
+ * 	// by replacing it with `-EYEDIR`.
+ *
+ * 	vec3 eyedir = vec3(EYEDIR.x, EYEDIR.y, EYEDIR.z);
+ *
+ * 	COLOR = texture(source_panorama, eyedir).rgb * exposure;
+ *
+ * }
+ *
+ * @summary
+ *
+ *
+ * After replacing the shader code and saving, specify the imported Cubemap resource in the Shader Parameters section of the ShaderMaterial in the inspector.
+ *
+ * Alternatively, you can use [url=https://danilw.github.io/GLSL-howto/cubemap_to_panorama_js/cubemap_to_panorama.html]this tool[/url] to convert a cubemap to an equirectangular sky map and use [PanoramaSkyMaterial] as usual.
+ *
+ */
+declare class Cubemap extends ImageTextureLayered {
+  /**
+   * A cubemap is made of 6 textures organized in layers. They are typically used for faking reflections in 3D rendering (see [ReflectionProbe]). It can be used to make an object look as if it's reflecting its surroundings. This usually delivers much better performance than other reflection methods.
+   *
+   * This resource is typically used as a uniform in custom shaders. Few core Godot methods make use of [Cubemap] resources.
+   *
+   * To create such a texture file yourself, reimport your image files using the Godot Editor import presets. To create a Cubemap from code, use [method ImageTextureLayered.create_from_images] on an instance of the Cubemap class.
+   *
+   * The expected image order is X+, X-, Y+, Y-, Z+, Z- (in Godot's coordinate system, so Y+ is "up" and Z- is "forward"). You can use one of the following templates as a base:
+   *
+   * - [url=https://raw.githubusercontent.com/godotengine/godot-docs/master/tutorials/assets_pipeline/img/cubemap_template_2x3.webp]2×3 cubemap template (default layout option)[/url]
+   *
+   * - [url=https://raw.githubusercontent.com/godotengine/godot-docs/master/tutorials/assets_pipeline/img/cubemap_template_3x2.webp]3×2 cubemap template[/url]
+   *
+   * - [url=https://raw.githubusercontent.com/godotengine/godot-docs/master/tutorials/assets_pipeline/img/cubemap_template_1x6.webp]1×6 cubemap template[/url]
+   *
+   * - [url=https://raw.githubusercontent.com/godotengine/godot-docs/master/tutorials/assets_pipeline/img/cubemap_template_6x1.webp]6×1 cubemap template[/url]
+   *
+   * **Note:** Godot doesn't support using cubemaps in a [PanoramaSkyMaterial]. To use a cubemap as a skybox, convert the default [PanoramaSkyMaterial] to a [ShaderMaterial] using the **Convert to ShaderMaterial** resource dropdown option, then replace its code with the following:
+   *
+   * [codeblock lang=text]
+   *
+   * shader_type sky;
+   *
+   * uniform samplerCube source_panorama : filter_linear, source_color, hint_default_black;
+   *
+   * uniform float exposure : hint_range(0, 128) = 1.0;
+   *
+   * void sky() {
+   *
+   * 	// If importing a cubemap from another engine, you may need to flip one of the `EYEDIR` components below
+   *
+   * 	// by replacing it with `-EYEDIR`.
+   *
+   * 	vec3 eyedir = vec3(EYEDIR.x, EYEDIR.y, EYEDIR.z);
+   *
+   * 	COLOR = texture(source_panorama, eyedir).rgb * exposure;
+   *
+   * }
+   *
+   * @summary
+   *
+   *
+   * After replacing the shader code and saving, specify the imported Cubemap resource in the Shader Parameters section of the ShaderMaterial in the inspector.
+   *
+   * Alternatively, you can use [url=https://danilw.github.io/GLSL-howto/cubemap_to_panorama_js/cubemap_to_panorama.html]this tool[/url] to convert a cubemap to an equirectangular sky map and use [PanoramaSkyMaterial] as usual.
+   *
+   */
+  new(): Cubemap
+  constructor()
+  static new(): Cubemap
 
+  /** Creates a placeholder version of this resource ([PlaceholderCubemap]). */
+  create_placeholder(): Resource
 
-
+  connect<T extends SignalsOf<Cubemap>>(
+    signal: T,
+    method: SignalFunction<Cubemap[T]>
+  ): number
 }
-

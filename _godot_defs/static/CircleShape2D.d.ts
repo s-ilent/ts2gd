@@ -1,30 +1,25 @@
-
 /**
- * Circular shape for 2D collisions. This shape is useful for modeling balls or small characters and its collision detection with everything else is very fast.
+ * A 2D circle shape, intended for use in physics. Usually used to provide a shape for a [CollisionShape2D].
  *
-*/
-declare class CircleShape2D extends Shape2D  {
-
-  
-/**
- * Circular shape for 2D collisions. This shape is useful for modeling balls or small characters and its collision detection with everything else is very fast.
+ * **Performance:** [CircleShape2D] is fast to check collisions against. It is faster than [RectangleShape2D] and [CapsuleShape2D].
  *
-*/
-  new(): CircleShape2D; 
-  static "new"(): CircleShape2D 
+ */
+declare class CircleShape2D extends Shape2D {
+  /**
+   * A 2D circle shape, intended for use in physics. Usually used to provide a shape for a [CollisionShape2D].
+   *
+   * **Performance:** [CircleShape2D] is fast to check collisions against. It is faster than [RectangleShape2D] and [CapsuleShape2D].
+   *
+   */
+  new(): CircleShape2D
+  constructor()
+  static new(): CircleShape2D
 
+  /** The circle's radius. */
+  radius: float
 
-/** The circle's radius. */
-radius: float;
-
-
-
-  connect<T extends SignalsOf<CircleShape2D>>(signal: T, method: SignalFunction<CircleShape2D[T]>): number;
-
-
-
-
-
-
+  connect<T extends SignalsOf<CircleShape2D>>(
+    signal: T,
+    method: SignalFunction<CircleShape2D[T]>
+  ): number
 }
-

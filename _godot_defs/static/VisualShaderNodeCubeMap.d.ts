@@ -1,65 +1,69 @@
-
 /**
  * Translated to `texture(cubemap, vec3)` in the shader language. Returns a color vector and alpha channel as scalar.
  *
-*/
-declare class VisualShaderNodeCubeMap extends VisualShaderNode  {
+ */
+declare class VisualShaderNodeCubemap extends VisualShaderNode {
+  /**
+   * Translated to `texture(cubemap, vec3)` in the shader language. Returns a color vector and alpha channel as scalar.
+   *
+   */
+  new(): VisualShaderNodeCubemap
+  constructor()
+  static new(): VisualShaderNodeCubemap
 
-  
-/**
- * Translated to `texture(cubemap, vec3)` in the shader language. Returns a color vector and alpha channel as scalar.
- *
-*/
-  new(): VisualShaderNodeCubeMap; 
-  static "new"(): VisualShaderNodeCubeMap 
+  /** The [Cubemap] texture to sample when using [constant SOURCE_TEXTURE] as [member source]. */
+  cube_map: TextureLayered
 
+  /** Defines which source should be used for the sampling. */
+  source: int
 
-/** The [CubeMap] texture to sample when using [constant SOURCE_TEXTURE] as [member source]. */
-cube_map: CubeMap;
+  /** Defines the type of data provided by the source texture. */
+  texture_type: int
 
-/** Defines which source should be used for the sampling. See [enum Source] for options. */
-source: int;
+  connect<T extends SignalsOf<VisualShaderNodeCubemap>>(
+    signal: T,
+    method: SignalFunction<VisualShaderNodeCubemap[T]>
+  ): number
 
-/** Defines the type of data provided by the source texture. See [enum TextureType] for options. */
-texture_type: int;
+  /**
+   * Use the [Cubemap] set via [member cube_map]. If this is set to [member source], the `samplerCube` port is ignored.
+   *
+   */
+  static SOURCE_TEXTURE: any
 
+  /**
+   * Use the [Cubemap] sampler reference passed via the `samplerCube` port. If this is set to [member source], the [member cube_map] texture is ignored.
+   *
+   */
+  static SOURCE_PORT: any
 
+  /**
+   * Represents the size of the [enum Source] enum.
+   *
+   */
+  static SOURCE_MAX: any
 
-  connect<T extends SignalsOf<VisualShaderNodeCubeMap>>(signal: T, method: SignalFunction<VisualShaderNodeCubeMap[T]>): number;
+  /**
+   * No hints are added to the uniform declaration.
+   *
+   */
+  static TYPE_DATA: any
 
+  /**
+   * Adds `source_color` as hint to the uniform declaration for proper conversion from nonlinear sRGB encoding to linear encoding.
+   *
+   */
+  static TYPE_COLOR: any
 
+  /**
+   * Adds `hint_normal` as hint to the uniform declaration, which internally converts the texture for proper usage as normal map.
+   *
+   */
+  static TYPE_NORMAL_MAP: any
 
-/**
- * Use the [CubeMap] set via [member cube_map]. If this is set to [member source], the `samplerCube` port is ignored.
- *
-*/
-static SOURCE_TEXTURE: any;
-
-/**
- * Use the [CubeMap] sampler reference passed via the `samplerCube` port. If this is set to [member source], the [member cube_map] texture is ignored.
- *
-*/
-static SOURCE_PORT: any;
-
-/**
- * No hints are added to the uniform declaration.
- *
-*/
-static TYPE_DATA: any;
-
-/**
- * Adds `hint_albedo` as hint to the uniform declaration for proper sRGB to linear conversion.
- *
-*/
-static TYPE_COLOR: any;
-
-/**
- * Adds `hint_normal` as hint to the uniform declaration, which internally converts the texture for proper usage as normal map.
- *
-*/
-static TYPE_NORMALMAP: any;
-
-
-
+  /**
+   * Represents the size of the [enum TextureType] enum.
+   *
+   */
+  static TYPE_MAX: any
 }
-

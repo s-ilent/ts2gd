@@ -6,6 +6,7 @@ import { Paths } from "../project"
 import { ArrayDefinition } from "./custom_defs/array_def"
 import { DictionaryDefinition } from "./custom_defs/dictionary_def"
 import { PackedSceneDef } from "./custom_defs/packed_scene_def"
+import { CallDefinition } from "./custom_defs/call_def"
 
 export const baseFileContent = `
 
@@ -113,10 +114,13 @@ declare enum ExportHint {
 }
 
 declare function exports(...args: (ExportHint | string | number)[]): (target: Node, name: string) => void;
-declare function exports(target: Node, name: string): void;
+declare function exports(target: Node | Resource, name: string): void;
+declare function onready(target: Node, name: string):void;
 declare const export_flags: (...flags: any[]) => (target: Node, name: string) => void
+declare const export_custom: (target: PropertyHint, ...args: any[]) => (target: Node, name: string) => void;
 declare function autoload(target: typeof Node): void
 declare function tool(target: typeof Node): void;
+declare function anonymous(target: any): void;
 
 declare type int = number;
 declare type float = number;
@@ -249,8 +253,17 @@ interface IterableIterator<T> extends Iterator<T> {
   is_valid(extended_check: boolean): boolean;
   resume(arg?: any): void;
 }
+type CPointer = any;
+
+type TypeContructor<T> = new (...args: any[]) => T
+declare function isType<T>(
+  value: any,
+  type: TypeContructor<T>
+): value is T
+
 
 ${ArrayDefinition}
+${CallDefinition}
 ${DictionaryDefinition}
 ${PackedSceneDef}
 
@@ -263,6 +276,14 @@ declare class Signal<T extends (...args: any[]) => any = () => void> {
 
   /** Emit this signal. */
   emit(...args: Parameters<T>): void;
+  disconnect(): void;
+  get_connections(): any[];
+  get_name(): StringName;
+  get_object(): Object;
+  get_object_id(): int;
+  has_connections(): boolean;
+  is_connected(): boolean;
+  is_null(): boolean;
 }
 `
 

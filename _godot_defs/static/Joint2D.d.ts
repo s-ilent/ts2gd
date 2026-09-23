@@ -1,39 +1,38 @@
-
 /**
- * Base node for all joint constraints in 2D physics. Joints take 2 bodies and apply a custom constraint.
+ * Abstract base class for all joints in 2D physics. 2D joints bind together two physics bodies ([member node_a] and [member node_b]) and apply a constraint.
  *
-*/
-declare class Joint2D extends Node2D  {
+ */
+declare class Joint2D extends Node2D {
+  /**
+   * Abstract base class for all joints in 2D physics. 2D joints bind together two physics bodies ([member node_a] and [member node_b]) and apply a constraint.
+   *
+   */
+  new(): Joint2D
+  constructor()
+  static new(): Joint2D
 
-  
-/**
- * Base node for all joint constraints in 2D physics. Joints take 2 bodies and apply a custom constraint.
- *
-*/
-  new(): Joint2D; 
-  static "new"(): Joint2D 
+  /**
+   * When [member node_a] and [member node_b] move in different directions the [member bias] controls how fast the joint pulls them back to their original position. The lower the [member bias] the more the two bodies can pull on the joint.
+   *
+   * When set to `0`, the default value from [member ProjectSettings.physics/2d/solver/default_constraint_bias] is used.
+   *
+   */
+  bias: float
 
+  /** If [code]true[/code], the two bodies bound together do not collide with each other. */
+  disable_collision: boolean
 
-/** When [member node_a] and [member node_b] move in different directions the [code]bias[/code] controls how fast the joint pulls them back to their original position. The lower the [code]bias[/code] the more the two bodies can pull on the joint. */
-bias: float;
+  /** Path to the first body (A) attached to the joint. The node must inherit [PhysicsBody2D]. */
+  node_a: NodePathType
 
-/** If [code]true[/code], [member node_a] and [member node_b] can not collide. */
-disable_collision: boolean;
+  /** Path to the second body (B) attached to the joint. The node must inherit [PhysicsBody2D]. */
+  node_b: NodePathType
 
-/** The first body attached to the joint. Must derive from [PhysicsBody2D]. */
-node_a: NodePathType;
+  /** Returns the joint's internal [RID] from the [PhysicsServer2D]. */
+  get_rid(): RID
 
-/** The second body attached to the joint. Must derive from [PhysicsBody2D]. */
-node_b: NodePathType;
-
-
-
-  connect<T extends SignalsOf<Joint2D>>(signal: T, method: SignalFunction<Joint2D[T]>): number;
-
-
-
-
-
-
+  connect<T extends SignalsOf<Joint2D>>(
+    signal: T,
+    method: SignalFunction<Joint2D[T]>
+  ): number
 }
-

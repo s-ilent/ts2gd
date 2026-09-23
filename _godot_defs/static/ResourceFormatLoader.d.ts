@@ -1,72 +1,148 @@
-
 /**
  * Godot loads resources in the editor or in exported games using ResourceFormatLoaders. They are queried automatically via the [ResourceLoader] singleton, or when a resource with internal dependencies is loaded. Each file type may load as a different resource type, so multiple ResourceFormatLoaders are registered in the engine.
  *
  * Extending this class allows you to define your own loader. Be sure to respect the documented return types and values. You should give it a global class name with `class_name` for it to be registered. Like built-in ResourceFormatLoaders, it will be called automatically when loading resources of its handled type(s). You may also implement a [ResourceFormatSaver].
  *
- * **Note:** You can also extend [EditorImportPlugin] if the resource type you need exists but Godot is unable to load its format. Choosing one way over another depends on if the format is suitable or not for the final exported game. For example, it's better to import `.png` textures as `.stex` ([StreamTexture]) first, so they can be loaded with better efficiency on the graphics card.
+ * **Note:** You can also extend [EditorImportPlugin] if the resource type you need exists but Godot is unable to load its format. Choosing one way over another depends on if the format is suitable or not for the final exported game. For example, it's better to import `.png` textures as `.ctex` ([CompressedTexture2D]) first, so they can be loaded with better efficiency on the graphics card.
  *
-*/
-declare class ResourceFormatLoader extends Reference  {
+ */
+declare class ResourceFormatLoader extends RefCounted {
+  /**
+   * Godot loads resources in the editor or in exported games using ResourceFormatLoaders. They are queried automatically via the [ResourceLoader] singleton, or when a resource with internal dependencies is loaded. Each file type may load as a different resource type, so multiple ResourceFormatLoaders are registered in the engine.
+   *
+   * Extending this class allows you to define your own loader. Be sure to respect the documented return types and values. You should give it a global class name with `class_name` for it to be registered. Like built-in ResourceFormatLoaders, it will be called automatically when loading resources of its handled type(s). You may also implement a [ResourceFormatSaver].
+   *
+   * **Note:** You can also extend [EditorImportPlugin] if the resource type you need exists but Godot is unable to load its format. Choosing one way over another depends on if the format is suitable or not for the final exported game. For example, it's better to import `.png` textures as `.ctex` ([CompressedTexture2D]) first, so they can be loaded with better efficiency on the graphics card.
+   *
+   */
+  new(): ResourceFormatLoader
+  constructor()
+  static new(): ResourceFormatLoader
 
-  
-/**
- * Godot loads resources in the editor or in exported games using ResourceFormatLoaders. They are queried automatically via the [ResourceLoader] singleton, or when a resource with internal dependencies is loaded. Each file type may load as a different resource type, so multiple ResourceFormatLoaders are registered in the engine.
- *
- * Extending this class allows you to define your own loader. Be sure to respect the documented return types and values. You should give it a global class name with `class_name` for it to be registered. Like built-in ResourceFormatLoaders, it will be called automatically when loading resources of its handled type(s). You may also implement a [ResourceFormatSaver].
- *
- * **Note:** You can also extend [EditorImportPlugin] if the resource type you need exists but Godot is unable to load its format. Choosing one way over another depends on if the format is suitable or not for the final exported game. For example, it's better to import `.png` textures as `.stex` ([StreamTexture]) first, so they can be loaded with better efficiency on the graphics card.
- *
-*/
-  new(): ResourceFormatLoader; 
-  static "new"(): ResourceFormatLoader 
+  /** No documentation provided. */
+  protected _exists(path: string): boolean
 
+  /** No documentation provided. */
+  protected _get_classes_used(path: string): PackedStringArray
 
+  /**
+   * Should return the dependencies for the resource at the given [param path]. Each dependency is a string composed of one to three sections separated by `::`, with trailing empty sections omitted:
+   *
+   * - The first section should contain the UID if the resource has one. Otherwise, it should contain the file path.
+   *
+   * - The second section should contain the class name of the dependency if [param add_types] is `true`. Otherwise, it should be empty.
+   *
+   * - The third section should contain the fallback path if the resource has a UID. Otherwise, it should be empty.
+   *
+   * @example
+   *
+   * func _get_dependencies(path, add_types):
+   * 	return [
+   * 		"uid://fqgvuwrkuixh::Script::res://script.gd",
+   * 		"uid://fqgvuwrkuixh::::res://script.gd",
+   * 		"res://script.gd::Script",
+   * 		"res://script.gd",
+   * 	]
+   * @summary
+   *
+   *
+   * **Note:** Custom resource types defined by scripts aren't known by the [ClassDB], so `"Resource"` can be used for the class name.
+   *
+   */
+  protected _get_dependencies(
+    path: string,
+    add_types: boolean
+  ): PackedStringArray
 
-/**
- * If implemented, gets the dependencies of a given resource. If `add_types` is `true`, paths should be appended `::TypeName`, where `TypeName` is the class name of the dependency.
- *
- * **Note:** Custom resource types defined by scripts aren't known by the [ClassDB], so you might just return `"Resource"` for them.
- *
-*/
-get_dependencies(path: string, add_types: string): void;
+  /** Gets the list of extensions for files this loader is able to read. */
+  protected _get_recognized_extensions(): PackedStringArray
 
-/** Gets the list of extensions for files this loader is able to read. */
-get_recognized_extensions(): PoolStringArray;
+  /** Returns the script class name associated with the [Resource] under the given [param path]. If the resource has no script or the script isn't a named class, it should return [code]""[/code]. */
+  protected _get_resource_script_class(path: string): string
 
-/**
- * Gets the class name of the resource associated with the given path. If the loader cannot handle it, it should return `""`.
- *
- * **Note:** Custom resource types defined by scripts aren't known by the [ClassDB], so you might just return `"Resource"` for them.
- *
-*/
-get_resource_type(path: string): string;
+  /**
+   * Gets the class name of the resource associated with the given path. If the loader cannot handle it, it should return `""`.
+   *
+   * **Note:** Custom resource types defined by scripts aren't known by the [ClassDB], so you might just return `"Resource"` for them.
+   *
+   */
+  protected _get_resource_type(path: string): string
 
-/**
- * Tells which resource class this loader can load.
- *
- * **Note:** Custom resource types defined by scripts aren't known by the [ClassDB], so you might just handle `"Resource"` for them.
- *
-*/
-handles_type(typename: string): boolean;
+  /** Should return the unique ID for the resource associated with the given path. If this method is not overridden, a [code].uid[/code] file is generated along with the resource file, containing the unique ID. */
+  protected _get_resource_uid(path: string): int
 
-/** Loads a resource when the engine finds this loader to be compatible. If the loaded resource is the result of an import, [code]original_path[/code] will target the source file. Returns a [Resource] object on success, or an [enum Error] constant in case of failure. */
-load(path: string, original_path: string): any;
+  /**
+   * Tells which resource class this loader can load.
+   *
+   * **Note:** Custom resource types defined by scripts aren't known by the [ClassDB], so you might just handle `"Resource"` for them.
+   *
+   */
+  protected _handles_type(type: StringName): boolean
 
-/**
- * If implemented, renames dependencies within the given resource and saves it. `renames` is a dictionary `{ String => String }` mapping old dependency paths to new paths.
- *
- * Returns [constant OK] on success, or an [enum Error] constant in case of failure.
- *
-*/
-rename_dependencies(path: string, renames: string): int;
+  /**
+   * Loads a resource when the engine finds this loader to be compatible. If the loaded resource is the result of an import, [param original_path] will target the source file. Returns a [Resource] object on success, or an [enum Error] constant in case of failure.
+   *
+   * The [param cache_mode] property defines whether and how the cache should be used or updated when loading the resource. See [enum CacheMode] for details.
+   *
+   */
+  protected _load(
+    path: string,
+    original_path: string,
+    use_sub_threads: boolean,
+    cache_mode: int
+  ): any
 
-  connect<T extends SignalsOf<ResourceFormatLoader>>(signal: T, method: SignalFunction<ResourceFormatLoader[T]>): number;
+  /**
+   * Tells whether or not this loader should load a resource from its resource path for a given type.
+   *
+   * If it is not implemented, the default behavior returns whether the path's extension is within the ones provided by [method _get_recognized_extensions], and if the type is within the ones provided by [method _get_resource_type].
+   *
+   */
+  protected _recognize_path(path: string, type: StringName): boolean
 
+  /**
+   * If implemented, renames dependencies within the given resource and saves it. [param renames] is a dictionary `{ String => String }` mapping old dependency paths to new paths.
+   *
+   * Returns [constant OK] on success, or an [enum Error] constant in case of failure.
+   *
+   */
+  protected _rename_dependencies(
+    path: string,
+    renames: Dictionary<any, any>
+  ): int
 
+  connect<T extends SignalsOf<ResourceFormatLoader>>(
+    signal: T,
+    method: SignalFunction<ResourceFormatLoader[T]>
+  ): number
 
+  /**
+   * Neither the main resource (the one requested to be loaded) nor any of its subresources are retrieved from cache nor stored into it. Dependencies (external resources) are loaded with [constant CACHE_MODE_REUSE].
+   *
+   */
+  static CACHE_MODE_IGNORE: any
 
+  /**
+   * The main resource (the one requested to be loaded), its subresources, and its dependencies (external resources) are retrieved from cache if present, instead of loaded. Those not cached are loaded and then stored into the cache. The same rules are propagated recursively down the tree of dependencies (external resources).
+   *
+   */
+  static CACHE_MODE_REUSE: any
 
+  /**
+   * Like [constant CACHE_MODE_REUSE], but the cache is checked for the main resource (the one requested to be loaded) as well as for each of its subresources. Those already in the cache, as long as the loaded and cached types match, have their data refreshed from storage into the already existing instances. Otherwise, they are recreated as completely new objects.
+   *
+   */
+  static CACHE_MODE_REPLACE: any
 
+  /**
+   * Like [constant CACHE_MODE_IGNORE], but propagated recursively down the tree of dependencies (external resources).
+   *
+   */
+  static CACHE_MODE_IGNORE_DEEP: any
+
+  /**
+   * Like [constant CACHE_MODE_REPLACE], but propagated recursively down the tree of dependencies (external resources).
+   *
+   */
+  static CACHE_MODE_REPLACE_DEEP: any
 }
-

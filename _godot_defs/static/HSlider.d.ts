@@ -1,32 +1,18 @@
-
 /**
- * Horizontal slider. See [Slider]. This one goes from left (min) to right (max).
+ * A horizontal slider, used to adjust a value by moving a grabber along a horizontal axis. It is a [Range]-based control and goes from left (min) to right (max).
  *
- * **Note:** The [signal Range.changed] and [signal Range.value_changed] signals are part of the [Range] class which this class inherits from.
- *
-*/
-declare class HSlider extends Slider  {
+ */
+declare class HSlider extends Slider {
+  /**
+   * A horizontal slider, used to adjust a value by moving a grabber along a horizontal axis. It is a [Range]-based control and goes from left (min) to right (max).
+   *
+   */
+  new(): HSlider
+  constructor()
+  static new(): HSlider
 
-  
-/**
- * Horizontal slider. See [Slider]. This one goes from left (min) to right (max).
- *
- * **Note:** The [signal Range.changed] and [signal Range.value_changed] signals are part of the [Range] class which this class inherits from.
- *
-*/
-  new(): HSlider; 
-  static "new"(): HSlider 
-
-
-
-
-
-  connect<T extends SignalsOf<HSlider>>(signal: T, method: SignalFunction<HSlider[T]>): number;
-
-
-
-
-
-
+  connect<T extends SignalsOf<HSlider>>(
+    signal: T,
+    method: SignalFunction<HSlider[T]>
+  ): number
 }
-

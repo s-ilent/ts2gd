@@ -1,304 +1,519 @@
-
 /**
- * Node for 2D tile-based maps. Tilemaps use a [TileSet] which contain a list of tiles (textures plus optional collision, navigation, and/or occluder shapes) which are used to create grid-based maps.
+ * Node for 2D tile-based maps. Tilemaps use a [TileSet] which contain a list of tiles which are used to create grid-based maps. A TileMap may have several layers, layouting tiles on top of each other.
  *
- * When doing physics queries against the tilemap, the cell coordinates are encoded as `metadata` for each detected collision shape returned by methods such as [method Physics2DDirectSpaceState.intersect_shape], [method Physics2DDirectBodyState.get_contact_collider_shape_metadata], etc.
+ * For performance reasons, all TileMap updates are batched at the end of a frame. Notably, this means that scene tiles from a [TileSetScenesCollectionSource] may be initialized after their parent. This is only queued when inside the scene tree.
  *
-*/
-declare class TileMap extends Node2D  {
-
-  
-/**
- * Node for 2D tile-based maps. Tilemaps use a [TileSet] which contain a list of tiles (textures plus optional collision, navigation, and/or occluder shapes) which are used to create grid-based maps.
+ * To force an update earlier on, call [method update_internals].
  *
- * When doing physics queries against the tilemap, the cell coordinates are encoded as `metadata` for each detected collision shape returned by methods such as [method Physics2DDirectSpaceState.intersect_shape], [method Physics2DDirectBodyState.get_contact_collider_shape_metadata], etc.
+ * **Note:** For performance and compatibility reasons, the coordinates serialized by [TileMap] are limited to 16-bit signed integers, i.e. the range for X and Y coordinates is from `-32768` to `32767`. When saving tile data, tiles outside this range are wrapped.
  *
-*/
-  new(): TileMap; 
-  static "new"(): TileMap 
+ */
+declare class TileMap extends Node2D {
+  /**
+   * Node for 2D tile-based maps. Tilemaps use a [TileSet] which contain a list of tiles which are used to create grid-based maps. A TileMap may have several layers, layouting tiles on top of each other.
+   *
+   * For performance reasons, all TileMap updates are batched at the end of a frame. Notably, this means that scene tiles from a [TileSetScenesCollectionSource] may be initialized after their parent. This is only queued when inside the scene tree.
+   *
+   * To force an update earlier on, call [method update_internals].
+   *
+   * **Note:** For performance and compatibility reasons, the coordinates serialized by [TileMap] are limited to 16-bit signed integers, i.e. the range for X and Y coordinates is from `-32768` to `32767`. When saving tile data, tiles outside this range are wrapped.
+   *
+   */
+  new(): TileMap
+  constructor()
+  static new(): TileMap
 
+  /**
+   * If enabled, the TileMap will see its collisions synced to the physics tick and change its collision type from static to kinematic. This is required to create TileMap-based moving platform.
+   *
+   * **Note:** Enabling [member collision_animatable] may have a small performance impact, only do it if the TileMap is moving and has colliding tiles.
+   *
+   */
+  collision_animatable: boolean
 
-/** If [code]true[/code], the cell's UVs will be clipped. */
-cell_clip_uv: boolean;
+  /** Show or hide the TileMap's collision shapes. If set to [constant VISIBILITY_MODE_DEFAULT], this depends on the show collision debug settings. */
+  collision_visibility_mode: int
 
-/** The custom [Transform2D] to be applied to the TileMap's cells. */
-cell_custom_transform: Transform2D;
+  /** Show or hide the TileMap's navigation meshes. If set to [constant VISIBILITY_MODE_DEFAULT], this depends on the show navigation debug settings. */
+  navigation_visibility_mode: int
 
-/** Amount to offset alternating tiles. See [enum HalfOffset] for possible values. */
-cell_half_offset: int;
+  /**
+   * The TileMap's quadrant size. A quadrant is a group of tiles to be drawn together on a single canvas item, for optimization purposes. [member rendering_quadrant_size] defines the length of a square's side, in the map's coordinate system, that forms the quadrant. Thus, the default quadrant size groups together `16 * 16 = 256` tiles.
+   *
+   * The quadrant size does not apply on Y-sorted layers, as tiles are grouped by Y position instead in that case.
+   *
+   * **Note:** As quadrants are created according to the map's coordinate system, the quadrant's "square shape" might not look like square in the TileMap's local coordinate system.
+   *
+   */
+  rendering_quadrant_size: int
 
-/** The TileMap's quadrant size. Optimizes drawing by batching, using chunks of this size. */
-cell_quadrant_size: int;
+  /** The [TileSet] used by this [TileMap]. The textures, collisions, and additional behavior of all available tiles are stored here. */
+  tile_set: TileSet
 
-/** The TileMap's cell size. */
-cell_size: Vector2;
+  /**
+   * Called with a TileData object about to be used internally by the TileMap, allowing its modification at runtime.
+   *
+   * This method is only called if [method _use_tile_data_runtime_update] is implemented and returns `true` for the given tile [param coords] and [param layer].
+   *
+   * **Warning:** The [param tile_data] object's sub-resources are the same as the one in the TileSet. Modifying them might impact the whole TileSet. Instead, make sure to duplicate those resources.
+   *
+   * **Note:** If the properties of [param tile_data] object should change over time, use [method notify_runtime_tile_data_update] to notify the TileMap it needs an update.
+   *
+   */
+  protected _tile_data_runtime_update(
+    layer: int,
+    coords: Vector2i,
+    tile_data: TileData
+  ): void
 
-/** Position for tile origin. See [enum TileOrigin] for possible values. */
-cell_tile_origin: int;
+  /**
+   * Should return `true` if the tile at coordinates [param coords] on layer [param layer] requires a runtime update.
+   *
+   * **Warning:** Make sure this function only return `true` when needed. Any tile processed at runtime without a need for it will imply a significant performance penalty.
+   *
+   * **Note:** If the result of this function should changed, use [method notify_runtime_tile_data_update] to notify the TileMap it needs an update.
+   *
+   */
+  protected _use_tile_data_runtime_update(layer: int, coords: Vector2i): boolean
 
-/** If [code]true[/code], the TileMap's direct children will be drawn in order of their Y coordinate. */
-cell_y_sort: boolean;
+  /** Adds a layer at the given position [param to_position] in the array. If [param to_position] is negative, the position is counted from the end, with [code]-1[/code] adding the layer at the end of the array. */
+  add_layer(to_position: int): void
 
-/**
- * If `true`, the textures will be centered in the middle of each tile. This is useful for certain isometric or top-down modes when textures are made larger or smaller than the tiles (e.g. to avoid flickering on tile edges). The offset is still applied, but from the center of the tile. If used, [member compatibility_mode] is ignored.
- *
- * If `false`, the texture position start in the top-left corner unless [member compatibility_mode] is enabled.
- *
-*/
-centered_textures: boolean;
+  /** Clears all cells. */
+  clear(): void
 
-/** Bounce value for static body collisions (see [code]collision_use_kinematic[/code]). */
-collision_bounce: float;
+  /**
+   * Clears all cells on the given layer.
+   *
+   * If [param layer] is negative, the layers are accessed from the last one.
+   *
+   */
+  clear_layer(layer: int): void
 
-/** Friction value for static body collisions (see [code]collision_use_kinematic[/code]). */
-collision_friction: float;
+  /**
+   * Erases the cell on layer [param layer] at coordinates [param coords].
+   *
+   * If [param layer] is negative, the layers are accessed from the last one.
+   *
+   */
+  erase_cell(layer: int, coords: Vector2i): void
 
-/** The collision layer(s) for all colliders in the TileMap. See [url=https://docs.godotengine.org/en/3.4/tutorials/physics/physics_introduction.html#collision-layers-and-masks]Collision layers and masks[/url] in the documentation for more information. */
-collision_layer: int;
+  /** Clears cells that do not exist in the tileset. */
+  fix_invalid_tiles(): void
 
-/** The collision mask(s) for all colliders in the TileMap. See [url=https://docs.godotengine.org/en/3.4/tutorials/physics/physics_introduction.html#collision-layers-and-masks]Collision layers and masks[/url] in the documentation for more information. */
-collision_mask: int;
+  /** Forces the TileMap and the layer [param layer] to update. */
+  force_update(layer?: int): void
 
-/** If [code]true[/code], TileMap collisions will be handled as a kinematic body. If [code]false[/code], collisions will be handled as static body. */
-collision_use_kinematic: boolean;
+  /**
+   * Returns the tile alternative ID of the cell on layer [param layer] at [param coords].
+   *
+   * If [param use_proxies] is `false`, ignores the [TileSet]'s tile proxies, returning the raw alternative identifier. See [method TileSet.map_tile_proxy].
+   *
+   * If [param layer] is negative, the layers are accessed from the last one.
+   *
+   */
+  get_cell_alternative_tile(
+    layer: int,
+    coords: Vector2i,
+    use_proxies?: boolean
+  ): int
 
-/** If [code]true[/code], this tilemap's collision shape will be added to the collision shape of the parent. The parent has to be a [CollisionObject2D]. */
-collision_use_parent: boolean;
+  /**
+   * Returns the tile atlas coordinates ID of the cell on layer [param layer] at coordinates [param coords]. Returns `Vector2i(-1, -1)` if the cell does not exist.
+   *
+   * If [param use_proxies] is `false`, ignores the [TileSet]'s tile proxies, returning the raw atlas coordinate identifier. See [method TileSet.map_tile_proxy].
+   *
+   * If [param layer] is negative, the layers are accessed from the last one.
+   *
+   */
+  get_cell_atlas_coords(
+    layer: int,
+    coords: Vector2i,
+    use_proxies?: boolean
+  ): Vector2i
 
-/**
- * If `true`, the compatibility with the tilemaps made in Godot 3.1 or earlier is maintained (textures move when the tile origin changes and rotate if the texture size is not homogeneous). This mode presents problems when doing `flip_h`, `flip_v` and `transpose` tile operations on non-homogeneous isometric tiles (e.g. 2:1), in which the texture could not coincide with the collision, thus it is not recommended for isometric or non-square tiles.
- *
- * If `false`, the textures do not move when doing `flip_h`, `flip_v` operations if no offset is used, nor when changing the tile origin.
- *
- * The compatibility mode doesn't work with the [member centered_textures] option, because displacing textures with the [member cell_tile_origin] option or in irregular tiles is not relevant when centering those textures.
- *
-*/
-compatibility_mode: boolean;
+  /**
+   * Returns the tile source ID of the cell on layer [param layer] at coordinates [param coords]. Returns `-1` if the cell does not exist.
+   *
+   * If [param use_proxies] is `false`, ignores the [TileSet]'s tile proxies, returning the raw source identifier. See [method TileSet.map_tile_proxy].
+   *
+   * If [param layer] is negative, the layers are accessed from the last one.
+   *
+   */
+  get_cell_source_id(layer: int, coords: Vector2i, use_proxies?: boolean): int
 
-/** The TileMap orientation mode. See [enum Mode] for possible values. */
-mode: int;
+  /**
+   * Returns the [TileData] object associated with the given cell, or `null` if the cell does not exist or is not a [TileSetAtlasSource].
+   *
+   * If [param layer] is negative, the layers are accessed from the last one.
+   *
+   * @example
+   *
+   * func get_clicked_tile_power():
+   * 	var clicked_cell = tile_map.local_to_map(tile_map.get_local_mouse_position())
+   * 	var data = tile_map.get_cell_tile_data(0, clicked_cell)
+   * 	if data:
+   * 		return data.get_custom_data("power")
+   * 	else:
+   * 		return 0
+   * @summary
+   *
+   *
+   * If [param use_proxies] is `false`, ignores the [TileSet]'s tile proxies. See [method TileSet.map_tile_proxy].
+   *
+   */
+  get_cell_tile_data(
+    layer: int,
+    coords: Vector2i,
+    use_proxies?: boolean
+  ): TileData
 
-/** The light mask assigned to all light occluders in the TileMap. The TileSet's light occluders will cast shadows only from Light2D(s) that have the same light mask(s). */
-occluder_light_mask: int;
+  /** Returns the coordinates of the tile for given physics body RID. Such RID can be retrieved from [method KinematicCollision2D.get_collider_rid], when colliding with a tile. */
+  get_coords_for_body_rid(body: RID): Vector2i
 
-/** If [code]true[/code], collision shapes are visible in the editor. Doesn't affect collision shapes visibility at runtime. To show collision shapes at runtime, enable [b]Visible Collision Shapes[/b] in the [b]Debug[/b] menu instead. */
-show_collision: boolean;
+  /** Returns the tilemap layer of the tile for given physics body RID. Such RID can be retrieved from [method KinematicCollision2D.get_collider_rid], when colliding with a tile. */
+  get_layer_for_body_rid(body: RID): int
 
-/** The assigned [TileSet]. */
-tile_set: TileSet;
+  /**
+   * Returns a TileMap layer's modulate.
+   *
+   * If [param layer] is negative, the layers are accessed from the last one.
+   *
+   */
+  get_layer_modulate(layer: int): Color
 
-/** Clears all cells. */
-clear(): void;
+  /**
+   * Returns a TileMap layer's name.
+   *
+   * If [param layer] is negative, the layers are accessed from the last one.
+   *
+   */
+  get_layer_name(layer: int): string
 
-/** Clears cells that do not exist in the tileset. */
-fix_invalid_tiles(): void;
+  /**
+   * Returns the [RID] of the [NavigationServer2D] navigation map assigned to the specified TileMap layer [param layer].
+   *
+   * By default the TileMap uses the default [World2D] navigation map for the first TileMap layer. For each additional TileMap layer a new navigation map is created for the additional layer.
+   *
+   * In order to make [NavigationAgent2D] switch between TileMap layer navigation maps use [method NavigationAgent2D.set_navigation_map] with the navigation map received from [method get_layer_navigation_map].
+   *
+   * If [param layer] is negative, the layers are accessed from the last one.
+   *
+   */
+  get_layer_navigation_map(layer: int): RID
 
-/** Returns the tile index of the given cell. If no tile exists in the cell, returns [constant INVALID_CELL]. */
-get_cell(x: int, y: int): int;
+  /**
+   * Returns a TileMap layer's Y sort origin.
+   *
+   * If [param layer] is negative, the layers are accessed from the last one.
+   *
+   */
+  get_layer_y_sort_origin(layer: int): int
 
-/** Returns the coordinate (subtile column and row) of the autotile variation in the tileset. Returns a zero vector if the cell doesn't have autotiling. */
-get_cell_autotile_coord(x: int, y: int): Vector2;
+  /**
+   * Returns a TileMap layer's Z-index value.
+   *
+   * If [param layer] is negative, the layers are accessed from the last one.
+   *
+   */
+  get_layer_z_index(layer: int): int
 
-/** Returns the tile index of the cell given by a Vector2. If no tile exists in the cell, returns [constant INVALID_CELL]. */
-get_cellv(position: Vector2): int;
+  /** Returns the number of layers in the TileMap. */
+  get_layers_count(): int
 
-/** Returns [code]true[/code] if the given collision layer bit is set. */
-get_collision_layer_bit(bit: int): boolean;
+  /** Returns the [RID] of the [NavigationServer2D] navigation map assigned to the specified TileMap layer [param layer]. */
+  get_navigation_map(layer: int): RID
 
-/** Returns [code]true[/code] if the given collision mask bit is set. */
-get_collision_mask_bit(bit: int): boolean;
+  /** Returns the neighboring cell to the one at coordinates [param coords], identified by the [param neighbor] direction. This method takes into account the different layouts a TileMap can take. */
+  get_neighbor_cell(coords: Vector2i, neighbor: int): Vector2i
 
-/** Returns a [Vector2] array with the positions of all cells containing a tile from the tileset (i.e. a tile index different from [code]-1[/code]). */
-get_used_cells(): any[];
+  /**
+   * Creates a new [TileMapPattern] from the given layer and set of cells.
+   *
+   * If [param layer] is negative, the layers are accessed from the last one.
+   *
+   */
+  get_pattern(layer: int, coords_array: Vector2i[]): TileMapPattern
 
-/** Returns an array of all cells with the given tile index specified in [code]id[/code]. */
-get_used_cells_by_id(id: int): any[];
+  /** Returns the list of all neighbourings cells to the one at [param coords]. */
+  get_surrounding_cells(coords: Vector2i): Vector2i[]
 
-/** Returns a rectangle enclosing the used (non-empty) tiles of the map. */
-get_used_rect(): Rect2;
+  /**
+   * Returns a [Vector2i] array with the positions of all cells containing a tile in the given layer. A cell is considered empty if its source identifier equals -1, its atlas coordinates identifiers is `Vector2(-1, -1)` and its alternative identifier is -1.
+   *
+   * If [param layer] is negative, the layers are accessed from the last one.
+   *
+   */
+  get_used_cells(layer: int): Vector2i[]
 
-/** Returns [code]true[/code] if the given cell is transposed, i.e. the X and Y axes are swapped. */
-is_cell_transposed(x: int, y: int): boolean;
+  /**
+   * Returns a [Vector2i] array with the positions of all cells containing a tile in the given layer. Tiles may be filtered according to their source ([param source_id]), their atlas coordinates ([param atlas_coords]) or alternative id ([param alternative_tile]).
+   *
+   * If a parameter has its value set to the default one, this parameter is not used to filter a cell. Thus, if all parameters have their respective default value, this method returns the same result as [method get_used_cells].
+   *
+   * A cell is considered empty if its source identifier equals -1, its atlas coordinates identifiers is `Vector2(-1, -1)` and its alternative identifier is -1.
+   *
+   * If [param layer] is negative, the layers are accessed from the last one.
+   *
+   */
+  get_used_cells_by_id(
+    layer: int,
+    source_id?: int,
+    atlas_coords?: Vector2i,
+    alternative_tile?: int
+  ): Vector2i[]
 
-/** Returns [code]true[/code] if the given cell is flipped in the X axis. */
-is_cell_x_flipped(x: int, y: int): boolean;
+  /** Returns a rectangle enclosing the used (non-empty) tiles of the map, including all layers. */
+  get_used_rect(): Rect2i
 
-/** Returns [code]true[/code] if the given cell is flipped in the Y axis. */
-is_cell_y_flipped(x: int, y: int): boolean;
+  /** Returns [code]true[/code] if the cell on layer [param layer] at coordinates [param coords] is flipped horizontally. The result is valid only for atlas sources. */
+  is_cell_flipped_h(
+    layer: int,
+    coords: Vector2i,
+    use_proxies?: boolean
+  ): boolean
 
-/**
- * Returns the local position of the top left corner of the cell corresponding to the given tilemap (grid-based) coordinates.
- *
- * To get the global position, use [method Node2D.to_global]:
- *
- * @example 
- * 
- * var local_position = my_tilemap.map_to_world(map_position)
- * var global_position = my_tilemap.to_global(local_position)
- * @summary 
- * 
- *
- * Optionally, the tilemap's half offset can be ignored.
- *
-*/
-map_to_world(map_position: Vector2, ignore_half_ofs?: boolean): Vector2;
+  /** Returns [code]true[/code] if the cell on layer [param layer] at coordinates [param coords] is flipped vertically. The result is valid only for atlas sources. */
+  is_cell_flipped_v(
+    layer: int,
+    coords: Vector2i,
+    use_proxies?: boolean
+  ): boolean
 
-/**
- * Sets the tile index for the cell given by a Vector2.
- *
- * An index of `-1` clears the cell.
- *
- * Optionally, the tile can also be flipped, transposed, or given autotile coordinates. The autotile coordinate refers to the column and row of the subtile.
- *
- * **Note:** Data such as navigation polygons and collision shapes are not immediately updated for performance reasons.
- *
- * If you need these to be immediately updated, you can call [method update_dirty_quadrants].
- *
- * Overriding this method also overrides it internally, allowing custom logic to be implemented when tiles are placed/removed:
- *
- * @example 
- * 
- * func set_cell(x, y, tile, flip_x=false, flip_y=false, transpose=false, autotile_coord=Vector2()):
- *     # Write your custom logic here.
- *     # To call the default method:
- *     .set_cell(x, y, tile, flip_x, flip_y, transpose, autotile_coord)
- * @summary 
- * 
- *
-*/
-set_cell(x: int, y: int, tile: int, flip_x?: boolean, flip_y?: boolean, transpose?: boolean, autotile_coord?: Vector2): void;
+  /** Returns [code]true[/code] if the cell on layer [param layer] at coordinates [param coords] is transposed. The result is valid only for atlas sources. */
+  is_cell_transposed(
+    layer: int,
+    coords: Vector2i,
+    use_proxies?: boolean
+  ): boolean
 
-/**
- * Sets the tile index for the given cell.
- *
- * An index of `-1` clears the cell.
- *
- * Optionally, the tile can also be flipped or transposed.
- *
- * **Note:** Data such as navigation polygons and collision shapes are not immediately updated for performance reasons.
- *
- * If you need these to be immediately updated, you can call [method update_dirty_quadrants].
- *
-*/
-set_cellv(position: Vector2, tile: int, flip_x?: boolean, flip_y?: boolean, transpose?: boolean): void;
+  /**
+   * Returns if a layer is enabled.
+   *
+   * If [param layer] is negative, the layers are accessed from the last one.
+   *
+   */
+  is_layer_enabled(layer: int): boolean
 
-/** Sets the given collision layer bit. */
-set_collision_layer_bit(bit: int, value: boolean): void;
+  /** Returns if a layer's built-in navigation regions generation is enabled. */
+  is_layer_navigation_enabled(layer: int): boolean
 
-/** Sets the given collision mask bit. */
-set_collision_mask_bit(bit: int, value: boolean): void;
+  /**
+   * Returns if a layer Y-sorts its tiles.
+   *
+   * If [param layer] is negative, the layers are accessed from the last one.
+   *
+   */
+  is_layer_y_sort_enabled(layer: int): boolean
 
-/** Applies autotiling rules to the cell (and its adjacent cells) referenced by its grid-based X and Y coordinates. */
-update_bitmask_area(position: Vector2): void;
+  /** Returns the map coordinates of the cell containing the given [param local_position]. If [param local_position] is in global coordinates, consider using [method Node2D.to_local] before passing it to this method. See also [method map_to_local]. */
+  local_to_map(local_position: Vector2): Vector2i
 
-/**
- * Applies autotiling rules to the cells in the given region (specified by grid-based X and Y coordinates).
- *
- * Calling with invalid (or missing) parameters applies autotiling rules for the entire tilemap.
- *
-*/
-update_bitmask_region(start?: Vector2, end?: Vector2): void;
+  /** Returns for the given coordinate [param coords_in_pattern] in a [TileMapPattern] the corresponding cell coordinates if the pattern was pasted at the [param position_in_tilemap] coordinates (see [method set_pattern]). This mapping is required as in half-offset tile shapes, the mapping might not work by calculating [code]position_in_tile_map + coords_in_pattern[/code]. */
+  map_pattern(
+    position_in_tilemap: Vector2i,
+    coords_in_pattern: Vector2i,
+    pattern: TileMapPattern
+  ): Vector2i
 
-/** Updates the tile map's quadrants, allowing things such as navigation and collision shapes to be immediately used if modified. */
-update_dirty_quadrants(): void;
+  /**
+   * Returns the centered position of a cell in the TileMap's local coordinate space. To convert the returned value into global coordinates, use [method Node2D.to_global]. See also [method local_to_map].
+   *
+   * **Note:** This may not correspond to the visual position of the tile, i.e. it ignores the [member TileData.texture_origin] property of individual tiles.
+   *
+   */
+  map_to_local(map_position: Vector2i): Vector2
 
-/**
- * Returns the tilemap (grid-based) coordinates corresponding to the given local position.
- *
- * To use this with a global position, first determine the local position with [method Node2D.to_local]:
- *
- * @example 
- * 
- * var local_position = my_tilemap.to_local(global_position)
- * var map_position = my_tilemap.world_to_map(local_position)
- * @summary 
- * 
- *
-*/
-world_to_map(world_position: Vector2): Vector2;
+  /** Moves the layer at index [param layer] to the given position [param to_position] in the array. */
+  move_layer(layer: int, to_position: int): void
 
-  connect<T extends SignalsOf<TileMap>>(signal: T, method: SignalFunction<TileMap[T]>): number;
+  /**
+   * Notifies the TileMap node that calls to [method _use_tile_data_runtime_update] or [method _tile_data_runtime_update] will lead to different results. This will thus trigger a TileMap update.
+   *
+   * If [param layer] is provided, only notifies changes for the given layer. Providing the [param layer] argument (when applicable) is usually preferred for performance reasons.
+   *
+   * **Warning:** Updating the TileMap is computationally expensive and may impact performance. Try to limit the number of calls to this function to avoid unnecessary update.
+   *
+   * **Note:** This does not trigger a direct update of the TileMap, the update will be done at the end of the frame as usual (unless you call [method update_internals]).
+   *
+   */
+  notify_runtime_tile_data_update(layer?: int): void
 
+  /** Removes the layer at index [param layer]. */
+  remove_layer(layer: int): void
 
+  /**
+   * Sets the tile identifiers for the cell on layer [param layer] at coordinates [param coords]. Each tile of the [TileSet] is identified using three parts:
+   *
+   * - The source identifier [param source_id] identifies a [TileSetSource] identifier. See [method TileSet.set_source_id],
+   *
+   * - The atlas coordinates identifier [param atlas_coords] identifies a tile coordinates in the atlas (if the source is a [TileSetAtlasSource]). For [TileSetScenesCollectionSource] it should always be `Vector2i(0, 0)`),
+   *
+   * - The alternative tile identifier [param alternative_tile] identifies a tile alternative in the atlas (if the source is a [TileSetAtlasSource]), and the scene for a [TileSetScenesCollectionSource].
+   *
+   * If [param source_id] is set to `-1`, [param atlas_coords] to `Vector2i(-1, -1)` or [param alternative_tile] to `-1`, the cell will be erased. An erased cell gets **all** its identifiers automatically set to their respective invalid values, namely `-1`, `Vector2i(-1, -1)` and `-1`.
+   *
+   * If [param layer] is negative, the layers are accessed from the last one.
+   *
+   */
+  set_cell(
+    layer: int,
+    coords: Vector2i,
+    source_id?: int,
+    atlas_coords?: Vector2i,
+    alternative_tile?: int
+  ): void
 
-/**
- * Returned when a cell doesn't exist.
- *
-*/
-static INVALID_CELL: any;
+  /**
+   * Update all the cells in the [param cells] coordinates array so that they use the given [param terrain] for the given [param terrain_set]. If an updated cell has the same terrain as one of its neighboring cells, this function tries to join the two. This function might update neighboring tiles if needed to create correct terrain transitions.
+   *
+   * If [param ignore_empty_terrains] is `true`, empty terrains will be ignored when trying to find the best fitting tile for the given terrain constraints.
+   *
+   * If [param layer] is negative, the layers are accessed from the last one.
+   *
+   * **Note:** To work correctly, this method requires the TileMap's TileSet to have terrains set up with all required terrain combinations. Otherwise, it may produce unexpected results.
+   *
+   */
+  set_cells_terrain_connect(
+    layer: int,
+    cells: Vector2i[],
+    terrain_set: int,
+    terrain: int,
+    ignore_empty_terrains?: boolean
+  ): void
 
-/**
- * Orthogonal orientation mode.
- *
-*/
-static MODE_SQUARE: any;
+  /**
+   * Update all the cells in the [param path] coordinates array so that they use the given [param terrain] for the given [param terrain_set]. The function will also connect two successive cell in the path with the same terrain. This function might update neighboring tiles if needed to create correct terrain transitions.
+   *
+   * If [param ignore_empty_terrains] is `true`, empty terrains will be ignored when trying to find the best fitting tile for the given terrain constraints.
+   *
+   * If [param layer] is negative, the layers are accessed from the last one.
+   *
+   * **Note:** To work correctly, this method requires the TileMap's TileSet to have terrains set up with all required terrain combinations. Otherwise, it may produce unexpected results.
+   *
+   */
+  set_cells_terrain_path(
+    layer: int,
+    path: Vector2i[],
+    terrain_set: int,
+    terrain: int,
+    ignore_empty_terrains?: boolean
+  ): void
 
-/**
- * Isometric orientation mode.
- *
-*/
-static MODE_ISOMETRIC: any;
+  /**
+   * Enables or disables the layer [param layer]. A disabled layer is not processed at all (no rendering, no physics, etc.).
+   *
+   * If [param layer] is negative, the layers are accessed from the last one.
+   *
+   */
+  set_layer_enabled(layer: int, enabled: boolean): void
 
-/**
- * Custom orientation mode.
- *
-*/
-static MODE_CUSTOM: any;
+  /**
+   * Sets a layer's color. It will be multiplied by tile's color and TileMap's modulate.
+   *
+   * If [param layer] is negative, the layers are accessed from the last one.
+   *
+   */
+  set_layer_modulate(layer: int, modulate: Color): void
 
-/**
- * Half offset on the X coordinate.
- *
-*/
-static HALF_OFFSET_X: any;
+  /**
+   * Sets a layer's name. This is mostly useful in the editor.
+   *
+   * If [param layer] is negative, the layers are accessed from the last one.
+   *
+   */
+  set_layer_name(layer: int, name: string): void
 
-/**
- * Half offset on the Y coordinate.
- *
-*/
-static HALF_OFFSET_Y: any;
+  /** Enables or disables a layer's built-in navigation regions generation. Disable this if you need to bake navigation regions from a TileMap using a [NavigationRegion2D] node. */
+  set_layer_navigation_enabled(layer: int, enabled: boolean): void
 
-/**
- * Half offset disabled.
- *
-*/
-static HALF_OFFSET_DISABLED: any;
+  /**
+   * Assigns [param map] as a [NavigationServer2D] navigation map for the specified TileMap layer [param layer].
+   *
+   * By default the TileMap uses the default [World2D] navigation map for the first TileMap layer. For each additional TileMap layer a new navigation map is created for the additional layer.
+   *
+   * In order to make [NavigationAgent2D] switch between TileMap layer navigation maps use [method NavigationAgent2D.set_navigation_map] with the navigation map received from [method get_layer_navigation_map].
+   *
+   * If [param layer] is negative, the layers are accessed from the last one.
+   *
+   */
+  set_layer_navigation_map(layer: int, map: RID): void
 
-/**
- * Half offset on the X coordinate (negative).
- *
-*/
-static HALF_OFFSET_NEGATIVE_X: any;
+  /**
+   * Enables or disables a layer's Y-sorting. If a layer is Y-sorted, the layer will behave as a CanvasItem node where each of its tile gets Y-sorted.
+   *
+   * Y-sorted layers should usually be on different Z-index values than not Y-sorted layers, otherwise, each of those layer will be Y-sorted as whole with the Y-sorted one. This is usually an undesired behavior.
+   *
+   * If [param layer] is negative, the layers are accessed from the last one.
+   *
+   */
+  set_layer_y_sort_enabled(layer: int, y_sort_enabled: boolean): void
 
-/**
- * Half offset on the Y coordinate (negative).
- *
-*/
-static HALF_OFFSET_NEGATIVE_Y: any;
+  /**
+   * Sets a layer's Y-sort origin value. This Y-sort origin value is added to each tile's Y-sort origin value.
+   *
+   * This allows, for example, to fake a different height level on each layer. This can be useful for top-down view games.
+   *
+   * If [param layer] is negative, the layers are accessed from the last one.
+   *
+   */
+  set_layer_y_sort_origin(layer: int, y_sort_origin: int): void
 
-/**
- * Tile origin at its top-left corner.
- *
-*/
-static TILE_ORIGIN_TOP_LEFT: any;
+  /**
+   * Sets a layers Z-index value. This Z-index is added to each tile's Z-index value.
+   *
+   * If [param layer] is negative, the layers are accessed from the last one.
+   *
+   */
+  set_layer_z_index(layer: int, z_index: int): void
 
-/**
- * Tile origin at its center.
- *
-*/
-static TILE_ORIGIN_CENTER: any;
+  /** Assigns [param map] as a [NavigationServer2D] navigation map for the specified TileMap layer [param layer]. */
+  set_navigation_map(layer: int, map: RID): void
 
-/**
- * Tile origin at its bottom-left corner.
- *
-*/
-static TILE_ORIGIN_BOTTOM_LEFT: any;
+  /**
+   * Paste the given [TileMapPattern] at the given [param position] and [param layer] in the tile map.
+   *
+   * If [param layer] is negative, the layers are accessed from the last one.
+   *
+   */
+  set_pattern(layer: int, position: Vector2i, pattern: TileMapPattern): void
 
+  /**
+   * Triggers a direct update of the TileMap. Usually, calling this function is not needed, as TileMap node updates automatically when one of its properties or cells is modified.
+   *
+   * However, for performance reasons, those updates are batched and delayed to the end of the frame. Calling this function will force the TileMap to update right away instead.
+   *
+   * **Warning:** Updating the TileMap is computationally expensive and may impact performance. Try to limit the number of updates and how many tiles they impact.
+   *
+   */
+  update_internals(): void
 
-/**
- * Emitted when a tilemap setting has changed.
- *
-*/
-$settings_changed: Signal<() => void>
+  connect<T extends SignalsOf<TileMap>>(
+    signal: T,
+    method: SignalFunction<TileMap[T]>
+  ): number
 
+  /**
+   * Use the debug settings to determine visibility.
+   *
+   */
+  static VISIBILITY_MODE_DEFAULT: any
+
+  /**
+   * Always hide.
+   *
+   */
+  static VISIBILITY_MODE_FORCE_HIDE: any
+
+  /**
+   * Always show.
+   *
+   */
+  static VISIBILITY_MODE_FORCE_SHOW: any
+
+  /**
+   * Emitted when the [TileSet] of this TileMap changes.
+   *
+   */
+  $changed: Signal<() => void>
 }
-

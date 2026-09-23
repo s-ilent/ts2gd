@@ -1,80 +1,93 @@
-
 /**
- * Sprite frame library for [AnimatedSprite]. Contains frames and animation data for playback.
+ * Sprite frame library for an [AnimatedSprite2D] or [AnimatedSprite3D] node. Contains frames and animation data for playback.
  *
- * **Note:** You can associate a set of normal maps by creating additional [SpriteFrames] resources with a `_normal` suffix. For example, having 2 [SpriteFrames] resources `run` and `run_normal` will make it so the `run` animation uses the normal map.
- *
-*/
-declare class SpriteFrames extends Resource  {
+ */
+declare class SpriteFrames extends Resource {
+  /**
+   * Sprite frame library for an [AnimatedSprite2D] or [AnimatedSprite3D] node. Contains frames and animation data for playback.
+   *
+   */
+  new(): SpriteFrames
+  constructor()
+  static new(): SpriteFrames
 
-  
-/**
- * Sprite frame library for [AnimatedSprite]. Contains frames and animation data for playback.
- *
- * **Note:** You can associate a set of normal maps by creating additional [SpriteFrames] resources with a `_normal` suffix. For example, having 2 [SpriteFrames] resources `run` and `run_normal` will make it so the `run` animation uses the normal map.
- *
-*/
-  new(): SpriteFrames; 
-  static "new"(): SpriteFrames 
+  /** Adds a new [param anim] animation to the library. */
+  add_animation(anim: StringName): void
 
+  /** Adds a frame to the [param anim] animation. If [param at_position] is [code]-1[/code], the frame will be added to the end of the animation. [param duration] specifies the relative duration, see [method get_frame_duration] for details. */
+  add_frame(
+    anim: StringName,
+    texture: Texture2D,
+    duration?: float,
+    at_position?: int
+  ): void
 
-/** Compatibility property, always equals to an empty array. */
-frames: any[];
+  /** Removes all frames from the [param anim] animation. */
+  clear(anim: StringName): void
 
-/** Adds a new animation to the library. */
-add_animation(anim: string): void;
+  /** Removes all animations. An empty [code]default[/code] animation will be created. */
+  clear_all(): void
 
-/** Adds a frame to the given animation. */
-add_frame(anim: string, frame: Texture, at_position?: int): void;
+  /** Duplicates the animation [param anim_from] to a new animation named [param anim_to]. Fails if [param anim_to] already exists, or if [param anim_from] does not exist. */
+  duplicate_animation(anim_from: StringName, anim_to: StringName): void
 
-/** Removes all frames from the given animation. */
-clear(anim: string): void;
+  /** Returns [code]true[/code] if the given animation is configured to loop when it finishes playing. Otherwise, returns [code]false[/code]. */
+  get_animation_loop(anim: StringName): boolean
 
-/** Removes all animations. A "default" animation will be created. */
-clear_all(): void;
+  /** Returns an array containing the names associated to each animation. Values are placed in alphabetical order. */
+  get_animation_names(): PackedStringArray
 
-/** Returns [code]true[/code] if the given animation is configured to loop when it finishes playing. Otherwise, returns [code]false[/code]. */
-get_animation_loop(anim: string): boolean;
+  /** Returns the speed in frames per second for the [param anim] animation. */
+  get_animation_speed(anim: StringName): float
 
-/** Returns an array containing the names associated to each animation. Values are placed in alphabetical order. */
-get_animation_names(): PoolStringArray;
+  /** Returns the number of frames for the [param anim] animation. */
+  get_frame_count(anim: StringName): int
 
-/** The animation's speed in frames per second. */
-get_animation_speed(anim: string): float;
+  /**
+   * Returns a relative duration of the frame [param idx] in the [param anim] animation (defaults to `1.0`). For example, a frame with a duration of `2.0` is displayed twice as long as a frame with a duration of `1.0`. You can calculate the absolute duration (in seconds) of a frame using the following formula:
+   *
+   * @example
+   *
+   * absolute_duration = relative_duration / (animation_fps * abs(playing_speed))
+   * @summary
+   *
+   *
+   * In this example, `playing_speed` refers to either [method AnimatedSprite2D.get_playing_speed] or [method AnimatedSprite3D.get_playing_speed].
+   *
+   */
+  get_frame_duration(anim: StringName, idx: int): float
 
-/** Returns the animation's selected frame. */
-get_frame(anim: string, idx: int): Texture;
+  /** Returns the texture of the frame [param idx] in the [param anim] animation. */
+  get_frame_texture(anim: StringName, idx: int): Texture2D
 
-/** Returns the number of frames in the animation. */
-get_frame_count(anim: string): int;
+  /** Returns [code]true[/code] if the [param anim] animation exists. */
+  has_animation(anim: StringName): boolean
 
-/** If [code]true[/code], the named animation exists. */
-has_animation(anim: string): boolean;
+  /** Removes the [param anim] animation. */
+  remove_animation(anim: StringName): void
 
-/** Removes the given animation. */
-remove_animation(anim: string): void;
+  /** Removes the [param anim] animation's frame [param idx]. */
+  remove_frame(anim: StringName, idx: int): void
 
-/** Removes the animation's selected frame. */
-remove_frame(anim: string, idx: int): void;
+  /** Changes the [param anim] animation's name to [param newname]. */
+  rename_animation(anim: StringName, newname: StringName): void
 
-/** Changes the animation's name to [code]newname[/code]. */
-rename_animation(anim: string, newname: string): void;
+  /** If [param loop] is [code]true[/code], the [param anim] animation will loop when it reaches the end, or the start if it is played in reverse. */
+  set_animation_loop(anim: StringName, loop: boolean): void
 
-/** If [code]true[/code], the animation will loop. */
-set_animation_loop(anim: string, loop: boolean): void;
+  /** Sets the speed for the [param anim] animation in frames per second. */
+  set_animation_speed(anim: StringName, fps: float): void
 
-/** The animation's speed in frames per second. */
-set_animation_speed(anim: string, speed: float): void;
+  /** Sets the [param texture] and the [param duration] of the frame [param idx] in the [param anim] animation. [param duration] specifies the relative duration, see [method get_frame_duration] for details. */
+  set_frame(
+    anim: StringName,
+    idx: int,
+    texture: Texture2D,
+    duration?: float
+  ): void
 
-/** Sets the texture of the given frame. */
-set_frame(anim: string, idx: int, txt: Texture): void;
-
-  connect<T extends SignalsOf<SpriteFrames>>(signal: T, method: SignalFunction<SpriteFrames[T]>): number;
-
-
-
-
-
-
+  connect<T extends SignalsOf<SpriteFrames>>(
+    signal: T,
+    method: SignalFunction<SpriteFrames[T]>
+  ): number
 }
-

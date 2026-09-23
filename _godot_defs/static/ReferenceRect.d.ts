@@ -1,36 +1,27 @@
-
 /**
- * A rectangle box that displays only a [member border_color] border color around its rectangle. [ReferenceRect] has no fill [Color]. If you need to display a rectangle filled with a solid color, consider using [ColorRect] instead.
+ * A rectangular box that displays only a colored border around its rectangle (see [method Control.get_rect]). It can be used to visualize the extents of a [Control] node, for testing purposes.
  *
-*/
-declare class ReferenceRect extends Control  {
+ */
+declare class ReferenceRect extends Control {
+  /**
+   * A rectangular box that displays only a colored border around its rectangle (see [method Control.get_rect]). It can be used to visualize the extents of a [Control] node, for testing purposes.
+   *
+   */
+  new(): ReferenceRect
+  constructor()
+  static new(): ReferenceRect
 
-  
-/**
- * A rectangle box that displays only a [member border_color] border color around its rectangle. [ReferenceRect] has no fill [Color]. If you need to display a rectangle filled with a solid color, consider using [ColorRect] instead.
- *
-*/
-  new(): ReferenceRect; 
-  static "new"(): ReferenceRect 
+  /** Sets the border color of the [ReferenceRect]. */
+  border_color: Color
 
+  /** Sets the border width of the [ReferenceRect]. The border grows both inwards and outwards with respect to the rectangle box. */
+  border_width: float
 
-/** Sets the border [Color] of the [ReferenceRect]. */
-border_color: Color;
+  /** If [code]true[/code], the [ReferenceRect] will only be visible while in editor. Otherwise, [ReferenceRect] will be visible in the running project. */
+  editor_only: boolean
 
-/** Sets the border width of the [ReferenceRect]. The border grows both inwards and outwards with respect to the rectangle box. */
-border_width: float;
-
-/** If set to [code]true[/code], the [ReferenceRect] will only be visible while in editor. Otherwise, [ReferenceRect] will be visible in game. */
-editor_only: boolean;
-
-
-
-  connect<T extends SignalsOf<ReferenceRect>>(signal: T, method: SignalFunction<ReferenceRect[T]>): number;
-
-
-
-
-
-
+  connect<T extends SignalsOf<ReferenceRect>>(
+    signal: T,
+    method: SignalFunction<ReferenceRect[T]>
+  ): number
 }
-

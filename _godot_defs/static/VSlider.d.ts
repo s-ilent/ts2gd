@@ -1,33 +1,18 @@
-
 /**
- * Vertical slider. See [Slider]. This one goes from bottom (min) to top (max).
+ * A vertical slider, used to adjust a value by moving a grabber along a vertical axis. It is a [Range]-based control and goes from bottom (min) to top (max). Note that this direction is the opposite of [VScrollBar]'s.
  *
- * **Note:** The [signal Range.changed] and [signal Range.value_changed] signals are part of the [Range] class which this class inherits from.
- *
-*/
-declare class VSlider extends Slider  {
+ */
+declare class VSlider extends Slider {
+  /**
+   * A vertical slider, used to adjust a value by moving a grabber along a vertical axis. It is a [Range]-based control and goes from bottom (min) to top (max). Note that this direction is the opposite of [VScrollBar]'s.
+   *
+   */
+  new(): VSlider
+  constructor()
+  static new(): VSlider
 
-  
-/**
- * Vertical slider. See [Slider]. This one goes from bottom (min) to top (max).
- *
- * **Note:** The [signal Range.changed] and [signal Range.value_changed] signals are part of the [Range] class which this class inherits from.
- *
-*/
-  new(): VSlider; 
-  static "new"(): VSlider 
-
-
-
-
-
-
-  connect<T extends SignalsOf<VSlider>>(signal: T, method: SignalFunction<VSlider[T]>): number;
-
-
-
-
-
-
+  connect<T extends SignalsOf<VSlider>>(
+    signal: T,
+    method: SignalFunction<VSlider[T]>
+  ): number
 }
-

@@ -14,7 +14,7 @@ export type GodotXMLMethod = {
     qualifiers?: string
   }
   return?: [{ $: { type: string } }]
-  argument: {
+  param: {
     $: {
       index: string /* e.g. "1" */
       name: string
@@ -34,6 +34,7 @@ export const getCodeForMethod = (
     argumentList: string
     returnType: string
     isAbstract: boolean
+    isStatic: boolean
   },
   // TOOD: This should really not be undefined
   containingClassName?: string
@@ -45,6 +46,7 @@ export const getCodeForMethod = (
     docString,
     isAbstract,
     returnType,
+    isStatic,
   } = props
 
   switch (name) {
@@ -72,6 +74,7 @@ is_action_just_released(action: Action): boolean;
 get_node(path: NodePathType): Node;
 
 ${docString}
+get_node<T extends Node>(path: NodePathType): T;
 get_node_unsafe<T extends Node>(path: NodePathType): T;
 `
     case "change_scene":
@@ -99,7 +102,9 @@ declare const ${name}: (${argumentList}) => ${returnType}
     `
       } else {
         return `${docString}
-${isAbstract ? "protected " : ""}${name}(${argumentList}): ${returnType};`
+${isAbstract ? "protected " : ""}${
+          isStatic ? "static " : ""
+        }${name}(${argumentList}): ${returnType};`
       }
   }
 }
@@ -118,7 +123,7 @@ const argsToString = (
 
   for (let i = 0; i < args.length; i++) {
     const arg = args[i]
-    const argName = sanitizeGodotNameForTs(arg["$"].name, "argument")
+    let argName = sanitizeGodotNameForTs(arg["$"].name, "argument")
     let argType = godotTypeToTsType(arg["$"].type)
     const isOptional = args.slice(i).every((arg) => !!arg["$"].default)
 
@@ -130,6 +135,10 @@ const argsToString = (
       if (argName === "action") {
         argType = "Action"
       }
+    }
+    if (argName === "function") {
+      // replace reserved word
+      argName = "func"
     }
 
     result.push(`${argName}${isOptional ? "?" : ""}: ${argType}`)
@@ -143,22 +152,37 @@ export const parseMethod = (
   props?: {
     containgClassName?: string
     generateAsGlobals?: boolean
+    singletons?: string[]
   }
 ) => {
   const containingClassName = props?.containgClassName ?? undefined
   const generateAsGlobal = props?.generateAsGlobals ?? false
   const name = method.$.name
-  const args = method.argument
-  const isVarArgs = method.$.qualifiers === "vararg"
+  const args = method.param
+  const isVarArgs = method.$.qualifiers?.includes("vararg") ?? false
+  const isStatic = method.$.qualifiers?.includes("static") ?? false
   const isConstructor =
     containingClassName !== undefined && name === containingClassName
   const docString = formatJsDoc(method.description[0].trim())
   let returnType = godotTypeToTsType(method.return?.[0]["$"].type ?? "Variant")
+  if (props?.singletons && props.singletons.includes(returnType)) {
+    returnType = `${returnType}Class`
+  }
+
+  args?.forEach((arg) => {
+    if (props?.singletons && props.singletons.includes(arg.$.type)) {
+      arg.$.type = `${arg.$.type}Class`
+    }
+  })
+
   let argumentList = ""
 
   if (args || isVarArgs) {
     if (isVarArgs) {
-      argumentList = "...args: any[]"
+      if (args) {
+        argumentList = argsToString(args).join(", ") + ", "
+      }
+      argumentList += "...args: any[]"
     } else {
       argumentList = argsToString(args).join(", ")
     }
@@ -209,6 +233,7 @@ export const parseMethod = (
     docString,
     returnType,
     isAbstract,
+    isStatic,
   }
 
   return {

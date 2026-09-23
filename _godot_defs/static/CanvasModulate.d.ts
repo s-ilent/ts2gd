@@ -1,30 +1,21 @@
-
 /**
- * [CanvasModulate] tints the canvas elements using its assigned [member color].
+ * [CanvasModulate] applies a color tint to all nodes on a canvas. Only one can be used to tint a canvas, but [CanvasLayer]s can be used to render things independently.
  *
-*/
-declare class CanvasModulate extends Node2D  {
+ */
+declare class CanvasModulate extends Node2D {
+  /**
+   * [CanvasModulate] applies a color tint to all nodes on a canvas. Only one can be used to tint a canvas, but [CanvasLayer]s can be used to render things independently.
+   *
+   */
+  new(): CanvasModulate
+  constructor()
+  static new(): CanvasModulate
 
-  
-/**
- * [CanvasModulate] tints the canvas elements using its assigned [member color].
- *
-*/
-  new(): CanvasModulate; 
-  static "new"(): CanvasModulate 
+  /** The tint color to apply. */
+  color: Color
 
-
-/** The tint color to apply. */
-color: Color;
-
-
-
-  connect<T extends SignalsOf<CanvasModulate>>(signal: T, method: SignalFunction<CanvasModulate[T]>): number;
-
-
-
-
-
-
+  connect<T extends SignalsOf<CanvasModulate>>(
+    signal: T,
+    method: SignalFunction<CanvasModulate[T]>
+  ): number
 }
-

@@ -1,197 +1,404 @@
-
 /**
- * The [Engine] singleton allows you to query and modify the project's run-time parameters, such as frames per second, time scale, and others.
+ * The [Engine] singleton allows you to query and modify the project's run-time parameters, such as frames per second, time scale, and others. It also stores information about the current build of Godot, such as the current version.
  *
-*/
-declare class EngineClass extends Object  {
+ */
+declare class EngineClass extends Object {
+  /**
+   * The [Engine] singleton allows you to query and modify the project's run-time parameters, such as frames per second, time scale, and others. It also stores information about the current build of Godot, such as the current version.
+   *
+   */
+  new(): EngineClass
+  constructor()
+  static new(): EngineClass
 
-  
-/**
- * The [Engine] singleton allows you to query and modify the project's run-time parameters, such as frames per second, time scale, and others.
- *
-*/
-  new(): EngineClass; 
-  static "new"(): EngineClass 
+  /**
+   * The maximum number of frames that can be rendered every second (FPS). A value of `0` means the framerate is uncapped.
+   *
+   * Limiting the FPS can be useful to reduce the host machine's power consumption, which reduces heat, noise emissions, and improves battery life.
+   *
+   * If [member ProjectSettings.display/window/vsync/vsync_mode] is **Enabled** or **Adaptive**, the setting takes precedence and the max FPS number cannot exceed the monitor's refresh rate. See also [method DisplayServer.screen_get_refresh_rate].
+   *
+   * If [member ProjectSettings.display/window/vsync/vsync_mode] is **Enabled**, on monitors with variable refresh rate enabled (G-Sync/FreeSync), using an FPS limit a few frames lower than the monitor's refresh rate will [url=https://blurbusters.com/howto-low-lag-vsync-on/]reduce input lag while avoiding tearing[/url]. At higher refresh rates, the difference between the FPS limit and the monitor refresh rate should be increased to ensure frames to account for timing inaccuracies. The optimal formula for the FPS limit value in this scenario is `r - (r * r) / 3600.0`, where `r` is the monitor's refresh rate.
+   *
+   * **Note:** The actual number of frames per second may still be below this value if the CPU or GPU cannot keep up with the project's logic and rendering.
+   *
+   * **Note:** If [member ProjectSettings.display/window/vsync/vsync_mode] is **Disabled**, limiting the FPS to a high value that can be consistently reached on the system can reduce input lag compared to an uncapped framerate. Since this works by ensuring the GPU load is lower than 100%, this latency reduction is only effective in GPU-bottlenecked scenarios, not CPU-bottlenecked scenarios.
+   *
+   */
+  max_fps: int
 
+  /**
+   * The maximum number of physics steps that can be simulated each rendered frame.
+   *
+   * **Note:** The default value is tuned to prevent expensive physics simulations from triggering even more expensive simulations indefinitely. However, the game will appear to slow down if the rendering FPS is less than `1 / max_physics_steps_per_frame` of [member physics_ticks_per_second]. This occurs even if `delta` is consistently used in physics calculations. To avoid this, increase [member max_physics_steps_per_frame] if you have increased [member physics_ticks_per_second] significantly above its default value.
+   *
+   */
+  max_physics_steps_per_frame: int
 
-/**
- * If `true`, the script is currently running inside the editor. This is useful for `tool` scripts to conditionally draw editor helpers, or prevent accidentally running "game" code that would affect the scene state while in the editor:
- *
- * @example 
- * 
- * if Engine.editor_hint:
- *     draw_gizmos()
- * else:
- *     simulate_physics()
- * @summary 
- * 
- *
- * See [url=https://docs.godotengine.org/en/3.4/tutorials/misc/running_code_in_the_editor.html]Running code in the editor[/url] in the documentation for more information.
- *
- * **Note:** To detect whether the script is run from an editor **build** (e.g. when pressing `F5`), use [method OS.has_feature] with the `"editor"` argument instead. `OS.has_feature("editor")` will evaluate to `true` both when the code is running in the editor and when running the project from the editor, but it will evaluate to `false` when the code is run from an exported project.
- *
-*/
-editor_hint: boolean;
+  /**
+   * How much physics ticks are synchronized with real time. If `0` or less, the ticks are fully synchronized. Higher values cause the in-game clock to deviate more from the real clock, but they smooth out framerate jitters.
+   *
+   * **Note:** The default value of `0.5` should be good enough for most cases; values above `2` could cause the game to react to dropped frames with a noticeable delay and are not recommended.
+   *
+   * **Note:** When using a custom physics interpolation solution, or within a network game, it's recommended to disable the physics jitter fix by setting this property to `0`.
+   *
+   */
+  physics_jitter_fix: float
 
-/** The number of fixed iterations per second. This controls how often physics simulation and [method Node._physics_process] methods are run. This value should generally always be set to [code]60[/code] or above, as Godot doesn't interpolate the physics step. As a result, values lower than [code]60[/code] will look stuttery. This value can be increased to make input more reactive or work around tunneling issues, but keep in mind doing so will increase CPU usage. */
-iterations_per_second: int;
+  /**
+   * The number of fixed iterations per second. This controls how often physics simulation and the [method Node._physics_process] method are run.
+   *
+   * CPU usage scales approximately with the physics tick rate. However, at very low tick rates (usually below 30), physics behavior can break down. Input can also become less responsive at low tick rates as there can be a gap between input being registered, and the response on the next physics tick. High tick rates give more accurate physics simulation, particularly for fast moving objects. For example, racing games may benefit from increasing the tick rate above the default 60.
+   *
+   * See also [member max_fps] and [member ProjectSettings.physics/common/physics_ticks_per_second].
+   *
+   * **Note:** Only [member max_physics_steps_per_frame] physics ticks may be simulated per rendered frame at most. If more physics ticks have to be simulated per rendered frame to keep up with rendering, the project will appear to slow down (even if `delta` is used consistently in physics calculations). Therefore, it is recommended to also increase [member max_physics_steps_per_frame] if increasing [member physics_ticks_per_second] significantly above its default value.
+   *
+   * **Note:** Consider enabling [url=$DOCS_URL/tutorials/physics/interpolation/index.html]physics interpolation[/url] if you change [member physics_ticks_per_second] to a value that is not a multiple of `60`. Using physics interpolation will avoid jittering when the monitor refresh rate and physics update rate don't exactly match.
+   *
+   */
+  physics_ticks_per_second: int
 
-/**
- * Controls how much physics ticks are synchronized with real time. For 0 or less, the ticks are synchronized. Such values are recommended for network games, where clock synchronization matters. Higher values cause higher deviation of the in-game clock and real clock but smooth out framerate jitters. The default value of 0.5 should be fine for most; values above 2 could cause the game to react to dropped frames with a noticeable delay and are not recommended.
- *
- * **Note:** For best results, when using a custom physics interpolation solution, the physics jitter fix should be disabled by setting [member physics_jitter_fix] to `0`.
- *
-*/
-physics_jitter_fix: float;
+  /**
+   * If `false`, stops printing error and warning messages to the console and editor Output log. This can be used to hide error and warning messages during unit test suite runs. This property is equivalent to the [member ProjectSettings.application/run/disable_stderr] project setting.
+   *
+   * **Note:** This property does not impact the editor's Errors tab when running a project from the editor.
+   *
+   * **Warning:** If set to `false` anywhere in the project, important error messages may be hidden even if they are emitted from other scripts. In a `@tool` script, this will also impact the editor itself. Do **not** report bugs before ensuring error messages are enabled (as they are by default).
+   *
+   */
+  print_error_messages: boolean
 
-/**
- * If `false`, stops printing error and warning messages to the console and editor Output log. This can be used to hide error and warning messages during unit test suite runs. This property is equivalent to the [member ProjectSettings.application/run/disable_stderr] project setting.
- *
- * **Warning:** If you set this to `false` anywhere in the project, important error messages may be hidden even if they are emitted from other scripts. If this is set to `false` in a `@tool` script, this will also impact the editor itself. Do **not** report bugs before ensuring error messages are enabled (as they are by default).
- *
- * **Note:** This property does not impact the editor's Errors tab when running a project from the editor.
- *
-*/
-print_error_messages: boolean;
+  /**
+   * If `false`, stops printing messages (for example using [method @GlobalScope.print]) to the console, log files, and editor Output log. This property is equivalent to the [member ProjectSettings.application/run/disable_stdout] project setting.
+   *
+   * **Note:** This does not stop printing errors or warnings produced by scripts to the console or log files, for more details see [member print_error_messages].
+   *
+   */
+  print_to_stdout: boolean
 
-/** The desired frames per second. If the hardware cannot keep up, this setting may not be respected. A value of 0 means no limit. */
-target_fps: int;
+  /**
+   * The speed multiplier at which the in-game clock updates, compared to real time. For example, if set to `2.0` the game runs twice as fast, and if set to `0.5` the game runs half as fast.
+   *
+   * This value affects [Timer], [SceneTreeTimer], and all other simulations that make use of `delta` time (such as [method Node._process] and [method Node._physics_process]).
+   *
+   * **Note:** It's recommended to keep this property above `0.0`, as the game may behave unexpectedly otherwise.
+   *
+   * **Note:** This does not affect audio playback speed. Use [member AudioServer.playback_speed_scale] to adjust audio playback speed independently of [member Engine.time_scale].
+   *
+   * **Note:** This does not automatically adjust [member physics_ticks_per_second]. With values above `1.0` physics simulation may become less precise, as each physics tick will stretch over a larger period of engine time. If you're modifying [member Engine.time_scale] to speed up simulation by a large factor, consider also increasing [member physics_ticks_per_second] to make the simulation more reliable.
+   *
+   */
+  time_scale: float
 
-/** Controls how fast or slow the in-game clock ticks versus the real life one. It defaults to 1.0. A value of 2.0 means the game moves twice as fast as real life, whilst a value of 0.5 means the game moves at half the regular speed. */
-time_scale: float;
+  /**
+   * Captures and returns backtraces from all registered script languages.
+   *
+   * By default, the returned [ScriptBacktrace] will only contain stack frames in editor builds and debug builds. To enable them for release builds as well, you need to enable [member ProjectSettings.debug/settings/gdscript/always_track_call_stacks].
+   *
+   * If [param include_variables] is `true`, the backtrace will also include the names and values of any global variables (e.g. autoload singletons) at the point of the capture, as well as local variables and class member variables at each stack frame. This will however will only be respected when running the game with a debugger attached, like when running the game from the editor. To enable it for export builds as well, you need to enable [member ProjectSettings.debug/settings/gdscript/always_track_local_variables].
+   *
+   * **Warning:** When [param include_variables] is `true`, any captured variables can potentially (e.g. with GDScript backtraces) be their actual values, including any object references. This means that storing such a [ScriptBacktrace] will prevent those objects from being deallocated, so it's generally recommended not to do so.
+   *
+   */
+  capture_script_backtraces(include_variables?: boolean): ScriptBacktrace[]
 
-/**
- * Returns engine author information in a Dictionary.
- *
- * `lead_developers`    - Array of Strings, lead developer names
- *
- * `founders`           - Array of Strings, founder names
- *
- * `project_managers`   - Array of Strings, project manager names
- *
- * `developers`         - Array of Strings, developer names
- *
-*/
-get_author_info(): Dictionary<any, any>;
+  /**
+   * Returns the name of the CPU architecture the Godot binary was built for. Possible return values include `"x86_64"`, `"x86_32"`, `"arm64"`, `"arm32"`, `"rv64"`, `"ppc64"`, `"loongarch64"`, `"wasm64"`, and `"wasm32"`.
+   *
+   * To detect whether the current build is 64-bit, or the type of architecture, don't use the architecture name. Instead, use [method OS.has_feature] to check for the `"64"` feature tag, or tags such as `"x86"` or `"arm"`. See the [url=$DOCS_URL/tutorials/export/feature_tags.html]Feature Tags[/url] documentation for more details.
+   *
+   * **Note:** This method does **not** return the name of the system's CPU architecture (like [method OS.get_processor_name]). For example, when running an `x86_32` Godot binary on an `x86_64` system, the returned value will still be `"x86_32"`.
+   *
+   */
+  get_architecture_name(): string
 
-/**
- * Returns an Array of copyright information Dictionaries.
- *
- * `name`    - String, component name
- *
- * `parts`   - Array of Dictionaries {`files`, `copyright`, `license`} describing subsections of the component
- *
-*/
-get_copyright_info(): any[];
+  /** Returns the engine author information as a [Dictionary], where each entry is an [Array] of strings with the names of notable contributors to the Godot Engine: [code]lead_developers[/code], [code]founders[/code], [code]project_managers[/code], and [code]developers[/code]. */
+  get_author_info(): Dictionary<any, any>
 
-/**
- * Returns a Dictionary of Arrays of donor names.
- *
- * {`platinum_sponsors`, `gold_sponsors`, `silver_sponsors`, `bronze_sponsors`, `mini_sponsors`, `gold_donors`, `silver_donors`, `bronze_donors`}
- *
-*/
-get_donor_info(): Dictionary<any, any>;
+  /**
+   * Returns an [Array] of dictionaries with copyright information for every component of Godot's source code.
+   *
+   * Every [Dictionary] contains a `name` identifier, and a `parts` array of dictionaries. It describes the component in detail with the following entries:
+   *
+   * - `files` - [Array] of file paths from the source code affected by this component;
+   *
+   * - `copyright` - [Array] of owners of this component;
+   *
+   * - `license` - The license applied to this component (such as "[url=https://en.wikipedia.org/wiki/MIT_License#Ambiguity_and_variants]Expat[/url]" or "[url=https://creativecommons.org/licenses/by/4.0/]CC-BY-4.0[/url]").
+   *
+   */
+  get_copyright_info(): Dictionary<any, any>[]
 
-/** Returns the total number of frames drawn. On headless platforms, or if the render loop is disabled with [code]--disable-render-loop[/code] via command line, [method get_frames_drawn] always returns [code]0[/code]. See [method get_idle_frames]. */
-get_frames_drawn(): int;
+  /**
+   * Returns a [Dictionary] of categorized donor names. Each entry is an [Array] of strings:
+   *
+   * {`platinum_sponsors`, `gold_sponsors`, `silver_sponsors`, `bronze_sponsors`, `mini_sponsors`, `gold_donors`, `silver_donors`, `bronze_donors`}
+   *
+   */
+  get_donor_info(): Dictionary<any, any>
 
-/** Returns the frames per second of the running game. */
-get_frames_per_second(): float;
+  /**
+   * Returns the total number of frames drawn since the engine started.
+   *
+   * **Note:** On headless platforms, or if rendering is disabled with `--disable-render-loop` via command line, this method always returns `0`. See also [method get_process_frames].
+   *
+   */
+  get_frames_drawn(): int
 
-/**
- * Returns the total number of frames passed since engine initialization which is advanced on each **idle frame**, regardless of whether the render loop is enabled. See also [method get_frames_drawn] and [method get_physics_frames].
- *
- * [method get_idle_frames] can be used to run expensive logic less often without relying on a [Timer]:
- *
- * @example 
- * 
- * func _process(_delta):
- *     if Engine.get_idle_frames() % 2 == 0:
- *         pass  # Run expensive logic only once every 2 idle (render) frames here.
- * @summary 
- * 
- *
-*/
-get_idle_frames(): int;
+  /** Returns the average frames rendered every second (FPS), also known as the framerate. */
+  get_frames_per_second(): float
 
-/** Returns Dictionary of licenses used by Godot and included third party components. */
-get_license_info(): Dictionary<any, any>;
+  /** Returns a [Dictionary] of licenses used by Godot and included third party components. Each entry is a license name (such as "[url=https://en.wikipedia.org/wiki/MIT_License#Ambiguity_and_variants]Expat[/url]") and its associated text. */
+  get_license_info(): Dictionary<any, any>
 
-/** Returns Godot license text. */
-get_license_text(): string;
+  /** Returns the full Godot license text. */
+  get_license_text(): string
 
-/** Returns the main loop object (see [MainLoop] and [SceneTree]). */
-get_main_loop(): MainLoop;
+  /**
+   * Returns the instance of the [MainLoop]. This is usually the main [SceneTree] and is the same as [method Node.get_tree].
+   *
+   * **Note:** The type instantiated as the main loop can changed with [member ProjectSettings.application/run/main_loop_type].
+   *
+   */
+  get_main_loop(): MainLoop
 
-/**
- * Returns the total number of frames passed since engine initialization which is advanced on each **physics frame**. See also [method get_idle_frames].
- *
- * [method get_physics_frames] can be used to run expensive logic less often without relying on a [Timer]:
- *
- * @example 
- * 
- * func _physics_process(_delta):
- *     if Engine.get_physics_frames() % 2 == 0:
- *         pass  # Run expensive logic only once every 2 physics frames here.
- * @summary 
- * 
- *
-*/
-get_physics_frames(): int;
+  /**
+   * Returns the total number of frames passed since the engine started. This number is increased every **physics frame**. See also [method get_process_frames].
+   *
+   * This method can be used to run expensive logic less often without relying on a [Timer]:
+   *
+   * @example
+   *
+   *
+   * func _physics_process(_delta):
+   * 	if Engine.get_physics_frames() % 2 == 0:
+   * 		pass # Run expensive logic only once every 2 physics frames here.
+   *
+   *
+   * public override void _PhysicsProcess(double delta)
+   * {
+   * 	base._PhysicsProcess(delta);
+   * 	if (Engine.GetPhysicsFrames() % 2 == 0)
+   * 	{
+   * 		// Run expensive logic only once every 2 physics frames here.
+   * 	}
+   * }
+   *
+   * @summary
+   *
+   *
+   */
+  get_physics_frames(): int
 
-/** Returns the fraction through the current physics tick we are at the time of rendering the frame. This can be used to implement fixed timestep interpolation. */
-get_physics_interpolation_fraction(): float;
+  /** Returns the fraction through the current physics tick we are at the time of rendering the frame. This can be used to implement fixed timestep interpolation. */
+  get_physics_interpolation_fraction(): float
 
-/** Returns a global singleton with given [code]name[/code]. Often used for plugins, e.g. [code]GodotPayment[/code] on Android. */
-get_singleton(name: string): Object;
+  /**
+   * Returns the total number of frames passed since the engine started. This number is increased every **process frame**, regardless of whether the render loop is enabled. See also [method get_frames_drawn] and [method get_physics_frames].
+   *
+   * This method can be used to run expensive logic less often without relying on a [Timer]:
+   *
+   * @example
+   *
+   *
+   * func _process(_delta):
+   * 	if Engine.get_process_frames() % 5 == 0:
+   * 		pass # Run expensive logic only once every 5 process (render) frames here.
+   *
+   *
+   * public override void _Process(double delta)
+   * {
+   * 	base._Process(delta);
+   * 	if (Engine.GetProcessFrames() % 5 == 0)
+   * 	{
+   * 		// Run expensive logic only once every 5 process (render) frames here.
+   * 	}
+   * }
+   *
+   * @summary
+   *
+   *
+   */
+  get_process_frames(): int
 
-/**
- * Returns the current engine version information in a Dictionary.
- *
- * `major`    - Holds the major version number as an int
- *
- * `minor`    - Holds the minor version number as an int
- *
- * `patch`    - Holds the patch version number as an int
- *
- * `hex`      - Holds the full version number encoded as a hexadecimal int with one byte (2 places) per number (see example below)
- *
- * `status`   - Holds the status (e.g. "beta", "rc1", "rc2", ... "stable") as a String
- *
- * `build`    - Holds the build name (e.g. "custom_build") as a String
- *
- * `hash`     - Holds the full Git commit hash as a String
- *
- * `year`     - Holds the year the version was released in as an int
- *
- * `string`   - `major` + `minor` + `patch` + `status` + `build` in a single String
- *
- * The `hex` value is encoded as follows, from left to right: one byte for the major, one byte for the minor, one byte for the patch version. For example, "3.1.12" would be `0x03010C`. **Note:** It's still an int internally, and printing it will give you its decimal representation, which is not particularly meaningful. Use hexadecimal literals for easy version comparisons from code:
- *
- * @example 
- * 
- * if Engine.get_version_info().hex >= 0x030200:
- *     # Do things specific to version 3.2 or later
- * else:
- *     # Do things specific to versions before 3.2
- * @summary 
- * 
- *
-*/
-get_version_info(): Dictionary<any, any>;
+  /** Returns an instance of a [ScriptLanguage] with the given [param index]. */
+  get_script_language(index: int): ScriptLanguage
 
-/** Returns [code]true[/code] if a singleton with given [code]name[/code] exists in global scope. */
-has_singleton(name: string): boolean;
+  /** Returns the number of available script languages. Use with [method get_script_language]. */
+  get_script_language_count(): int
 
-/** Returns [code]true[/code] if the game is inside the fixed process and physics phase of the game loop. */
-is_in_physics_frame(): boolean;
+  /**
+   * Returns the global singleton with the given [param name], or `null` if it does not exist. Often used for plugins. See also [method has_singleton] and [method get_singleton_list].
+   *
+   * **Note:** Global singletons are not the same as autoloaded nodes, which are configurable in the project settings.
+   *
+   */
+  get_singleton(name: StringName): Object
 
-  connect<T extends SignalsOf<EngineClass>>(signal: T, method: SignalFunction<EngineClass[T]>): number;
+  /** Returns a list of names of all available global singletons. See also [method get_singleton]. */
+  get_singleton_list(): PackedStringArray
 
+  /**
+   * Returns the current engine version information as a [Dictionary] containing the following entries:
+   *
+   * - `major` - Major version number as an int;
+   *
+   * - `minor` - Minor version number as an int;
+   *
+   * - `patch` - Patch version number as an int;
+   *
+   * - `hex` - Full version encoded as a hexadecimal int with one byte (2 hex digits) per number (see example below);
+   *
+   * - `status` - Status (such as "beta", "rc1", "rc2", "stable", etc.) as a String;
+   *
+   * - `build` - Build name (e.g. "custom_build") as a String;
+   *
+   * - `hash` - Full Git commit hash as a String;
+   *
+   * - `timestamp` - Holds the Git commit date UNIX timestamp in seconds as an int, or `0` if unavailable;
+   *
+   * - `string` - `major`, `minor`, `patch`, `status`, and `build` in a single String.
+   *
+   * The `hex` value is encoded as follows, from left to right: one byte for the major, one byte for the minor, one byte for the patch version. For example, "3.1.12" would be `0x03010C`.
+   *
+   * **Note:** The `hex` value is still an [int] internally, and printing it will give you its decimal representation, which is not particularly meaningful. Use hexadecimal literals for quick version comparisons from code:
+   *
+   * @example
+   *
+   *
+   * if Engine.get_version_info().hex >= 0x040100:
+   * 	pass # Do things specific to version 4.1 or later.
+   * else:
+   * 	pass # Do things specific to versions before 4.1.
+   *
+   *
+   * if ((int)Engine.GetVersionInfo()["hex"] >= 0x040100)
+   * {
+   * 	// Do things specific to version 4.1 or later.
+   * }
+   * else
+   * {
+   * 	// Do things specific to versions before 4.1.
+   * }
+   *
+   * @summary
+   *
+   *
+   */
+  get_version_info(): Dictionary<any, any>
 
+  /** Returns the path to the [MovieWriter]'s output file, or an empty string if the engine wasn't started in Movie Maker mode. The default path can be changed in [member ProjectSettings.editor/movie_writer/movie_file]. */
+  get_write_movie_path(): string
 
+  /**
+   * Returns `true` if a singleton with the given [param name] exists in the global scope. See also [method get_singleton].
+   *
+   * @example
+   *
+   *
+   * print(Engine.has_singleton("OS"))          # Prints true
+   * print(Engine.has_singleton("Engine"))      # Prints true
+   * print(Engine.has_singleton("AudioServer")) # Prints true
+   * print(Engine.has_singleton("Unknown"))     # Prints false
+   *
+   *
+   * GD.Print(Engine.HasSingleton("OS"));          // Prints True
+   * GD.Print(Engine.HasSingleton("Engine"));      // Prints True
+   * GD.Print(Engine.HasSingleton("AudioServer")); // Prints True
+   * GD.Print(Engine.HasSingleton("Unknown"));     // Prints False
+   *
+   * @summary
+   *
+   *
+   * **Note:** Global singletons are not the same as autoloaded nodes, which are configurable in the project settings.
+   *
+   */
+  has_singleton(name: StringName): boolean
 
+  /**
+   * Returns `true` if the script is currently running inside the editor, otherwise returns `false`. This is useful for `@tool` scripts to conditionally draw editor helpers, or prevent accidentally running "game" code that would affect the scene state while in the editor:
+   *
+   * @example
+   *
+   *
+   * if Engine.is_editor_hint():
+   * 	draw_gizmos()
+   * else:
+   * 	simulate_physics()
+   *
+   *
+   * if (Engine.IsEditorHint())
+   * 	DrawGizmos();
+   * else
+   * 	SimulatePhysics();
+   *
+   * @summary
+   *
+   *
+   * See [url=$DOCS_URL/tutorials/plugins/running_code_in_the_editor.html]Running code in the editor[/url] in the documentation for more information.
+   *
+   * **Note:** To detect whether the script is running on an editor **build** (such as when pressing [kbd]F5[/kbd]), use [method OS.has_feature] with the `"editor"` argument instead. `OS.has_feature("editor")` evaluate to `true` both when the script is running in the editor and when running the project from the editor, but returns `false` when run from an exported project.
+   *
+   */
+  is_editor_hint(): boolean
 
+  /** Returns [code]true[/code] if the engine is running embedded in the editor. This is useful to prevent attempting to update window mode or window flags that are not supported when running the project embedded in the editor. */
+  is_embedded_in_editor(): boolean
 
+  /**
+   * Returns `true` if the engine is inside the fixed physics process step of the main loop.
+   *
+   * @example
+   *
+   * func _enter_tree():
+   * 	# Depending on when the node is added to the tree,
+   * 	# prints either "true" or "false".
+   * 	print(Engine.is_in_physics_frame())
+   * func _process(delta):
+   * 	print(Engine.is_in_physics_frame()) # Prints false
+   * func _physics_process(delta):
+   * 	print(Engine.is_in_physics_frame()) # Prints true
+   * @summary
+   *
+   *
+   */
+  is_in_physics_frame(): boolean
+
+  /**
+   * Registers a [ScriptLanguage] instance to be available with `ScriptServer`.
+   *
+   * Returns:
+   *
+   * - [constant OK] on success;
+   *
+   * - [constant ERR_UNAVAILABLE] if `ScriptServer` has reached the limit and cannot register any new language;
+   *
+   * - [constant ERR_ALREADY_EXISTS] if `ScriptServer` already contains a language with similar extension/name/type.
+   *
+   */
+  register_script_language(language: ScriptLanguage): int
+
+  /** Registers the given [Object] [param instance] as a singleton, available globally under [param name]. Useful for plugins. */
+  register_singleton(name: StringName, instance: Object): void
+
+  /**
+   * Unregisters the [ScriptLanguage] instance from `ScriptServer`.
+   *
+   * Returns:
+   *
+   * - [constant OK] on success;
+   *
+   * - [constant ERR_DOES_NOT_EXIST] if the language is not registered in `ScriptServer`.
+   *
+   */
+  unregister_script_language(language: ScriptLanguage): int
+
+  /** Removes the singleton registered under [param name]. The singleton object is [i]not[/i] freed. Only works with user-defined singletons registered with [method register_singleton]. */
+  unregister_singleton(name: StringName): void
+
+  connect<T extends SignalsOf<EngineClass>>(
+    signal: T,
+    method: SignalFunction<EngineClass[T]>
+  ): number
 }
-

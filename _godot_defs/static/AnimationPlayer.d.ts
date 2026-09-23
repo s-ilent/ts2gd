@@ -1,221 +1,358 @@
-
 /**
- * An animation player is used for general-purpose playback of [Animation] resources. It contains a dictionary of animations (referenced by name) and custom blend times between their transitions. Additionally, animations can be played and blended in different channels.
+ * An animation player is used for general-purpose playback of animations. It contains a dictionary of [AnimationLibrary] resources and custom blend times between animation transitions.
  *
- * [AnimationPlayer] is more suited than [Tween] for animations where you know the final values in advance. For example, fading a screen in and out is more easily done with an [AnimationPlayer] node thanks to the animation tools provided by the editor. That particular example can also be implemented with a [Tween] node, but it requires doing everything by code.
+ * Some methods and properties use a single key to reference an animation directly. These keys are formatted as the key for the library, followed by a forward slash, then the key for the animation within the library, for example `"movement/run"`. If the library's key is an empty string (known as the default library), the forward slash is omitted, being the same key used by the library.
  *
- * Updating the target properties of animations occurs at process time.
+ * [AnimationPlayer] is better-suited than [Tween] for more complex animations, for example ones with non-trivial timings. It can also be used over [Tween] if the animation track editor is more convenient than doing it in code.
  *
-*/
-declare class AnimationPlayer extends Node  {
-
-  
-/**
- * An animation player is used for general-purpose playback of [Animation] resources. It contains a dictionary of animations (referenced by name) and custom blend times between their transitions. Additionally, animations can be played and blended in different channels.
+ * Updating the target properties of animations occurs at the process frame.
  *
- * [AnimationPlayer] is more suited than [Tween] for animations where you know the final values in advance. For example, fading a screen in and out is more easily done with an [AnimationPlayer] node thanks to the animation tools provided by the editor. That particular example can also be implemented with a [Tween] node, but it requires doing everything by code.
- *
- * Updating the target properties of animations occurs at process time.
- *
-*/
-  new(): AnimationPlayer; 
-  static "new"(): AnimationPlayer 
+ */
+declare class AnimationPlayer extends AnimationMixer {
+  /**
+   * An animation player is used for general-purpose playback of animations. It contains a dictionary of [AnimationLibrary] resources and custom blend times between animation transitions.
+   *
+   * Some methods and properties use a single key to reference an animation directly. These keys are formatted as the key for the library, followed by a forward slash, then the key for the animation within the library, for example `"movement/run"`. If the library's key is an empty string (known as the default library), the forward slash is omitted, being the same key used by the library.
+   *
+   * [AnimationPlayer] is better-suited than [Tween] for more complex animations, for example ones with non-trivial timings. It can also be used over [Tween] if the animation track editor is more convenient than doing it in code.
+   *
+   * Updating the target properties of animations occurs at the process frame.
+   *
+   */
+  new(): AnimationPlayer
+  constructor()
+  static new(): AnimationPlayer
 
+  /** If playing, the current animation's key, otherwise, the animation last played. When set, this changes the animation, but will not play it unless already playing. See also [member current_animation]. */
+  assigned_animation: StringName
 
-/** If playing, the current animation; otherwise, the animation last played. When set, would change the animation, but would not play it unless currently playing. See also [member current_animation]. */
-assigned_animation: string;
+  /** The key of the animation to play when the scene loads. */
+  autoplay: StringName
 
-/** The name of the animation to play when the scene loads. */
-autoplay: string;
+  /**
+   * The key of the currently playing animation. If no animation is playing, the property's value is an empty string. Changing this value does not restart the animation. See [method play] for more information on playing animations.
+   *
+   * **Note:** While this property appears in the Inspector, it's not meant to be edited, and it's not saved in the scene. This property is mainly used to get the currently playing animation, and internally for animation playback tracks. For more information, see [Animation].
+   *
+   */
+  current_animation: StringName
 
-/**
- * The name of the currently playing animation. If no animation is playing, the property's value is an empty string. Changing this value does not restart the animation. See [method play] for more information on playing animations.
- *
- * **Note:** While this property appears in the inspector, it's not meant to be edited, and it's not saved in the scene. This property is mainly used to get the currently playing animation, and internally for animation playback tracks. For more information, see [Animation].
- *
-*/
-current_animation: string;
+  /** The length (in seconds) of the currently playing animation. */
+  current_animation_length: float
 
-/** The length (in seconds) of the currently being played animation. */
-current_animation_length: float;
+  /** The position (in seconds) of the currently playing animation. */
+  current_animation_position: float
 
-/** The position (in seconds) of the currently playing animation. */
-current_animation_position: float;
+  /**
+   * If `true` and the engine is running in Movie Maker mode (see [MovieWriter]), exits the engine with [method SceneTree.quit] as soon as an animation is done playing in this [AnimationPlayer]. A message is printed when the engine quits for this reason.
+   *
+   * **Note:** This obeys the same logic as the [signal AnimationMixer.animation_finished] signal, so it will not quit the engine if the animation is set to be looping.
+   *
+   */
+  movie_quit_on_finish: boolean
 
-/** The call mode to use for Call Method tracks. */
-method_call_mode: int;
+  /**
+   * If `true`, performs [method AnimationMixer.capture] before playback automatically. This means just [method play_with_capture] is executed with default arguments instead of [method play].
+   *
+   * **Note:** Capture interpolation is only performed if the animation contains a capture track. See also [constant Animation.UPDATE_CAPTURE].
+   *
+   */
+  playback_auto_capture: boolean
 
-/** If [code]true[/code], updates animations in response to process-related notifications. */
-playback_active: boolean;
+  /**
+   * See also [method play_with_capture] and [method AnimationMixer.capture].
+   *
+   * If [member playback_auto_capture_duration] is negative value, the duration is set to the interval between the current position and the first key.
+   *
+   */
+  playback_auto_capture_duration: float
 
-/** The default time in which to blend animations. Ranges from 0 to 4096 with 0.01 precision. */
-playback_default_blend_time: float;
+  /** The ease type of the capture interpolation. See also [enum Tween.EaseType]. */
+  playback_auto_capture_ease_type: int
 
-/** The process notification in which to update animations. */
-playback_process_mode: int;
+  /** The transition type of the capture interpolation. See also [enum Tween.TransitionType]. */
+  playback_auto_capture_transition_type: int
 
-/** The speed scaling ratio. For instance, if this value is 1, then the animation plays at normal speed. If it's 0.5, then it plays at half speed. If it's 2, then it plays at double speed. */
-playback_speed: float;
+  /** The default time in which to blend animations. Ranges from 0 to 4096 with 0.01 precision. */
+  playback_default_blend_time: float
 
-/**
- * This is used by the editor. If set to `true`, the scene will be saved with the effects of the reset animation applied (as if it had been seeked to time 0), then reverted after saving.
- *
- * In other words, the saved scene file will contain the "default pose", as defined by the reset animation, if any, with the editor keeping the values that the nodes had before saving.
- *
-*/
-reset_on_save: boolean;
+  /**
+   * The speed scaling ratio. For example, if this value is `1`, then the animation plays at normal speed. If it's `0.5`, then it plays at half speed. If it's `2`, then it plays at double speed.
+   *
+   * If set to a negative value, the animation is played in reverse. If set to `0`, the animation will not advance.
+   *
+   */
+  speed_scale: float
 
-/** The node from which node path references will travel. */
-root_node: NodePathType;
+  /** Returns the key of the animation which is queued to play after the [param animation_from] animation. */
+  animation_get_next(animation_from: StringName): StringName
 
-/** Adds [code]animation[/code] to the player accessible with the key [code]name[/code]. */
-add_animation(name: string, animation: Animation): int;
+  /** Triggers the [param animation_to] animation when the [param animation_from] animation completes. */
+  animation_set_next(animation_from: StringName, animation_to: StringName): void
 
-/** Shifts position in the animation timeline and immediately updates the animation. [code]delta[/code] is the time in seconds to shift. Events between the current frame and [code]delta[/code] are handled. */
-advance(delta: float): void;
+  /** Clears all queued, unplayed animations. */
+  clear_queue(): void
 
-/** Returns the name of the next animation in the queue. */
-animation_get_next(anim_from: string): string;
+  /** Returns the blend time (in seconds) between two animations, referenced by their keys. */
+  get_blend_time(animation_from: StringName, animation_to: StringName): float
 
-/** Triggers the [code]anim_to[/code] animation when the [code]anim_from[/code] animation completes. */
-animation_set_next(anim_from: string, anim_to: string): void;
+  /** Returns the call mode used for "Call Method" tracks. */
+  get_method_call_mode(): int
 
-/** [AnimationPlayer] caches animated nodes. It may not notice if a node disappears; [method clear_caches] forces it to update the cache again. */
-clear_caches(): void;
+  /**
+   * Returns the actual playing speed of current animation or `0` if not playing. This speed is the [member speed_scale] property multiplied by `custom_speed` argument specified when calling the [method play] method.
+   *
+   * Returns a negative value if the current animation is playing backwards.
+   *
+   */
+  get_playing_speed(): float
 
-/** Clears all queued, unplayed animations. */
-clear_queue(): void;
+  /** Returns the process notification in which to update animations. */
+  get_process_callback(): int
 
-/** Returns the name of [code]animation[/code] or an empty string if not found. */
-find_animation(animation: Animation): string;
+  /** Returns a list of the animation keys that are currently queued to play. */
+  get_queue(): StringName[]
 
-/** Returns the [Animation] with key [code]name[/code] or [code]null[/code] if not found. */
-get_animation(name: string): Animation;
+  /** Returns the node which node path references will travel from. */
+  get_root(): NodePathType
 
-/** Returns the list of stored animation names. */
-get_animation_list(): PoolStringArray;
+  /** Returns the end time of the section currently being played. */
+  get_section_end_time(): float
 
-/** Gets the blend time (in seconds) between two animations, referenced by their names. */
-get_blend_time(anim_from: string, anim_to: string): float;
+  /** Returns the start time of the section currently being played. */
+  get_section_start_time(): float
 
-/** Gets the actual playing speed of current animation or 0 if not playing. This speed is the [member playback_speed] property multiplied by [code]custom_speed[/code] argument specified when calling the [method play] method. */
-get_playing_speed(): float;
+  /** Returns [code]true[/code] if an animation is currently playing with a section. */
+  has_section(): boolean
 
-/** Returns a list of the animation names that are currently queued to play. */
-get_queue(): PoolStringArray;
+  /**
+   * Returns `true` if the an animation is currently active. An animation is active if it was played by calling [method play] and was not finished yet, or was stopped by calling [method stop].
+   *
+   * This can be used to check whether an animation is currently paused or stopped.
+   *
+   * @example
+   *
+   * var is_paused = not is_playing() and is_animation_active()
+   * var is_stopped = not is_playing() and not is_animation_active()
+   * @summary
+   *
+   *
+   */
+  is_animation_active(): boolean
 
-/** Returns [code]true[/code] if the [AnimationPlayer] stores an [Animation] with key [code]name[/code]. */
-has_animation(name: string): boolean;
+  /** Returns [code]true[/code] if an animation is currently playing (even if [member speed_scale] and/or [code]custom_speed[/code] are [code]0[/code]). */
+  is_playing(): boolean
 
-/** Returns [code]true[/code] if playing an animation. */
-is_playing(): boolean;
+  /**
+   * Pauses the currently playing animation. The [member current_animation_position] will be kept and calling [method play] or [method play_backwards] without arguments or with the same animation name as [member assigned_animation] will resume the animation.
+   *
+   * See also [method stop].
+   *
+   */
+  pause(): void
 
-/**
- * Plays the animation with key `name`. Custom blend times and speed can be set. If `custom_speed` is negative and `from_end` is `true`, the animation will play backwards (which is equivalent to calling [method play_backwards]).
- *
- * The [AnimationPlayer] keeps track of its current or last played animation with [member assigned_animation]. If this method is called with that same animation `name`, or with no `name` parameter, the assigned animation will resume playing if it was paused, or restart if it was stopped (see [method stop] for both pause and stop). If the animation was already playing, it will keep playing.
- *
- * **Note:** The animation will be updated the next time the [AnimationPlayer] is processed. If other variables are updated at the same time this is called, they may be updated too early. To perform the update immediately, call `advance(0)`.
- *
-*/
-play(name?: string, custom_blend?: float, custom_speed?: float, from_end?: boolean): void;
+  /**
+   * Plays the animation with key [param name]. Custom blend times and speed can be set.
+   *
+   * The [param from_end] option only affects when switching to a new animation track, or if the same track but at the start or end. It does not affect resuming playback that was paused in the middle of an animation. If [param custom_speed] is negative and [param from_end] is `true`, the animation will play backwards (which is equivalent to calling [method play_backwards]).
+   *
+   * The [AnimationPlayer] keeps track of its current or last played animation with [member assigned_animation]. If this method is called with that same animation [param name], or with no [param name] parameter, the assigned animation will resume playing if it was paused.
+   *
+   * **Note:** The animation will be updated the next time the [AnimationPlayer] is processed. If other variables are updated at the same time this is called, they may be updated too early. To perform the update immediately, call `advance(0)`.
+   *
+   */
+  play(
+    name?: StringName,
+    custom_blend?: float,
+    custom_speed?: float,
+    from_end?: boolean
+  ): void
 
-/**
- * Plays the animation with key `name` in reverse.
- *
- * This method is a shorthand for [method play] with `custom_speed = -1.0` and `from_end = true`, so see its description for more information.
- *
-*/
-play_backwards(name?: string, custom_blend?: float): void;
+  /**
+   * Plays the animation with key [param name] in reverse.
+   *
+   * This method is a shorthand for [method play] with `custom_speed = -1.0` and `from_end = true`, so see its description for more information.
+   *
+   */
+  play_backwards(name?: StringName, custom_blend?: float): void
 
-/**
- * Queues an animation for playback once the current one is done.
- *
- * **Note:** If a looped animation is currently playing, the queued animation will never play unless the looped animation is stopped somehow.
- *
-*/
-queue(name: string): void;
+  /**
+   * Plays the animation with key [param name] and the section starting from [param start_time] and ending on [param end_time]. See also [method play].
+   *
+   * Setting [param start_time] to a value outside the range of the animation means the start of the animation will be used instead, and setting [param end_time] to a value outside the range of the animation means the end of the animation will be used instead. [param start_time] cannot be equal to [param end_time].
+   *
+   */
+  play_section(
+    name?: StringName,
+    start_time?: float,
+    end_time?: float,
+    custom_blend?: float,
+    custom_speed?: float,
+    from_end?: boolean
+  ): void
 
-/** Removes the animation with key [code]name[/code]. */
-remove_animation(name: string): void;
+  /**
+   * Plays the animation with key [param name] and the section starting from [param start_time] and ending on [param end_time] in reverse.
+   *
+   * This method is a shorthand for [method play_section] with `custom_speed = -1.0` and `from_end = true`, see its description for more information.
+   *
+   */
+  play_section_backwards(
+    name?: StringName,
+    start_time?: float,
+    end_time?: float,
+    custom_blend?: float
+  ): void
 
-/** Renames an existing animation with key [code]name[/code] to [code]newname[/code]. */
-rename_animation(name: string, newname: string): void;
+  /**
+   * Plays the animation with key [param name] and the section starting from [param start_marker] and ending on [param end_marker].
+   *
+   * If the start marker is empty, the section starts from the beginning of the animation. If the end marker is empty, the section ends on the end of the animation. See also [method play].
+   *
+   */
+  play_section_with_markers(
+    name?: StringName,
+    start_marker?: StringName,
+    end_marker?: StringName,
+    custom_blend?: float,
+    custom_speed?: float,
+    from_end?: boolean
+  ): void
 
-/** Seeks the animation to the [code]seconds[/code] point in time (in seconds). If [code]update[/code] is [code]true[/code], the animation updates too, otherwise it updates at process time. Events between the current frame and [code]seconds[/code] are skipped. */
-seek(seconds: float, update?: boolean): void;
+  /**
+   * Plays the animation with key [param name] and the section starting from [param start_marker] and ending on [param end_marker] in reverse.
+   *
+   * This method is a shorthand for [method play_section_with_markers] with `custom_speed = -1.0` and `from_end = true`, see its description for more information.
+   *
+   */
+  play_section_with_markers_backwards(
+    name?: StringName,
+    start_marker?: StringName,
+    end_marker?: StringName,
+    custom_blend?: float
+  ): void
 
-/** Specifies a blend time (in seconds) between two animations, referenced by their names. */
-set_blend_time(anim_from: string, anim_to: string, sec: float): void;
+  /**
+   * See also [method AnimationMixer.capture].
+   *
+   * You can use this method to use more detailed options for capture than those performed by [member playback_auto_capture]. When [member playback_auto_capture] is `false`, this method is almost the same as the following:
+   *
+   * @example
+   *
+   * capture(name, duration, trans_type, ease_type)
+   * play(name, custom_blend, custom_speed, from_end)
+   * @summary
+   *
+   *
+   * If [param name] is blank, it specifies [member assigned_animation].
+   *
+   * If [param duration] is a negative value, the duration is set to the interval between the current position and the first key, when [param from_end] is `true`, uses the interval between the current position and the last key instead.
+   *
+   * **Note:** The [param duration] takes [member speed_scale] into account, but [param custom_speed] does not, because the capture cache is interpolated with the blend result and the result may contain multiple animations.
+   *
+   */
+  play_with_capture(
+    name?: StringName,
+    duration?: float,
+    custom_blend?: float,
+    custom_speed?: float,
+    from_end?: boolean,
+    trans_type?: int,
+    ease_type?: int
+  ): void
 
-/**
- * Stops or pauses the currently playing animation. If `reset` is `true`, the animation position is reset to `0` and the playback speed is reset to `1.0`.
- *
- * If `reset` is `false`, the [member current_animation_position] will be kept and calling [method play] or [method play_backwards] without arguments or with the same animation name as [member assigned_animation] will resume the animation.
- *
-*/
-stop(reset?: boolean): void;
+  /**
+   * Queues an animation for playback once the current animation and all previously queued animations are done.
+   *
+   * **Note:** If a looped animation is currently playing, the queued animation will never play unless the looped animation is stopped somehow.
+   *
+   */
+  queue(name: StringName): void
 
-  connect<T extends SignalsOf<AnimationPlayer>>(signal: T, method: SignalFunction<AnimationPlayer[T]>): number;
+  /** Resets the current section. Does nothing if a section has not been set. */
+  reset_section(): void
 
+  /**
+   * Seeks the animation to the [param seconds] point in time (in seconds). If [param update] is `true`, the animation updates too, otherwise it updates at process time. Events between the current frame and [param seconds] are skipped.
+   *
+   * If [param update_only] is `true`, the method / audio / animation playback tracks will not be processed.
+   *
+   * **Note:** Seeking to the end of the animation doesn't emit [signal AnimationMixer.animation_finished]. If you want to skip animation and emit the signal, use [method AnimationMixer.advance].
+   *
+   */
+  seek(seconds: float, update?: boolean, update_only?: boolean): void
 
+  /** Specifies a blend time (in seconds) between two animations, referenced by their keys. */
+  set_blend_time(
+    animation_from: StringName,
+    animation_to: StringName,
+    sec: float
+  ): void
 
-/**
- * Process animation during the physics process. This is especially useful when animating physics bodies.
- *
-*/
-static ANIMATION_PROCESS_PHYSICS: any;
+  /** Sets the call mode used for "Call Method" tracks. */
+  set_method_call_mode(mode: int): void
 
-/**
- * Process animation during the idle process.
- *
-*/
-static ANIMATION_PROCESS_IDLE: any;
+  /** Sets the process notification in which to update animations. */
+  set_process_callback(mode: int): void
 
-/**
- * Do not process animation. Use [method advance] to process the animation manually.
- *
-*/
-static ANIMATION_PROCESS_MANUAL: any;
+  /** Sets the node which node path references will travel from. */
+  set_root(path: NodePathType): void
 
-/**
- * Batch method calls during the animation process, then do the calls after events are processed. This avoids bugs involving deleting nodes or modifying the AnimationPlayer while playing.
- *
-*/
-static ANIMATION_METHOD_CALL_DEFERRED: any;
+  /** Changes the start and end times of the section being played. The current playback position will be clamped within the new section. See also [method play_section]. */
+  set_section(start_time?: float, end_time?: float): void
 
-/**
- * Make method calls immediately when reached in the animation.
- *
-*/
-static ANIMATION_METHOD_CALL_IMMEDIATE: any;
+  /**
+   * Changes the start and end markers of the section being played. The current playback position will be clamped within the new section. See also [method play_section_with_markers].
+   *
+   * If the argument is empty, the section uses the beginning or end of the animation. If both are empty, it means that the section is not set.
+   *
+   */
+  set_section_with_markers(
+    start_marker?: StringName,
+    end_marker?: StringName
+  ): void
 
+  /**
+   * Stops the currently playing animation. The animation position is reset to `0` and the `custom_speed` is reset to `1.0`. See also [method pause].
+   *
+   * If [param keep_state] is `true`, the animation state is not updated visually.
+   *
+   * **Note:** The method / audio / animation playback tracks will not be processed by this method.
+   *
+   */
+  stop(keep_state?: boolean): void
 
-/**
- * Emitted when a queued animation plays after the previous animation was finished. See [method queue].
- *
- * **Note:** The signal is not emitted when the animation is changed via [method play] or from [AnimationTree].
- *
-*/
-$animation_changed: Signal<(old_name: string, new_name: string) => void>
+  connect<T extends SignalsOf<AnimationPlayer>>(
+    signal: T,
+    method: SignalFunction<AnimationPlayer[T]>
+  ): number
 
-/**
- * Notifies when an animation finished playing.
- *
-*/
-$animation_finished: Signal<(anim_name: string) => void>
+  /** No documentation provided. */
+  static ANIMATION_PROCESS_PHYSICS: any
 
-/**
- * Notifies when an animation starts playing.
- *
-*/
-$animation_started: Signal<(anim_name: string) => void>
+  /** No documentation provided. */
+  static ANIMATION_PROCESS_IDLE: any
 
-/**
- * Notifies when the caches have been cleared, either automatically, or manually via [method clear_caches].
- *
-*/
-$caches_cleared: Signal<() => void>
+  /** No documentation provided. */
+  static ANIMATION_PROCESS_MANUAL: any
 
+  /** No documentation provided. */
+  static ANIMATION_METHOD_CALL_DEFERRED: any
+
+  /** No documentation provided. */
+  static ANIMATION_METHOD_CALL_IMMEDIATE: any
+
+  /**
+   * Emitted when a queued animation plays after the previous animation finished. See also [method AnimationPlayer.queue].
+   *
+   * **Note:** The signal is not emitted when the animation is changed via [method AnimationPlayer.play] or by an [AnimationTree].
+   *
+   */
+  $animation_changed: Signal<() => void>
+
+  /**
+   * Emitted when [member current_animation] changes.
+   *
+   */
+  $current_animation_changed: Signal<() => void>
 }
-

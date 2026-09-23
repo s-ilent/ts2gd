@@ -1,153 +1,110 @@
-
 /**
- * Casts light in a 2D environment. Light is defined by a (usually grayscale) texture, a color, an energy value, a mode (see constants), and various other parameters (range and shadows-related).
+ * Casts light in a 2D environment. A light is defined as a color, an energy value, a mode (see constants), and various other parameters (range and shadows-related).
  *
- * **Note:** Light2D can also be used as a mask.
- *
-*/
-declare class Light2D extends Node2D  {
+ */
+declare class Light2D extends Node2D {
+  /**
+   * Casts light in a 2D environment. A light is defined as a color, an energy value, a mode (see constants), and various other parameters (range and shadows-related).
+   *
+   */
+  new(): Light2D
+  constructor()
+  static new(): Light2D
 
-  
-/**
- * Casts light in a 2D environment. Light is defined by a (usually grayscale) texture, a color, an energy value, a mode (see constants), and various other parameters (range and shadows-related).
- *
- * **Note:** Light2D can also be used as a mask.
- *
-*/
-  new(): Light2D; 
-  static "new"(): Light2D 
+  /** The Light2D's blend mode. */
+  blend_mode: int
 
+  /** The Light2D's [Color]. */
+  color: Color
 
-/** The Light2D's [Color]. */
-color: Color;
+  /** If [code]true[/code], Light2D will only appear when editing the scene. */
+  editor_only: boolean
 
-/** If [code]true[/code], Light2D will only appear when editing the scene. */
-editor_only: boolean;
+  /** If [code]true[/code], Light2D will emit light. */
+  enabled: boolean
 
-/** If [code]true[/code], Light2D will emit light. */
-enabled: boolean;
+  /** The Light2D's energy value. The larger the value, the stronger the light. */
+  energy: float
 
-/** The Light2D's energy value. The larger the value, the stronger the light. */
-energy: float;
+  /**
+   * The layer mask. Only objects with a matching [member CanvasItem.light_mask] will be affected by the Light2D. See also [member shadow_item_cull_mask], which affects which objects can cast shadows.
+   *
+   * **Note:** [member range_item_cull_mask] is ignored by [DirectionalLight2D], which will always light a 2D node regardless of the 2D node's [member CanvasItem.light_mask].
+   *
+   */
+  range_item_cull_mask: int
 
-/** The Light2D's mode. See [enum Mode] constants for values. */
-mode: int;
+  /** Maximum layer value of objects that are affected by the Light2D. */
+  range_layer_max: int
 
-/** The offset of the Light2D's [code]texture[/code]. */
-offset: Vector2;
+  /** Minimum layer value of objects that are affected by the Light2D. */
+  range_layer_min: int
 
-/** The height of the Light2D. Used with 2D normal mapping. */
-range_height: float;
+  /** Maximum [code]z[/code] value of objects that are affected by the Light2D. */
+  range_z_max: int
 
-/** The layer mask. Only objects with a matching mask will be affected by the Light2D. */
-range_item_cull_mask: int;
+  /** Minimum [code]z[/code] value of objects that are affected by the Light2D. */
+  range_z_min: int
 
-/** Maximum layer value of objects that are affected by the Light2D. */
-range_layer_max: int;
+  /** [Color] of shadows cast by the Light2D. */
+  shadow_color: Color
 
-/** Minimum layer value of objects that are affected by the Light2D. */
-range_layer_min: int;
+  /** If [code]true[/code], the Light2D will cast shadows. */
+  shadow_enabled: boolean
 
-/** Maximum [code]z[/code] value of objects that are affected by the Light2D. */
-range_z_max: int;
+  /** Shadow filter type. */
+  shadow_filter: int
 
-/** Minimum [code]z[/code] value of objects that are affected by the Light2D. */
-range_z_min: int;
+  /** Smoothing value for shadows. Higher values will result in softer shadows, at the cost of visible streaks that can appear in shadow rendering. [member shadow_filter_smooth] only has an effect if [member shadow_filter] is [constant SHADOW_FILTER_PCF5] or [constant SHADOW_FILTER_PCF13]. */
+  shadow_filter_smooth: float
 
-/** Shadow buffer size. */
-shadow_buffer_size: int;
+  /** The shadow mask. Used with [LightOccluder2D] to cast shadows. Only occluders with a matching [member CanvasItem.light_mask] will cast shadows. See also [member range_item_cull_mask], which affects which objects can [i]receive[/i] the light. */
+  shadow_item_cull_mask: int
 
-/** [Color] of shadows cast by the Light2D. */
-shadow_color: Color;
+  /** Returns the light's height, which is used in 2D normal mapping. See [member PointLight2D.height] and [member DirectionalLight2D.height]. */
+  get_height(): float
 
-/** If [code]true[/code], the Light2D will cast shadows. */
-shadow_enabled: boolean;
+  /** Sets the light's height, which is used in 2D normal mapping. See [member PointLight2D.height] and [member DirectionalLight2D.height]. */
+  set_height(height: float): void
 
-/** Shadow filter type. See [enum ShadowFilter] for possible values. */
-shadow_filter: int;
+  connect<T extends SignalsOf<Light2D>>(
+    signal: T,
+    method: SignalFunction<Light2D[T]>
+  ): number
 
-/** Smoothing value for shadows. */
-shadow_filter_smooth: float;
+  /**
+   * No filter applies to the shadow map. This provides hard shadow edges and is the fastest to render. See [member shadow_filter].
+   *
+   */
+  static SHADOW_FILTER_NONE: any
 
-/** Smooth shadow gradient length. */
-shadow_gradient_length: float;
+  /**
+   * Percentage closer filtering (5 samples) applies to the shadow map. This is slower compared to hard shadow rendering. See [member shadow_filter].
+   *
+   */
+  static SHADOW_FILTER_PCF5: any
 
-/** The shadow mask. Used with [LightOccluder2D] to cast shadows. Only occluders with a matching light mask will cast shadows. */
-shadow_item_cull_mask: int;
+  /**
+   * Percentage closer filtering (13 samples) applies to the shadow map. This is the slowest shadow filtering mode, and should be used sparingly. See [member shadow_filter].
+   *
+   */
+  static SHADOW_FILTER_PCF13: any
 
-/** [Texture] used for the Light2D's appearance. */
-texture: Texture;
+  /**
+   * Adds the value of pixels corresponding to the Light2D to the values of pixels under it. This is the common behavior of a light.
+   *
+   */
+  static BLEND_MODE_ADD: any
 
-/** The [code]texture[/code]'s scale factor. */
-texture_scale: float;
+  /**
+   * Subtracts the value of pixels corresponding to the Light2D to the values of pixels under it, resulting in inversed light effect.
+   *
+   */
+  static BLEND_MODE_SUB: any
 
-
-
-  connect<T extends SignalsOf<Light2D>>(signal: T, method: SignalFunction<Light2D[T]>): number;
-
-
-
-/**
- * Adds the value of pixels corresponding to the Light2D to the values of pixels under it. This is the common behavior of a light.
- *
-*/
-static MODE_ADD: any;
-
-/**
- * Subtracts the value of pixels corresponding to the Light2D to the values of pixels under it, resulting in inversed light effect.
- *
-*/
-static MODE_SUB: any;
-
-/**
- * Mix the value of pixels corresponding to the Light2D to the values of pixels under it by linear interpolation.
- *
-*/
-static MODE_MIX: any;
-
-/**
- * The light texture of the Light2D is used as a mask, hiding or revealing parts of the screen underneath depending on the value of each pixel of the light (mask) texture.
- *
-*/
-static MODE_MASK: any;
-
-/**
- * No filter applies to the shadow map. See [member shadow_filter].
- *
-*/
-static SHADOW_FILTER_NONE: any;
-
-/**
- * Percentage closer filtering (3 samples) applies to the shadow map. See [member shadow_filter].
- *
-*/
-static SHADOW_FILTER_PCF3: any;
-
-/**
- * Percentage closer filtering (5 samples) applies to the shadow map. See [member shadow_filter].
- *
-*/
-static SHADOW_FILTER_PCF5: any;
-
-/**
- * Percentage closer filtering (7 samples) applies to the shadow map. See [member shadow_filter].
- *
-*/
-static SHADOW_FILTER_PCF7: any;
-
-/**
- * Percentage closer filtering (9 samples) applies to the shadow map. See [member shadow_filter].
- *
-*/
-static SHADOW_FILTER_PCF9: any;
-
-/**
- * Percentage closer filtering (13 samples) applies to the shadow map. See [member shadow_filter].
- *
-*/
-static SHADOW_FILTER_PCF13: any;
-
-
-
+  /**
+   * Mix the value of pixels corresponding to the Light2D to the values of pixels under it by linear interpolation.
+   *
+   */
+  static BLEND_MODE_MIX: any
 }
-

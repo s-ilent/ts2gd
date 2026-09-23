@@ -1,40 +1,34 @@
-
 /**
  * The X509Certificate class represents an X509 certificate. Certificates can be loaded and saved like any other [Resource].
  *
- * They can be used as the server certificate in [method StreamPeerSSL.accept_stream] (along with the proper [CryptoKey]), and to specify the only certificate that should be accepted when connecting to an SSL server via [method StreamPeerSSL.connect_to_stream].
+ * They can be used as the server certificate in [method StreamPeerTLS.accept_stream] (along with the proper [CryptoKey]), and to specify the only certificate that should be accepted when connecting to a TLS server via [method StreamPeerTLS.connect_to_stream].
  *
- * **Note:** Not available in HTML5 exports.
- *
-*/
-declare class X509Certificate extends Resource  {
+ */
+declare class X509Certificate extends Resource {
+  /**
+   * The X509Certificate class represents an X509 certificate. Certificates can be loaded and saved like any other [Resource].
+   *
+   * They can be used as the server certificate in [method StreamPeerTLS.accept_stream] (along with the proper [CryptoKey]), and to specify the only certificate that should be accepted when connecting to a TLS server via [method StreamPeerTLS.connect_to_stream].
+   *
+   */
+  new(): X509Certificate
+  constructor()
+  static new(): X509Certificate
 
-  
-/**
- * The X509Certificate class represents an X509 certificate. Certificates can be loaded and saved like any other [Resource].
- *
- * They can be used as the server certificate in [method StreamPeerSSL.accept_stream] (along with the proper [CryptoKey]), and to specify the only certificate that should be accepted when connecting to an SSL server via [method StreamPeerSSL.connect_to_stream].
- *
- * **Note:** Not available in HTML5 exports.
- *
-*/
-  new(): X509Certificate; 
-  static "new"(): X509Certificate 
+  /** Loads a certificate from [param path] ("*.crt" file). */
+  load(path: string): int
 
+  /** Loads a certificate from the given [param string]. */
+  load_from_string(string: string): int
 
+  /** Saves a certificate to the given [param path] (should be a "*.crt" file). */
+  save(path: string): int
 
-/** Loads a certificate from [code]path[/code] ("*.crt" file). */
-load(path: string): int;
+  /** Returns a string representation of the certificate, or an empty string if the certificate is invalid. */
+  save_to_string(): string
 
-/** Saves a certificate to the given [code]path[/code] (should be a "*.crt" file). */
-save(path: string): int;
-
-  connect<T extends SignalsOf<X509Certificate>>(signal: T, method: SignalFunction<X509Certificate[T]>): number;
-
-
-
-
-
-
+  connect<T extends SignalsOf<X509Certificate>>(
+    signal: T,
+    method: SignalFunction<X509Certificate[T]>
+  ): number
 }
-

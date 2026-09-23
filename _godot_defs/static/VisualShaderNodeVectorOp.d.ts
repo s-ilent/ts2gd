@@ -1,101 +1,99 @@
-
 /**
  * A visual shader node for use of vector operators. Operates on vector `a` and vector `b`.
  *
-*/
-declare class VisualShaderNodeVectorOp extends VisualShaderNode  {
+ */
+declare class VisualShaderNodeVectorOp extends VisualShaderNodeVectorBase {
+  /**
+   * A visual shader node for use of vector operators. Operates on vector `a` and vector `b`.
+   *
+   */
+  new(): VisualShaderNodeVectorOp
+  constructor()
+  static new(): VisualShaderNodeVectorOp
 
-  
-/**
- * A visual shader node for use of vector operators. Operates on vector `a` and vector `b`.
- *
-*/
-  new(): VisualShaderNodeVectorOp; 
-  static "new"(): VisualShaderNodeVectorOp 
+  /** The operator to be used. */
+  operator: int
 
+  connect<T extends SignalsOf<VisualShaderNodeVectorOp>>(
+    signal: T,
+    method: SignalFunction<VisualShaderNodeVectorOp[T]>
+  ): number
 
-/** The operator to be used. See [enum Operator] for options. */
-operator: int;
+  /**
+   * Adds two vectors.
+   *
+   */
+  static OP_ADD: any
 
+  /**
+   * Subtracts a vector from a vector.
+   *
+   */
+  static OP_SUB: any
 
+  /**
+   * Multiplies two vectors.
+   *
+   */
+  static OP_MUL: any
 
-  connect<T extends SignalsOf<VisualShaderNodeVectorOp>>(signal: T, method: SignalFunction<VisualShaderNodeVectorOp[T]>): number;
+  /**
+   * Divides vector by vector.
+   *
+   */
+  static OP_DIV: any
 
+  /**
+   * Returns the remainder of the two vectors.
+   *
+   */
+  static OP_MOD: any
 
+  /**
+   * Returns the value of the first parameter raised to the power of the second, for each component of the vectors.
+   *
+   */
+  static OP_POW: any
 
-/**
- * Adds two vectors.
- *
-*/
-static OP_ADD: any;
+  /**
+   * Returns the greater of two values, for each component of the vectors.
+   *
+   */
+  static OP_MAX: any
 
-/**
- * Subtracts a vector from a vector.
- *
-*/
-static OP_SUB: any;
+  /**
+   * Returns the lesser of two values, for each component of the vectors.
+   *
+   */
+  static OP_MIN: any
 
-/**
- * Multiplies two vectors.
- *
-*/
-static OP_MUL: any;
+  /**
+   * Calculates the cross product of two vectors.
+   *
+   */
+  static OP_CROSS: any
 
-/**
- * Divides vector by vector.
- *
-*/
-static OP_DIV: any;
+  /**
+   * Returns the arc-tangent of the parameters.
+   *
+   */
+  static OP_ATAN2: any
 
-/**
- * Returns the remainder of the two vectors.
- *
-*/
-static OP_MOD: any;
+  /**
+   * Returns the vector that points in the direction of reflection. `a` is incident vector and `b` is the normal vector.
+   *
+   */
+  static OP_REFLECT: any
 
-/**
- * Returns the value of the first parameter raised to the power of the second, for each component of the vectors.
- *
-*/
-static OP_POW: any;
+  /**
+   * Vector step operator. Returns `0.0` if `a` is smaller than `b` and `1.0` otherwise.
+   *
+   */
+  static OP_STEP: any
 
-/**
- * Returns the greater of two values, for each component of the vectors.
- *
-*/
-static OP_MAX: any;
-
-/**
- * Returns the lesser of two values, for each component of the vectors.
- *
-*/
-static OP_MIN: any;
-
-/**
- * Calculates the cross product of two vectors.
- *
-*/
-static OP_CROSS: any;
-
-/**
- * Returns the arc-tangent of the parameters.
- *
-*/
-static OP_ATAN2: any;
-
-/**
- * Returns the vector that points in the direction of reflection. `a` is incident vector and `b` is the normal vector.
- *
-*/
-static OP_REFLECT: any;
-
-/**
- * Vector step operator. Returns `0.0` if `a` is smaller than `b` and `1.0` otherwise.
- *
-*/
-static OP_STEP: any;
-
-
-
+  /**
+   * Represents the size of the [enum Operator] enum.
+   *
+   */
+  static OP_ENUM_SIZE: any
 }
-

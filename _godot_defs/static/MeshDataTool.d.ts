@@ -1,4 +1,3 @@
-
 /**
  * MeshDataTool provides access to individual vertices in a [Mesh]. It allows users to read and edit vertex data of meshes. It also creates an array of faces and edges.
  *
@@ -6,216 +5,266 @@
  *
  * Below is an example of how MeshDataTool may be used.
  *
- * @example 
- * 
+ * @example
+ *
+ *
  * var mesh = ArrayMesh.new()
- * mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, CubeMesh.new().get_mesh_arrays())
+ * mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, BoxMesh.new().get_mesh_arrays())
  * var mdt = MeshDataTool.new()
  * mdt.create_from_surface(mesh, 0)
  * for i in range(mdt.get_vertex_count()):
- *     var vertex = mdt.get_vertex(i)
- *     # In this example we extend the mesh by one unit, which results in separated faces as it is flat shaded.
- *     vertex += mdt.get_vertex_normal(i)
- *     # Save your change.
- *     mdt.set_vertex(i, vertex)
- * mesh.surface_remove(0)
+ * 	var vertex = mdt.get_vertex(i)
+ * 	# In this example we extend the mesh by one unit, which results in separated faces as it is flat shaded.
+ * 	vertex += mdt.get_vertex_normal(i)
+ * 	# Save your change.
+ * 	mdt.set_vertex(i, vertex)
+ * mesh.clear_surfaces()
  * mdt.commit_to_surface(mesh)
  * var mi = MeshInstance.new()
  * mi.mesh = mesh
  * add_child(mi)
- * @summary 
- * 
  *
- * See also [ArrayMesh], [ImmediateGeometry] and [SurfaceTool] for procedural geometry generation.
  *
- * **Note:** Godot uses clockwise [url=https://learnopengl.com/Advanced-OpenGL/Face-culling]winding order[/url] for front faces of triangle primitive modes.
+ * var mesh = new ArrayMesh();
+ * mesh.AddSurfaceFromArrays(Mesh.PrimitiveType.Triangles, new BoxMesh().GetMeshArrays());
+ * var mdt = new MeshDataTool();
+ * mdt.CreateFromSurface(mesh, 0);
+ * for (var i = 0; i < mdt.GetVertexCount(); i++)
+ * {
+ * 	Vector3 vertex = mdt.GetVertex(i);
+ * 	// In this example we extend the mesh by one unit, which results in separated faces as it is flat shaded.
+ * 	vertex += mdt.GetVertexNormal(i);
+ * 	// Save your change.
+ * 	mdt.SetVertex(i, vertex);
+ * }
+ * mesh.ClearSurfaces();
+ * mdt.CommitToSurface(mesh);
+ * var mi = new MeshInstance();
+ * mi.Mesh = mesh;
+ * AddChild(mi);
  *
-*/
-declare class MeshDataTool extends Reference  {
-
-  
-/**
- * MeshDataTool provides access to individual vertices in a [Mesh]. It allows users to read and edit vertex data of meshes. It also creates an array of faces and edges.
+ * @summary
  *
- * To use MeshDataTool, load a mesh with [method create_from_surface]. When you are finished editing the data commit the data to a mesh with [method commit_to_surface].
  *
- * Below is an example of how MeshDataTool may be used.
- *
- * @example 
- * 
- * var mesh = ArrayMesh.new()
- * mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, CubeMesh.new().get_mesh_arrays())
- * var mdt = MeshDataTool.new()
- * mdt.create_from_surface(mesh, 0)
- * for i in range(mdt.get_vertex_count()):
- *     var vertex = mdt.get_vertex(i)
- *     # In this example we extend the mesh by one unit, which results in separated faces as it is flat shaded.
- *     vertex += mdt.get_vertex_normal(i)
- *     # Save your change.
- *     mdt.set_vertex(i, vertex)
- * mesh.surface_remove(0)
- * mdt.commit_to_surface(mesh)
- * var mi = MeshInstance.new()
- * mi.mesh = mesh
- * add_child(mi)
- * @summary 
- * 
- *
- * See also [ArrayMesh], [ImmediateGeometry] and [SurfaceTool] for procedural geometry generation.
+ * See also [ArrayMesh], [ImmediateMesh] and [SurfaceTool] for procedural geometry generation.
  *
  * **Note:** Godot uses clockwise [url=https://learnopengl.com/Advanced-OpenGL/Face-culling]winding order[/url] for front faces of triangle primitive modes.
  *
-*/
-  new(): MeshDataTool; 
-  static "new"(): MeshDataTool 
+ */
+declare class MeshDataTool extends RefCounted {
+  /**
+   * MeshDataTool provides access to individual vertices in a [Mesh]. It allows users to read and edit vertex data of meshes. It also creates an array of faces and edges.
+   *
+   * To use MeshDataTool, load a mesh with [method create_from_surface]. When you are finished editing the data commit the data to a mesh with [method commit_to_surface].
+   *
+   * Below is an example of how MeshDataTool may be used.
+   *
+   * @example
+   *
+   *
+   * var mesh = ArrayMesh.new()
+   * mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, BoxMesh.new().get_mesh_arrays())
+   * var mdt = MeshDataTool.new()
+   * mdt.create_from_surface(mesh, 0)
+   * for i in range(mdt.get_vertex_count()):
+   * 	var vertex = mdt.get_vertex(i)
+   * 	# In this example we extend the mesh by one unit, which results in separated faces as it is flat shaded.
+   * 	vertex += mdt.get_vertex_normal(i)
+   * 	# Save your change.
+   * 	mdt.set_vertex(i, vertex)
+   * mesh.clear_surfaces()
+   * mdt.commit_to_surface(mesh)
+   * var mi = MeshInstance.new()
+   * mi.mesh = mesh
+   * add_child(mi)
+   *
+   *
+   * var mesh = new ArrayMesh();
+   * mesh.AddSurfaceFromArrays(Mesh.PrimitiveType.Triangles, new BoxMesh().GetMeshArrays());
+   * var mdt = new MeshDataTool();
+   * mdt.CreateFromSurface(mesh, 0);
+   * for (var i = 0; i < mdt.GetVertexCount(); i++)
+   * {
+   * 	Vector3 vertex = mdt.GetVertex(i);
+   * 	// In this example we extend the mesh by one unit, which results in separated faces as it is flat shaded.
+   * 	vertex += mdt.GetVertexNormal(i);
+   * 	// Save your change.
+   * 	mdt.SetVertex(i, vertex);
+   * }
+   * mesh.ClearSurfaces();
+   * mdt.CommitToSurface(mesh);
+   * var mi = new MeshInstance();
+   * mi.Mesh = mesh;
+   * AddChild(mi);
+   *
+   * @summary
+   *
+   *
+   * See also [ArrayMesh], [ImmediateMesh] and [SurfaceTool] for procedural geometry generation.
+   *
+   * **Note:** Godot uses clockwise [url=https://learnopengl.com/Advanced-OpenGL/Face-culling]winding order[/url] for front faces of triangle primitive modes.
+   *
+   */
+  new(): MeshDataTool
+  constructor()
+  static new(): MeshDataTool
 
+  /** Clears all data currently in MeshDataTool. */
+  clear(): void
 
+  /** Adds a new surface to specified [Mesh] with edited data. */
+  commit_to_surface(mesh: ArrayMesh, compression_flags?: int): int
 
-/** Clears all data currently in MeshDataTool. */
-clear(): void;
+  /**
+   * Uses specified surface of given [Mesh] to populate data for MeshDataTool.
+   *
+   * Requires [Mesh] with primitive type [constant Mesh.PRIMITIVE_TRIANGLES].
+   *
+   */
+  create_from_surface(mesh: ArrayMesh, surface: int): int
 
-/** Adds a new surface to specified [Mesh] with edited data. */
-commit_to_surface(mesh: ArrayMesh): int;
+  /** Returns the number of edges in this [Mesh]. */
+  get_edge_count(): int
 
-/**
- * Uses specified surface of given [Mesh] to populate data for MeshDataTool.
- *
- * Requires [Mesh] with primitive type [constant Mesh.PRIMITIVE_TRIANGLES].
- *
-*/
-create_from_surface(mesh: ArrayMesh, surface: int): int;
+  /** Returns array of faces that touch given edge. */
+  get_edge_faces(idx: int): PackedInt32Array
 
-/** Returns the number of edges in this [Mesh]. */
-get_edge_count(): int;
+  /** Returns meta information assigned to given edge. */
+  get_edge_meta(idx: int): any
 
-/** Returns array of faces that touch given edge. */
-get_edge_faces(idx: int): PoolIntArray;
+  /**
+   * Returns the index of the specified [param vertex] connected to the edge at index [param idx].
+   *
+   * [param vertex] can only be `0` or `1`, as edges are composed of two vertices.
+   *
+   */
+  get_edge_vertex(idx: int, vertex: int): int
 
-/** Returns meta information assigned to given edge. */
-get_edge_meta(idx: int): any;
+  /** Returns the number of faces in this [Mesh]. */
+  get_face_count(): int
 
-/**
- * Returns index of specified vertex connected to given edge.
- *
- * Vertex argument can only be 0 or 1 because edges are comprised of two vertices.
- *
-*/
-get_edge_vertex(idx: int, vertex: int): int;
+  /**
+   * Returns the edge associated with the face at index [param idx].
+   *
+   * [param edge] argument must be either `0`, `1`, or `2` because a face only has three edges.
+   *
+   */
+  get_face_edge(idx: int, edge: int): int
 
-/** Returns the number of faces in this [Mesh]. */
-get_face_count(): int;
+  /** Returns the metadata associated with the given face. */
+  get_face_meta(idx: int): any
 
-/**
- * Returns specified edge associated with given face.
- *
- * Edge argument must 2 or less because a face only has three edges.
- *
-*/
-get_face_edge(idx: int, edge: int): int;
+  /** Calculates and returns the face normal of the given face. */
+  get_face_normal(idx: int): Vector3
 
-/** Returns the metadata associated with the given face. */
-get_face_meta(idx: int): any;
+  /**
+   * Returns the specified vertex index of the given face.
+   *
+   * [param vertex] must be either `0`, `1`, or `2` because faces contain three vertices.
+   *
+   * @example
+   *
+   *
+   * var index = mesh_data_tool.get_face_vertex(0, 1) # Gets the index of the second vertex of the first face.
+   * var position = mesh_data_tool.get_vertex(index)
+   * var normal = mesh_data_tool.get_vertex_normal(index)
+   *
+   *
+   * int index = meshDataTool.GetFaceVertex(0, 1); // Gets the index of the second vertex of the first face.
+   * Vector3 position = meshDataTool.GetVertex(index);
+   * Vector3 normal = meshDataTool.GetVertexNormal(index);
+   *
+   * @summary
+   *
+   *
+   */
+  get_face_vertex(idx: int, vertex: int): int
 
-/** Calculates and returns the face normal of the given face. */
-get_face_normal(idx: int): Vector3;
+  /** Returns the [Mesh]'s format as a combination of the [enum Mesh.ArrayFormat] flags. For example, a mesh containing both vertices and normals would return a format of [code]3[/code] because [constant Mesh.ARRAY_FORMAT_VERTEX] is [code]1[/code] and [constant Mesh.ARRAY_FORMAT_NORMAL] is [code]2[/code]. */
+  get_format(): int
 
-/**
- * Returns the specified vertex of the given face.
- *
- * Vertex argument must be 2 or less because faces contain three vertices.
- *
-*/
-get_face_vertex(idx: int, vertex: int): int;
+  /** Returns the material assigned to the [Mesh]. */
+  get_material(): Material
 
-/**
- * Returns the [Mesh]'s format. Format is an integer made up of [Mesh] format flags combined together. For example, a mesh containing both vertices and normals would return a format of `3` because [constant ArrayMesh.ARRAY_FORMAT_VERTEX] is `1` and [constant ArrayMesh.ARRAY_FORMAT_NORMAL] is `2`.
- *
- * See [enum ArrayMesh.ArrayFormat] for a list of format flags.
- *
-*/
-get_format(): int;
+  /** Returns the position of the given vertex. */
+  get_vertex(idx: int): Vector3
 
-/** Returns the material assigned to the [Mesh]. */
-get_material(): Material;
+  /** Returns the bones of the given vertex. */
+  get_vertex_bones(idx: int): PackedInt32Array
 
-/** Returns the vertex at given index. */
-get_vertex(idx: int): Vector3;
+  /** Returns the color of the given vertex. */
+  get_vertex_color(idx: int): Color
 
-/** Returns the bones of the given vertex. */
-get_vertex_bones(idx: int): PoolIntArray;
+  /** Returns the total number of vertices in [Mesh]. */
+  get_vertex_count(): int
 
-/** Returns the color of the given vertex. */
-get_vertex_color(idx: int): Color;
+  /** Returns an array of edges that share the given vertex. */
+  get_vertex_edges(idx: int): PackedInt32Array
 
-/** Returns the total number of vertices in [Mesh]. */
-get_vertex_count(): int;
+  /** Returns an array of faces that share the given vertex. */
+  get_vertex_faces(idx: int): PackedInt32Array
 
-/** Returns an array of edges that share the given vertex. */
-get_vertex_edges(idx: int): PoolIntArray;
+  /** Returns the metadata associated with the given vertex. */
+  get_vertex_meta(idx: int): any
 
-/** Returns an array of faces that share the given vertex. */
-get_vertex_faces(idx: int): PoolIntArray;
+  /** Returns the normal of the given vertex. */
+  get_vertex_normal(idx: int): Vector3
 
-/** Returns the metadata associated with the given vertex. */
-get_vertex_meta(idx: int): any;
+  /** Returns the tangent of the given vertex. */
+  get_vertex_tangent(idx: int): Plane
 
-/** Returns the normal of the given vertex. */
-get_vertex_normal(idx: int): Vector3;
+  /** Returns the UV of the given vertex. */
+  get_vertex_uv(idx: int): Vector2
 
-/** Returns the tangent of the given vertex. */
-get_vertex_tangent(idx: int): Plane;
+  /** Returns the UV2 of the given vertex. */
+  get_vertex_uv2(idx: int): Vector2
 
-/** Returns the UV of the given vertex. */
-get_vertex_uv(idx: int): Vector2;
+  /** Returns bone weights of the given vertex. */
+  get_vertex_weights(idx: int): PackedFloat32Array
 
-/** Returns the UV2 of the given vertex. */
-get_vertex_uv2(idx: int): Vector2;
+  /** Sets the metadata of the given edge. */
+  set_edge_meta(idx: int, meta: any): void
 
-/** Returns bone weights of the given vertex. */
-get_vertex_weights(idx: int): PoolRealArray;
+  /** Sets the metadata of the given face. */
+  set_face_meta(idx: int, meta: any): void
 
-/** Sets the metadata of the given edge. */
-set_edge_meta(idx: int, meta: any): void;
+  /** Sets the material to be used by newly-constructed [Mesh]. */
+  set_material(material: Material): void
 
-/** Sets the metadata of the given face. */
-set_face_meta(idx: int, meta: any): void;
+  /** Sets the position of the given vertex. */
+  set_vertex(idx: int, vertex: Vector3): void
 
-/** Sets the material to be used by newly-constructed [Mesh]. */
-set_material(material: Material): void;
+  /** Sets the bones of the given vertex. */
+  set_vertex_bones(idx: int, bones: PackedInt32Array): void
 
-/** Sets the position of the given vertex. */
-set_vertex(idx: int, vertex: Vector3): void;
+  /** Sets the color of the given vertex. */
+  set_vertex_color(idx: int, color: Color): void
 
-/** Sets the bones of the given vertex. */
-set_vertex_bones(idx: int, bones: PoolIntArray): void;
+  /** Sets the metadata associated with the given vertex. */
+  set_vertex_meta(idx: int, meta: any): void
 
-/** Sets the color of the given vertex. */
-set_vertex_color(idx: int, color: Color): void;
+  /** Sets the normal of the given vertex. */
+  set_vertex_normal(idx: int, normal: Vector3): void
 
-/** Sets the metadata associated with the given vertex. */
-set_vertex_meta(idx: int, meta: any): void;
+  /**
+   * Sets the tangent of the given vertex.
+   *
+   * **Note:** Even though [param tangent] is a [Plane], it does not directly represent the tangent plane. Its [member Plane.x], [member Plane.y], and [member Plane.z] represent the tangent vector and [member Plane.d] should be either `-1` or `1`. See also [constant Mesh.ARRAY_TANGENT].
+   *
+   */
+  set_vertex_tangent(idx: int, tangent: Plane): void
 
-/** Sets the normal of the given vertex. */
-set_vertex_normal(idx: int, normal: Vector3): void;
+  /** Sets the UV of the given vertex. */
+  set_vertex_uv(idx: int, uv: Vector2): void
 
-/** Sets the tangent of the given vertex. */
-set_vertex_tangent(idx: int, tangent: Plane): void;
+  /** Sets the UV2 of the given vertex. */
+  set_vertex_uv2(idx: int, uv2: Vector2): void
 
-/** Sets the UV of the given vertex. */
-set_vertex_uv(idx: int, uv: Vector2): void;
+  /** Sets the bone weights of the given vertex. */
+  set_vertex_weights(idx: int, weights: PackedFloat32Array): void
 
-/** Sets the UV2 of the given vertex. */
-set_vertex_uv2(idx: int, uv2: Vector2): void;
-
-/** Sets the bone weights of the given vertex. */
-set_vertex_weights(idx: int, weights: PoolRealArray): void;
-
-  connect<T extends SignalsOf<MeshDataTool>>(signal: T, method: SignalFunction<MeshDataTool[T]>): number;
-
-
-
-
-
-
+  connect<T extends SignalsOf<MeshDataTool>>(
+    signal: T,
+    method: SignalFunction<MeshDataTool[T]>
+  ): number
 }
-

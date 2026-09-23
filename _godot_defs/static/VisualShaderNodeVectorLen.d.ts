@@ -1,28 +1,18 @@
-
 /**
  * Translated to `length(p0)` in the shader language.
  *
-*/
-declare class VisualShaderNodeVectorLen extends VisualShaderNode  {
+ */
+declare class VisualShaderNodeVectorLen extends VisualShaderNodeVectorBase {
+  /**
+   * Translated to `length(p0)` in the shader language.
+   *
+   */
+  new(): VisualShaderNodeVectorLen
+  constructor()
+  static new(): VisualShaderNodeVectorLen
 
-  
-/**
- * Translated to `length(p0)` in the shader language.
- *
-*/
-  new(): VisualShaderNodeVectorLen; 
-  static "new"(): VisualShaderNodeVectorLen 
-
-
-
-
-
-  connect<T extends SignalsOf<VisualShaderNodeVectorLen>>(signal: T, method: SignalFunction<VisualShaderNodeVectorLen[T]>): number;
-
-
-
-
-
-
+  connect<T extends SignalsOf<VisualShaderNodeVectorLen>>(
+    signal: T,
+    method: SignalFunction<VisualShaderNodeVectorLen[T]>
+  ): number
 }
-

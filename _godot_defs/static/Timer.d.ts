@@ -1,92 +1,123 @@
-
 /**
- * Counts down a specified interval and emits a signal on reaching 0. Can be set to repeat or "one-shot" mode.
+ * The [Timer] node is a countdown timer and is the simplest way to handle time-based logic in the engine. When a timer reaches the end of its [member wait_time], it will emit the [signal timeout] signal.
+ *
+ * After a timer enters the scene tree, it can be manually started with [method start]. A timer node is also started automatically if [member autostart] is `true`.
+ *
+ * Without requiring much code, a timer node can be added and configured in the editor. The [signal timeout] signal it emits can also be connected through the Signals dock in the editor:
+ *
+ * @example
+ *
+ * func _on_timer_timeout():
+ * 	print("Time to attack!")
+ * @summary
+ *
  *
  * **Note:** To create a one-shot timer without instantiating a node, use [method SceneTree.create_timer].
  *
-*/
-declare class Timer extends Node  {
-
-  
-/**
- * Counts down a specified interval and emits a signal on reaching 0. Can be set to repeat or "one-shot" mode.
+ * **Note:** Timers are affected by [member Engine.time_scale] unless [member ignore_time_scale] is `true`. The higher the time scale, the sooner timers will end. How often a timer processes may depend on the framerate or [member Engine.physics_ticks_per_second].
  *
- * **Note:** To create a one-shot timer without instantiating a node, use [method SceneTree.create_timer].
- *
-*/
-  new(): Timer; 
-  static "new"(): Timer 
+ */
+declare class Timer extends Node {
+  /**
+   * The [Timer] node is a countdown timer and is the simplest way to handle time-based logic in the engine. When a timer reaches the end of its [member wait_time], it will emit the [signal timeout] signal.
+   *
+   * After a timer enters the scene tree, it can be manually started with [method start]. A timer node is also started automatically if [member autostart] is `true`.
+   *
+   * Without requiring much code, a timer node can be added and configured in the editor. The [signal timeout] signal it emits can also be connected through the Signals dock in the editor:
+   *
+   * @example
+   *
+   * func _on_timer_timeout():
+   * 	print("Time to attack!")
+   * @summary
+   *
+   *
+   * **Note:** To create a one-shot timer without instantiating a node, use [method SceneTree.create_timer].
+   *
+   * **Note:** Timers are affected by [member Engine.time_scale] unless [member ignore_time_scale] is `true`. The higher the time scale, the sooner timers will end. How often a timer processes may depend on the framerate or [member Engine.physics_ticks_per_second].
+   *
+   */
+  new(): Timer
+  constructor()
+  static new(): Timer
 
+  /**
+   * If `true`, the timer will start immediately when it enters the scene tree.
+   *
+   * **Note:** After the timer enters the tree, this property is automatically set to `false`.
+   *
+   * **Note:** This property does nothing when the timer is running in the editor.
+   *
+   */
+  autostart: boolean
 
-/**
- * If `true`, the timer will automatically start when entering the scene tree.
- *
- * **Note:** This property is automatically set to `false` after the timer enters the scene tree and starts.
- *
-*/
-autostart: boolean;
+  /** If [code]true[/code], the timer will ignore [member Engine.time_scale] and update with the real, elapsed time. */
+  ignore_time_scale: boolean
 
-/** If [code]true[/code], the timer will stop when reaching 0. If [code]false[/code], it will restart. */
-one_shot: boolean;
+  /** If [code]true[/code], the timer will stop after reaching the end. Otherwise, as by default, the timer will automatically restart. */
+  one_shot: boolean
 
-/** If [code]true[/code], the timer is paused and will not process until it is unpaused again, even if [method start] is called. */
-paused: boolean;
+  /** If [code]true[/code], the timer is paused. A paused timer does not process until this property is set back to [code]false[/code], even when [method start] is called. See also [method stop]. */
+  paused: boolean
 
-/** Processing mode. See [enum TimerProcessMode]. */
-process_mode: int;
+  /** Specifies when the timer is updated during the main loop. */
+  process_callback: int
 
-/**
- * The timer's remaining time in seconds. Returns 0 if the timer is inactive.
- *
- * **Note:** You cannot set this value. To change the timer's remaining time, use [method start].
- *
-*/
-time_left: float;
+  /**
+   * The timer's remaining time in seconds. This is always `0` if the timer is stopped.
+   *
+   * **Note:** This property is read-only and cannot be modified. It is based on [member wait_time].
+   *
+   */
+  time_left: float
 
-/**
- * The wait time in seconds.
- *
- * **Note:** Timers can only emit once per rendered frame at most (or once per physics frame if [member process_mode] is [constant TIMER_PROCESS_PHYSICS]). This means very low wait times (lower than 0.05 seconds) will behave in significantly different ways depending on the rendered framerate. For very low wait times, it is recommended to use a process loop in a script instead of using a Timer node.
- *
-*/
-wait_time: float;
+  /**
+   * The time required for the timer to end, in seconds. This property can also be set every time [method start] is called.
+   *
+   * **Note:** Timers can only process once per physics or process frame (depending on the [member process_callback]). An unstable framerate may cause the timer to end inconsistently, which is especially noticeable if the wait time is lower than roughly `0.05` seconds. For very short timers, it is recommended to write your own code instead of using a [Timer] node. Timers are also affected by [member Engine.time_scale].
+   *
+   */
+  wait_time: float
 
-/** Returns [code]true[/code] if the timer is stopped. */
-is_stopped(): boolean;
+  /** Returns [code]true[/code] if the timer is stopped or has not started. */
+  is_stopped(): boolean
 
-/**
- * Starts the timer. Sets `wait_time` to `time_sec` if `time_sec > 0`. This also resets the remaining time to `wait_time`.
- *
- * **Note:** This method will not resume a paused timer. See [member paused].
- *
-*/
-start(time_sec?: float): void;
+  /**
+   * Starts the timer, or resets the timer if it was started already. Fails if the timer is not inside the scene tree. If [param time_sec] is greater than `0`, this value is used for the [member wait_time].
+   *
+   * **Note:** This method does not resume a paused timer. See [member paused].
+   *
+   */
+  start(time_sec?: float): void
 
-/** Stops the timer. */
-stop(): void;
+  /**
+   * Stops the timer. See also [member paused]. Unlike [method start], this can safely be called if the timer is not inside the scene tree.
+   *
+   * **Note:** Calling [method stop] does not emit the [signal timeout] signal, as the timer is not considered to have timed out. If this is desired, use `$Timer.timeout.emit()` after calling [method stop] to manually emit the signal.
+   *
+   */
+  stop(): void
 
-  connect<T extends SignalsOf<Timer>>(signal: T, method: SignalFunction<Timer[T]>): number;
+  connect<T extends SignalsOf<Timer>>(
+    signal: T,
+    method: SignalFunction<Timer[T]>
+  ): number
 
+  /**
+   * Update the timer every physics process frame (see [constant Node.NOTIFICATION_INTERNAL_PHYSICS_PROCESS]).
+   *
+   */
+  static TIMER_PROCESS_PHYSICS: any
 
+  /**
+   * Update the timer every process (rendered) frame (see [constant Node.NOTIFICATION_INTERNAL_PROCESS]).
+   *
+   */
+  static TIMER_PROCESS_IDLE: any
 
-/**
- * Update the timer during the physics step at each frame (fixed framerate processing).
- *
-*/
-static TIMER_PROCESS_PHYSICS: any;
-
-/**
- * Update the timer during the idle time at each frame.
- *
-*/
-static TIMER_PROCESS_IDLE: any;
-
-
-/**
- * Emitted when the timer reaches 0.
- *
-*/
-$timeout: Signal<() => void>
-
+  /**
+   * Emitted when the timer reaches the end.
+   *
+   */
+  $timeout: Signal<() => void>
 }
-

@@ -1,46 +1,38 @@
-
 /**
- * A resource to add to an [AnimationNodeBlendTree]. Blends two animations together linearly out of three based on a value in the `[-1.0, 1.0]` range.
+ * A resource to add to an [AnimationNodeBlendTree]. Blends two animations out of three linearly out of three based on the amount value.
  *
- * This node has three inputs:
+ * This animation node has three inputs:
  *
- * - The base animation
+ * - The base animation to blend with
  *
- * - A -blend animation to blend with when the blend amount is in the `[-1.0, 0.0]` range.
+ * - A "-blend" animation to blend with when the blend amount is negative value
  *
- * - A +blend animation to blend with when the blend amount is in the `[0.0, 1.0]` range
+ * - A "+blend" animation to blend with when the blend amount is positive value
  *
-*/
-declare class AnimationNodeBlend3 extends AnimationNode  {
-
-  
-/**
- * A resource to add to an [AnimationNodeBlendTree]. Blends two animations together linearly out of three based on a value in the `[-1.0, 1.0]` range.
+ * In general, the blend value should be in the `[-1.0, 1.0]` range. Values outside of this range can blend amplified animations, however, [AnimationNodeAdd3] works better for this purpose.
  *
- * This node has three inputs:
- *
- * - The base animation
- *
- * - A -blend animation to blend with when the blend amount is in the `[-1.0, 0.0]` range.
- *
- * - A +blend animation to blend with when the blend amount is in the `[0.0, 1.0]` range
- *
-*/
-  new(): AnimationNodeBlend3; 
-  static "new"(): AnimationNodeBlend3 
+ */
+declare class AnimationNodeBlend3 extends AnimationNodeSync {
+  /**
+   * A resource to add to an [AnimationNodeBlendTree]. Blends two animations out of three linearly out of three based on the amount value.
+   *
+   * This animation node has three inputs:
+   *
+   * - The base animation to blend with
+   *
+   * - A "-blend" animation to blend with when the blend amount is negative value
+   *
+   * - A "+blend" animation to blend with when the blend amount is positive value
+   *
+   * In general, the blend value should be in the `[-1.0, 1.0]` range. Values outside of this range can blend amplified animations, however, [AnimationNodeAdd3] works better for this purpose.
+   *
+   */
+  new(): AnimationNodeBlend3
+  constructor()
+  static new(): AnimationNodeBlend3
 
-
-/** If [code]true[/code], sets the [code]optimization[/code] to [code]false[/code] when calling [method AnimationNode.blend_input], forcing the blended animations to update every frame. */
-sync: boolean;
-
-
-
-  connect<T extends SignalsOf<AnimationNodeBlend3>>(signal: T, method: SignalFunction<AnimationNodeBlend3[T]>): number;
-
-
-
-
-
-
+  connect<T extends SignalsOf<AnimationNodeBlend3>>(
+    signal: T,
+    method: SignalFunction<AnimationNodeBlend3[T]>
+  ): number
 }
-

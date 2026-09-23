@@ -1,193 +1,207 @@
-
 /**
- * This [StyleBox] can be used to achieve all kinds of looks without the need of a texture. The following properties are customizable:
+ * By configuring various properties of this style box, you can achieve many common looks without the need of a texture. This includes optionally rounded borders, antialiasing, shadows, and skew.
  *
- * - Color
+ * Setting corner radius to high values is allowed. As soon as corners overlap, the stylebox will switch to a relative system:
  *
- * - Border width (individual width for each border)
+ * [codeblock lang=text]
  *
- * - Rounded corners (individual radius for each corner)
- *
- * - Shadow (with blur and offset)
- *
- * Setting corner radius to high values is allowed. As soon as corners overlap, the stylebox will switch to a relative system. Example:
- *
- * @example 
- * 
  * height = 30
+ *
  * corner_radius_top_left = 50
+ *
  * corner_radius_bottom_left = 100
- * @summary 
- * 
+ *
+ * @summary
+ *
  *
  * The relative system now would take the 1:2 ratio of the two left corners to calculate the actual corner width. Both corners added will **never** be more than the height. Result:
  *
- * @example 
- * 
+ * [codeblock lang=text]
+ *
  * corner_radius_top_left: 10
+ *
  * corner_radius_bottom_left: 20
- * @summary 
- * 
  *
-*/
-declare class StyleBoxFlat extends StyleBox  {
-
-  
-/**
- * This [StyleBox] can be used to achieve all kinds of looks without the need of a texture. The following properties are customizable:
+ * @summary
  *
- * - Color
  *
- * - Border width (individual width for each border)
- *
- * - Rounded corners (individual radius for each corner)
- *
- * - Shadow (with blur and offset)
- *
- * Setting corner radius to high values is allowed. As soon as corners overlap, the stylebox will switch to a relative system. Example:
- *
- * @example 
- * 
- * height = 30
- * corner_radius_top_left = 50
- * corner_radius_bottom_left = 100
- * @summary 
- * 
- *
- * The relative system now would take the 1:2 ratio of the two left corners to calculate the actual corner width. Both corners added will **never** be more than the height. Result:
- *
- * @example 
- * 
- * corner_radius_top_left: 10
- * corner_radius_bottom_left: 20
- * @summary 
- * 
- *
-*/
-  new(): StyleBoxFlat; 
-  static "new"(): StyleBoxFlat 
+ */
+declare class StyleBoxFlat extends StyleBox {
+  /**
+   * By configuring various properties of this style box, you can achieve many common looks without the need of a texture. This includes optionally rounded borders, antialiasing, shadows, and skew.
+   *
+   * Setting corner radius to high values is allowed. As soon as corners overlap, the stylebox will switch to a relative system:
+   *
+   * [codeblock lang=text]
+   *
+   * height = 30
+   *
+   * corner_radius_top_left = 50
+   *
+   * corner_radius_bottom_left = 100
+   *
+   * @summary
+   *
+   *
+   * The relative system now would take the 1:2 ratio of the two left corners to calculate the actual corner width. Both corners added will **never** be more than the height. Result:
+   *
+   * [codeblock lang=text]
+   *
+   * corner_radius_top_left: 10
+   *
+   * corner_radius_bottom_left: 20
+   *
+   * @summary
+   *
+   *
+   */
+  new(): StyleBoxFlat
+  constructor()
+  static new(): StyleBoxFlat
 
+  /**
+   * Antialiasing draws a small ring around the edges, which fades to transparency. As a result, edges look much smoother. This is only noticeable when using rounded corners or [member skew].
+   *
+   * **Note:** When using beveled corners with 45-degree angles ([member corner_detail] = 1), it is recommended to set [member anti_aliasing] to `false` to ensure crisp visuals and avoid possible visual glitches.
+   *
+   */
+  anti_aliasing: boolean
 
-/**
- * Antialiasing draws a small ring around the edges, which fades to transparency. As a result, edges look much smoother. This is only noticeable when using rounded corners.
- *
- * **Note:** When using beveled corners with 45-degree angles ([member corner_detail] = 1), it is recommended to set [member anti_aliasing] to `false` to ensure crisp visuals and avoid possible visual glitches.
- *
-*/
-anti_aliasing: boolean;
+  /**
+   * This changes the size of the antialiasing effect. `1.0` is recommended for an optimal result at 100% scale, identical to how rounded rectangles are rendered in web browsers and most vector drawing software.
+   *
+   * **Note:** Higher values may produce a blur effect but can also create undesired artifacts on small boxes with large-radius corners.
+   *
+   */
+  anti_aliasing_size: float
 
-/** This changes the size of the faded ring. Higher values can be used to achieve a "blurry" effect. */
-anti_aliasing_size: float;
+  /** The background color of the stylebox. */
+  bg_color: Color
 
-/** The background color of the stylebox. */
-bg_color: Color;
+  /** If [code]true[/code], the border will fade into the background color. */
+  border_blend: boolean
 
-/** If [code]true[/code], the border will fade into the background color. */
-border_blend: boolean;
+  /** Sets the color of the border. */
+  border_color: Color
 
-/** Sets the color of the border. */
-border_color: Color;
+  /** Border width for the bottom border. */
+  border_width_bottom: int
 
-/** Border width for the bottom border. */
-border_width_bottom: int;
+  /** Border width for the left border. */
+  border_width_left: int
 
-/** Border width for the left border. */
-border_width_left: int;
+  /** Border width for the right border. */
+  border_width_right: int
 
-/** Border width for the right border. */
-border_width_right: int;
+  /** Border width for the top border. */
+  border_width_top: int
 
-/** Border width for the top border. */
-border_width_top: int;
+  /**
+   * This sets the number of vertices used for each corner. Higher values result in rounder corners but take more processing power to compute. When choosing a value, you should take the corner radius ([method set_corner_radius_all]) into account.
+   *
+   * For corner radii less than 10, `4` or `5` should be enough. For corner radii less than 30, values between `8` and `12` should be enough.
+   *
+   * A corner detail of `1` will result in chamfered corners instead of rounded corners, which is useful for some artistic effects.
+   *
+   */
+  corner_detail: int
 
-/**
- * This sets the number of vertices used for each corner. Higher values result in rounder corners but take more processing power to compute. When choosing a value, you should take the corner radius ([method set_corner_radius_all]) into account.
- *
- * For corner radii less than 10, `4` or `5` should be enough. For corner radii less than 30, values between `8` and `12` should be enough.
- *
- * A corner detail of `1` will result in chamfered corners instead of rounded corners, which is useful for some artistic effects.
- *
-*/
-corner_detail: int;
+  /** The bottom-left corner's radius. If [code]0[/code], the corner is not rounded. */
+  corner_radius_bottom_left: int
 
-/** The bottom-left corner's radius. If [code]0[/code], the corner is not rounded. */
-corner_radius_bottom_left: int;
+  /** The bottom-right corner's radius. If [code]0[/code], the corner is not rounded. */
+  corner_radius_bottom_right: int
 
-/** The bottom-right corner's radius. If [code]0[/code], the corner is not rounded. */
-corner_radius_bottom_right: int;
+  /** The top-left corner's radius. If [code]0[/code], the corner is not rounded. */
+  corner_radius_top_left: int
 
-/** The top-left corner's radius. If [code]0[/code], the corner is not rounded. */
-corner_radius_top_left: int;
+  /** The top-right corner's radius. If [code]0[/code], the corner is not rounded. */
+  corner_radius_top_right: int
 
-/** The top-right corner's radius. If [code]0[/code], the corner is not rounded. */
-corner_radius_top_right: int;
+  /** Toggles drawing of the inner part of the stylebox. */
+  draw_center: boolean
 
-/** Toggles drawing of the inner part of the stylebox. */
-draw_center: boolean;
+  /**
+   * Expands the stylebox outside of the control rect on the bottom edge. Useful in combination with [member border_width_bottom] to draw a border outside the control rect.
+   *
+   * **Note:** Unlike [member StyleBox.content_margin_bottom], [member expand_margin_bottom] does **not** affect the size of the clickable area for [Control]s. This can negatively impact usability if used wrong, as the user may try to click an area of the StyleBox that cannot actually receive clicks.
+   *
+   */
+  expand_margin_bottom: float
 
-/** Expands the stylebox outside of the control rect on the bottom edge. Useful in combination with [member border_width_bottom] to draw a border outside the control rect. */
-expand_margin_bottom: float;
+  /**
+   * Expands the stylebox outside of the control rect on the left edge. Useful in combination with [member border_width_left] to draw a border outside the control rect.
+   *
+   * **Note:** Unlike [member StyleBox.content_margin_left], [member expand_margin_left] does **not** affect the size of the clickable area for [Control]s. This can negatively impact usability if used wrong, as the user may try to click an area of the StyleBox that cannot actually receive clicks.
+   *
+   */
+  expand_margin_left: float
 
-/** Expands the stylebox outside of the control rect on the left edge. Useful in combination with [member border_width_left] to draw a border outside the control rect. */
-expand_margin_left: float;
+  /**
+   * Expands the stylebox outside of the control rect on the right edge. Useful in combination with [member border_width_right] to draw a border outside the control rect.
+   *
+   * **Note:** Unlike [member StyleBox.content_margin_right], [member expand_margin_right] does **not** affect the size of the clickable area for [Control]s. This can negatively impact usability if used wrong, as the user may try to click an area of the StyleBox that cannot actually receive clicks.
+   *
+   */
+  expand_margin_right: float
 
-/** Expands the stylebox outside of the control rect on the right edge. Useful in combination with [member border_width_right] to draw a border outside the control rect. */
-expand_margin_right: float;
+  /**
+   * Expands the stylebox outside of the control rect on the top edge. Useful in combination with [member border_width_top] to draw a border outside the control rect.
+   *
+   * **Note:** Unlike [member StyleBox.content_margin_top], [member expand_margin_top] does **not** affect the size of the clickable area for [Control]s. This can negatively impact usability if used wrong, as the user may try to click an area of the StyleBox that cannot actually receive clicks.
+   *
+   */
+  expand_margin_top: float
 
-/** Expands the stylebox outside of the control rect on the top edge. Useful in combination with [member border_width_top] to draw a border outside the control rect. */
-expand_margin_top: float;
+  /** The color of the shadow. This has no effect if [member shadow_size] is lower than 1. */
+  shadow_color: Color
 
-/** The color of the shadow. This has no effect if [member shadow_size] is lower than 1. */
-shadow_color: Color;
+  /** The shadow offset in pixels. Adjusts the position of the shadow relatively to the stylebox. */
+  shadow_offset: Vector2
 
-/** The shadow offset in pixels. Adjusts the position of the shadow relatively to the stylebox. */
-shadow_offset: Vector2;
+  /** The shadow size in pixels. */
+  shadow_size: int
 
-/** The shadow size in pixels. */
-shadow_size: int;
+  /**
+   * If set to a non-zero value on either axis, [member skew] distorts the StyleBox horizontally and/or vertically. This can be used for "futuristic"-style UIs. Positive values skew the StyleBox towards the right (X axis) and upwards (Y axis), while negative values skew the StyleBox towards the left (X axis) and downwards (Y axis).
+   *
+   * **Note:** To ensure text does not touch the StyleBox's edges, consider increasing the [StyleBox]'s content margin (see [member StyleBox.content_margin_bottom]). It is preferable to increase the content margin instead of the expand margin (see [member expand_margin_bottom]), as increasing the expand margin does not increase the size of the clickable area for [Control]s.
+   *
+   */
+  skew: Vector2
 
-/** Returns the given [code]margin[/code]'s border width. See [enum Margin] for possible values. */
-get_border_width(margin: int): int;
+  /** Returns the specified [enum Side]'s border width. */
+  get_border_width(margin: int): int
 
-/** Returns the smallest border width out of all four borders. */
-get_border_width_min(): int;
+  /** Returns the smallest border width out of all four borders. */
+  get_border_width_min(): int
 
-/** Returns the given [code]corner[/code]'s radius. See [enum Corner] for possible values. */
-get_corner_radius(corner: int): int;
+  /** Returns the given [param corner]'s radius. */
+  get_corner_radius(corner: int): int
 
-/** Returns the size of the given [code]margin[/code]'s expand margin. See [enum Margin] for possible values. */
-get_expand_margin(margin: int): float;
+  /** Returns the size of the specified [enum Side]'s expand margin. */
+  get_expand_margin(margin: int): float
 
-/** Sets the border width to [code]width[/code] pixels for the given [code]margin[/code]. See [enum Margin] for possible values. */
-set_border_width(margin: int, width: int): void;
+  /** Sets the specified [enum Side]'s border width to [param width] pixels. */
+  set_border_width(margin: int, width: int): void
 
-/** Sets the border width to [code]width[/code] pixels for all margins. */
-set_border_width_all(width: int): void;
+  /** Sets the border width to [param width] pixels for all sides. */
+  set_border_width_all(width: int): void
 
-/** Sets the corner radius to [code]radius[/code] pixels for the given [code]corner[/code]. See [enum Corner] for possible values. */
-set_corner_radius(corner: int, radius: int): void;
+  /** Sets the corner radius to [param radius] pixels for the given [param corner]. */
+  set_corner_radius(corner: int, radius: int): void
 
-/** Sets the corner radius to [code]radius[/code] pixels for all corners. */
-set_corner_radius_all(radius: int): void;
+  /** Sets the corner radius to [param radius] pixels for all corners. */
+  set_corner_radius_all(radius: int): void
 
-/** Sets the corner radius for each corner to [code]radius_top_left[/code], [code]radius_top_right[/code], [code]radius_bottom_right[/code], and [code]radius_bottom_left[/code] pixels. */
-set_corner_radius_individual(radius_top_left: int, radius_top_right: int, radius_bottom_right: int, radius_bottom_left: int): void;
+  /** Sets the expand margin to [param size] pixels for the specified [enum Side]. */
+  set_expand_margin(margin: int, size: float): void
 
-/** Sets the expand margin to [code]size[/code] pixels for the given [code]margin[/code]. See [enum Margin] for possible values. */
-set_expand_margin(margin: int, size: float): void;
+  /** Sets the expand margin to [param size] pixels for all sides. */
+  set_expand_margin_all(size: float): void
 
-/** Sets the expand margin to [code]size[/code] pixels for all margins. */
-set_expand_margin_all(size: float): void;
-
-/** Sets the expand margin for each margin to [code]size_left[/code], [code]size_top[/code], [code]size_right[/code], and [code]size_bottom[/code] pixels. */
-set_expand_margin_individual(size_left: float, size_top: float, size_right: float, size_bottom: float): void;
-
-  connect<T extends SignalsOf<StyleBoxFlat>>(signal: T, method: SignalFunction<StyleBoxFlat[T]>): number;
-
-
-
-
-
-
+  connect<T extends SignalsOf<StyleBoxFlat>>(
+    signal: T,
+    method: SignalFunction<StyleBoxFlat[T]>
+  ): number
 }
-

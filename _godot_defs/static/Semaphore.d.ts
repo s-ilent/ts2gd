@@ -1,32 +1,43 @@
-
 /**
- * A synchronization semaphore which can be used to synchronize multiple [Thread]s. Initialized to zero on creation. Be careful to avoid deadlocks. For a binary version, see [Mutex].
+ * A synchronization semaphore that can be used to synchronize multiple [Thread]s. Initialized to zero on creation. For a binary version, see [Mutex].
  *
-*/
-declare class Semaphore extends Reference  {
-
-  
-/**
- * A synchronization semaphore which can be used to synchronize multiple [Thread]s. Initialized to zero on creation. Be careful to avoid deadlocks. For a binary version, see [Mutex].
+ * **Warning:** Semaphores must be used carefully to avoid deadlocks.
  *
-*/
-  new(): Semaphore; 
-  static "new"(): Semaphore 
+ * **Warning:** To guarantee that the operating system is able to perform proper cleanup (no crashes, no deadlocks), these conditions must be met:
+ *
+ * - When a [Semaphore]'s reference count reaches zero and it is therefore destroyed, no threads must be waiting on it.
+ *
+ * - When a [Thread]'s reference count reaches zero and it is therefore destroyed, it must not be waiting on any semaphore.
+ *
+ */
+declare class Semaphore extends RefCounted {
+  /**
+   * A synchronization semaphore that can be used to synchronize multiple [Thread]s. Initialized to zero on creation. For a binary version, see [Mutex].
+   *
+   * **Warning:** Semaphores must be used carefully to avoid deadlocks.
+   *
+   * **Warning:** To guarantee that the operating system is able to perform proper cleanup (no crashes, no deadlocks), these conditions must be met:
+   *
+   * - When a [Semaphore]'s reference count reaches zero and it is therefore destroyed, no threads must be waiting on it.
+   *
+   * - When a [Thread]'s reference count reaches zero and it is therefore destroyed, it must not be waiting on any semaphore.
+   *
+   */
+  new(): Semaphore
+  constructor()
+  static new(): Semaphore
 
+  /** Lowers the [Semaphore], allowing one thread in, or more if [param count] is specified. */
+  post(count?: int): void
 
+  /** Like [method wait], but won't block, so if the value is zero, fails immediately and returns [code]false[/code]. If non-zero, it returns [code]true[/code] to report success. */
+  try_wait(): boolean
 
-/** Lowers the [Semaphore], allowing one more thread in. Returns [constant OK] on success, [constant ERR_BUSY] otherwise. */
-post(): int;
+  /** Waits for the [Semaphore], if its value is zero, blocks until non-zero. */
+  wait(): void
 
-/** Tries to wait for the [Semaphore], if its value is zero, blocks until non-zero. Returns [constant OK] on success, [constant ERR_BUSY] otherwise. */
-wait(): int;
-
-  connect<T extends SignalsOf<Semaphore>>(signal: T, method: SignalFunction<Semaphore[T]>): number;
-
-
-
-
-
-
+  connect<T extends SignalsOf<Semaphore>>(
+    signal: T,
+    method: SignalFunction<Semaphore[T]>
+  ): number
 }
-

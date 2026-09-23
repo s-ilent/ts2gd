@@ -1,54 +1,64 @@
-
 /**
- * Adds a top, left, bottom, and right margin to all [Control] nodes that are direct children of the container. To control the [MarginContainer]'s margin, use the `margin_*` theme properties listed below.
+ * [MarginContainer] adds an adjustable margin on each side of its child controls. The margins are added around all children, not around each individual one. To control the [MarginContainer]'s margins, use the `margin_*` theme properties listed below.
  *
- * **Note:** Be careful, [Control] margin values are different than the constant margin values. If you want to change the custom margin values of the [MarginContainer] by code, you should use the following examples:
+ * **Note:** The margin sizes are theme overrides, not normal properties. This is an example of how to change them in code:
  *
- * @example 
- * 
+ * @example
+ *
+ *
  * # This code sample assumes the current script is extending MarginContainer.
  * var margin_value = 100
- * add_constant_override("margin_top", margin_value)
- * add_constant_override("margin_left", margin_value)
- * add_constant_override("margin_bottom", margin_value)
- * add_constant_override("margin_right", margin_value)
- * @summary 
- * 
+ * add_theme_constant_override("margin_top", margin_value)
+ * add_theme_constant_override("margin_left", margin_value)
+ * add_theme_constant_override("margin_bottom", margin_value)
+ * add_theme_constant_override("margin_right", margin_value)
  *
-*/
-declare class MarginContainer extends Container  {
-
-  
-/**
- * Adds a top, left, bottom, and right margin to all [Control] nodes that are direct children of the container. To control the [MarginContainer]'s margin, use the `margin_*` theme properties listed below.
  *
- * **Note:** Be careful, [Control] margin values are different than the constant margin values. If you want to change the custom margin values of the [MarginContainer] by code, you should use the following examples:
+ * // This code sample assumes the current script is extending MarginContainer.
+ * int marginValue = 100;
+ * AddThemeConstantOverride("margin_top", marginValue);
+ * AddThemeConstantOverride("margin_left", marginValue);
+ * AddThemeConstantOverride("margin_bottom", marginValue);
+ * AddThemeConstantOverride("margin_right", marginValue);
  *
- * @example 
- * 
- * # This code sample assumes the current script is extending MarginContainer.
- * var margin_value = 100
- * add_constant_override("margin_top", margin_value)
- * add_constant_override("margin_left", margin_value)
- * add_constant_override("margin_bottom", margin_value)
- * add_constant_override("margin_right", margin_value)
- * @summary 
- * 
+ * @summary
  *
-*/
-  new(): MarginContainer; 
-  static "new"(): MarginContainer 
+ *
+ */
+declare class MarginContainer extends Container {
+  /**
+   * [MarginContainer] adds an adjustable margin on each side of its child controls. The margins are added around all children, not around each individual one. To control the [MarginContainer]'s margins, use the `margin_*` theme properties listed below.
+   *
+   * **Note:** The margin sizes are theme overrides, not normal properties. This is an example of how to change them in code:
+   *
+   * @example
+   *
+   *
+   * # This code sample assumes the current script is extending MarginContainer.
+   * var margin_value = 100
+   * add_theme_constant_override("margin_top", margin_value)
+   * add_theme_constant_override("margin_left", margin_value)
+   * add_theme_constant_override("margin_bottom", margin_value)
+   * add_theme_constant_override("margin_right", margin_value)
+   *
+   *
+   * // This code sample assumes the current script is extending MarginContainer.
+   * int marginValue = 100;
+   * AddThemeConstantOverride("margin_top", marginValue);
+   * AddThemeConstantOverride("margin_left", marginValue);
+   * AddThemeConstantOverride("margin_bottom", marginValue);
+   * AddThemeConstantOverride("margin_right", marginValue);
+   *
+   * @summary
+   *
+   *
+   */
+  new(): MarginContainer
+  constructor()
+  static new(): MarginContainer
 
-
-
-
-
-  connect<T extends SignalsOf<MarginContainer>>(signal: T, method: SignalFunction<MarginContainer[T]>): number;
-
-
-
-
-
-
+  connect<T extends SignalsOf<MarginContainer>>(
+    signal: T,
+    method: SignalFunction<MarginContainer[T]>
+  ): number
 }
-

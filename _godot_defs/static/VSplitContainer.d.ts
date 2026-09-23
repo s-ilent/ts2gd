@@ -1,28 +1,18 @@
-
 /**
- * Vertical split container. See [SplitContainer]. This goes from top to bottom.
+ * A container that accepts only two child controls, then arranges them vertically and creates a divisor between them. The divisor can be dragged around to change the size relation between the child controls.
  *
-*/
-declare class VSplitContainer extends SplitContainer  {
+ */
+declare class VSplitContainer extends SplitContainer {
+  /**
+   * A container that accepts only two child controls, then arranges them vertically and creates a divisor between them. The divisor can be dragged around to change the size relation between the child controls.
+   *
+   */
+  new(): VSplitContainer
+  constructor()
+  static new(): VSplitContainer
 
-  
-/**
- * Vertical split container. See [SplitContainer]. This goes from top to bottom.
- *
-*/
-  new(): VSplitContainer; 
-  static "new"(): VSplitContainer 
-
-
-
-
-
-  connect<T extends SignalsOf<VSplitContainer>>(signal: T, method: SignalFunction<VSplitContainer[T]>): number;
-
-
-
-
-
-
+  connect<T extends SignalsOf<VSplitContainer>>(
+    signal: T,
+    method: SignalFunction<VSplitContainer[T]>
+  ): number
 }
-

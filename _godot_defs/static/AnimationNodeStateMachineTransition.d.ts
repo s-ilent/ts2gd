@@ -1,72 +1,110 @@
-
 /**
-*/
-declare class AnimationNodeStateMachineTransition extends Resource  {
-
-  
-/**
-*/
-  new(): AnimationNodeStateMachineTransition; 
-  static "new"(): AnimationNodeStateMachineTransition 
-
-
-/**
- * Turn on auto advance when this condition is set. The provided name will become a boolean parameter on the [AnimationTree] that can be controlled from code (see [url=https://docs.godotengine.org/en/3.4/tutorials/animation/animation_tree.html#controlling-from-code][/url]). For example, if [member AnimationTree.tree_root] is an [AnimationNodeStateMachine] and [member advance_condition] is set to `"idle"`:
+ * The path generated when using [method AnimationNodeStateMachinePlayback.travel] is limited to the nodes connected by [AnimationNodeStateMachineTransition].
  *
- * @example 
- * 
- * $animation_tree["parameters/conditions/idle"] = is_on_floor and (linear_velocity.x == 0)
- * @summary 
- * 
+ * You can set the timing and conditions of the transition in detail.
  *
-*/
-advance_condition: string;
+ */
+declare class AnimationNodeStateMachineTransition extends Resource {
+  /**
+   * The path generated when using [method AnimationNodeStateMachinePlayback.travel] is limited to the nodes connected by [AnimationNodeStateMachineTransition].
+   *
+   * You can set the timing and conditions of the transition in detail.
+   *
+   */
+  new(): AnimationNodeStateMachineTransition
+  constructor()
+  static new(): AnimationNodeStateMachineTransition
 
-/** Turn on the transition automatically when this state is reached. This works best with [constant SWITCH_MODE_AT_END]. */
-auto_advance: boolean;
+  /**
+   * Turn on auto advance when this condition is set. The provided name will become a boolean parameter on the [AnimationTree] that can be controlled from code (see [url=$DOCS_URL/tutorials/animation/animation_tree.html#controlling-from-code]Using AnimationTree[/url]). For example, if [member AnimationTree.tree_root] is an [AnimationNodeStateMachine] and [member advance_condition] is set to `"idle"`:
+   *
+   * @example
+   *
+   *
+   * $animation_tree.set("parameters/conditions/idle", is_on_floor and (linear_velocity.x == 0))
+   *
+   *
+   * GetNode<AnimationTree>("animation_tree").Set("parameters/conditions/idle", IsOnFloor && (LinearVelocity.X == 0));
+   *
+   * @summary
+   *
+   *
+   */
+  advance_condition: StringName
 
-/** Don't use this transition during [method AnimationNodeStateMachinePlayback.travel] or [member auto_advance]. */
-disabled: boolean;
+  /** Use an expression as a condition for state machine transitions. It is possible to create complex animation advance conditions for switching between states and gives much greater flexibility for creating complex state machines by directly interfacing with the script code. */
+  advance_expression: string
 
-/** Lower priority transitions are preferred when travelling through the tree via [method AnimationNodeStateMachinePlayback.travel] or [member auto_advance]. */
-priority: int;
+  /** Determines whether the transition should be disabled, enabled when using [method AnimationNodeStateMachinePlayback.travel], or traversed automatically if the [member advance_condition] and [member advance_expression] checks are [code]true[/code] (if assigned). */
+  advance_mode: int
 
-/** The transition type. */
-switch_mode: int;
+  /** If [code]true[/code], breaks the loop at the end of the loop cycle for transition, even if the animation is looping. */
+  break_loop_at_end: boolean
 
-/** The time to cross-fade between this state and the next. */
-xfade_time: float;
+  /** Lower priority transitions are preferred when travelling through the tree via [method AnimationNodeStateMachinePlayback.travel] or [member advance_mode] is set to [constant ADVANCE_MODE_AUTO]. */
+  priority: int
 
+  /** If [code]true[/code], the destination animation is played back from the beginning when switched. */
+  reset: boolean
 
+  /** The transition type. */
+  switch_mode: int
 
-  connect<T extends SignalsOf<AnimationNodeStateMachineTransition>>(signal: T, method: SignalFunction<AnimationNodeStateMachineTransition[T]>): number;
+  /** Ease curve for better control over cross-fade between this state and the next. Should be a unit [Curve]. */
+  xfade_curve: Curve
 
+  /**
+   * The time to cross-fade between this state and the next.
+   *
+   * **Note:** [AnimationNodeStateMachine] transitions the current state immediately after the start of the fading. The precise remaining time can only be inferred from the main animation. When [AnimationNodeOutput] is considered as the most upstream, so the [member xfade_time] is not scaled depending on the downstream delta. See also [member AnimationNodeOneShot.fadeout_time].
+   *
+   */
+  xfade_time: float
 
+  connect<T extends SignalsOf<AnimationNodeStateMachineTransition>>(
+    signal: T,
+    method: SignalFunction<AnimationNodeStateMachineTransition[T]>
+  ): number
 
-/**
- * Switch to the next state immediately. The current state will end and blend into the beginning of the new one.
- *
-*/
-static SWITCH_MODE_IMMEDIATE: any;
+  /**
+   * Switch to the next state immediately. The current state will end and blend into the beginning of the new one.
+   *
+   */
+  static SWITCH_MODE_IMMEDIATE: any
 
-/**
- * Switch to the next state immediately, but will seek the new state to the playback position of the old state.
- *
-*/
-static SWITCH_MODE_SYNC: any;
+  /**
+   * Switch to the next state immediately, but will seek the new state to the playback position of the old state.
+   *
+   */
+  static SWITCH_MODE_SYNC: any
 
-/**
- * Wait for the current state playback to end, then switch to the beginning of the next state animation.
- *
-*/
-static SWITCH_MODE_AT_END: any;
+  /**
+   * Wait for the current state playback to end, then switch to the beginning of the next state animation.
+   *
+   */
+  static SWITCH_MODE_AT_END: any
 
+  /**
+   * Don't use this transition.
+   *
+   */
+  static ADVANCE_MODE_DISABLED: any
 
-/**
- * Emitted when [member advance_condition] is changed.
- *
-*/
-$advance_condition_changed: Signal<() => void>
+  /**
+   * Only use this transition during [method AnimationNodeStateMachinePlayback.travel].
+   *
+   */
+  static ADVANCE_MODE_ENABLED: any
 
+  /**
+   * Automatically use this transition if the [member advance_condition] and [member advance_expression] checks are `true` (if assigned).
+   *
+   */
+  static ADVANCE_MODE_AUTO: any
+
+  /**
+   * Emitted when [member advance_condition] is changed.
+   *
+   */
+  $advance_condition_changed: Signal<() => void>
 }
-

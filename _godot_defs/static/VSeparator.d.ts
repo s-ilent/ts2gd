@@ -1,28 +1,18 @@
-
 /**
- * Vertical version of [Separator]. Even though it looks vertical, it is used to separate objects horizontally.
+ * A vertical separator used for separating other controls that are arranged **horizontally**. [VSeparator] is purely visual and normally drawn as a [StyleBoxLine].
  *
-*/
-declare class VSeparator extends Separator  {
+ */
+declare class VSeparator extends Separator {
+  /**
+   * A vertical separator used for separating other controls that are arranged **horizontally**. [VSeparator] is purely visual and normally drawn as a [StyleBoxLine].
+   *
+   */
+  new(): VSeparator
+  constructor()
+  static new(): VSeparator
 
-  
-/**
- * Vertical version of [Separator]. Even though it looks vertical, it is used to separate objects horizontally.
- *
-*/
-  new(): VSeparator; 
-  static "new"(): VSeparator 
-
-
-
-
-
-  connect<T extends SignalsOf<VSeparator>>(signal: T, method: SignalFunction<VSeparator[T]>): number;
-
-
-
-
-
-
+  connect<T extends SignalsOf<VSeparator>>(
+    signal: T,
+    method: SignalFunction<VSeparator[T]>
+  ): number
 }
-

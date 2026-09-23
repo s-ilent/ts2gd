@@ -1,57 +1,130 @@
-
 /**
- * Animations are created using a [SpriteFrames] resource, which can be configured in the editor via the SpriteFrames panel.
+ * [AnimatedSprite3D] is similar to the [Sprite3D] node, except it carries multiple textures as animation [member sprite_frames]. Animations are created using a [SpriteFrames] resource, which allows you to import image files (or a folder containing said files) to provide the animation frames for the sprite. The [SpriteFrames] resource can be configured in the editor via the SpriteFrames bottom panel.
  *
-*/
-declare class AnimatedSprite3D extends SpriteBase3D  {
+ */
+declare class AnimatedSprite3D extends SpriteBase3D {
+  /**
+   * [AnimatedSprite3D] is similar to the [Sprite3D] node, except it carries multiple textures as animation [member sprite_frames]. Animations are created using a [SpriteFrames] resource, which allows you to import image files (or a folder containing said files) to provide the animation frames for the sprite. The [SpriteFrames] resource can be configured in the editor via the SpriteFrames bottom panel.
+   *
+   */
+  new(): AnimatedSprite3D
+  constructor()
+  static new(): AnimatedSprite3D
 
-  
-/**
- * Animations are created using a [SpriteFrames] resource, which can be configured in the editor via the SpriteFrames panel.
- *
-*/
-  new(): AnimatedSprite3D; 
-  static "new"(): AnimatedSprite3D 
+  /** The current animation from the [member sprite_frames] resource. If this value is changed, the [member frame] counter and the [member frame_progress] are reset. */
+  animation: StringName
 
+  /** The key of the animation to play when the scene loads. */
+  autoplay: string
 
-/** The current animation from the [code]frames[/code] resource. If this value changes, the [code]frame[/code] counter is reset. */
-animation: string;
+  /** The displayed animation frame's index. Setting this property also resets [member frame_progress]. If this is not desired, use [method set_frame_and_progress]. */
+  frame: int
 
-/** The displayed animation frame's index. */
-frame: int;
+  /** The progress value between [code]0.0[/code] and [code]1.0[/code] until the current frame transitions to the next frame. If the animation is playing backwards, the value transitions from [code]1.0[/code] to [code]0.0[/code]. */
+  frame_progress: float
 
-/** The [SpriteFrames] resource containing the animation(s). */
-frames: SpriteFrames;
+  /**
+   * The speed scaling ratio. For example, if this value is `1`, then the animation plays at normal speed. If it's `0.5`, then it plays at half speed. If it's `2`, then it plays at double speed.
+   *
+   * If set to a negative value, the animation is played in reverse. If set to `0`, the animation will not advance.
+   *
+   */
+  speed_scale: float
 
-/** If [code]true[/code], the [member animation] is currently playing. */
-playing: boolean;
+  /** The [SpriteFrames] resource containing the animation(s). Allows you the option to load, edit, clear, make unique and save the states of the [SpriteFrames] resource. */
+  sprite_frames: SpriteFrames
 
-/** Returns [code]true[/code] if an animation is currently being played. */
-is_playing(): boolean;
+  /**
+   * Returns the actual playing speed of current animation or `0` if not playing. This speed is the [member speed_scale] property multiplied by `custom_speed` argument specified when calling the [method play] method.
+   *
+   * Returns a negative value if the current animation is playing backwards.
+   *
+   */
+  get_playing_speed(): float
 
-/** Plays the animation named [code]anim[/code]. If no [code]anim[/code] is provided, the current animation is played. */
-play(anim?: string): void;
+  /** Returns [code]true[/code] if an animation is currently playing (even if [member speed_scale] and/or [code]custom_speed[/code] are [code]0[/code]). */
+  is_playing(): boolean
 
-/** Stops the current animation (does not reset the frame counter). */
-stop(): void;
+  /**
+   * Pauses the currently playing animation. The [member frame] and [member frame_progress] will be kept and calling [method play] or [method play_backwards] without arguments will resume the animation from the current playback position.
+   *
+   * See also [method stop].
+   *
+   */
+  pause(): void
 
-  connect<T extends SignalsOf<AnimatedSprite3D>>(signal: T, method: SignalFunction<AnimatedSprite3D[T]>): number;
+  /**
+   * Plays the animation with key [param name]. If [param custom_speed] is negative and [param from_end] is `true`, the animation will play backwards (which is equivalent to calling [method play_backwards]).
+   *
+   * If this method is called with that same animation [param name], or with no [param name] parameter, the assigned animation will resume playing if it was paused.
+   *
+   */
+  play(name?: StringName, custom_speed?: float, from_end?: boolean): void
 
+  /**
+   * Plays the animation with key [param name] in reverse.
+   *
+   * This method is a shorthand for [method play] with `custom_speed = -1.0` and `from_end = true`, so see its description for more information.
+   *
+   */
+  play_backwards(name?: StringName): void
 
+  /**
+   * Sets [member frame] and [member frame_progress] to the given values. Unlike setting [member frame], this method does not reset the [member frame_progress] to `0.0` implicitly.
+   *
+   * **Example:** Change the animation while keeping the same [member frame] and [member frame_progress]:
+   *
+   * @example
+   *
+   *
+   * var current_frame = animated_sprite.get_frame()
+   * var current_progress = animated_sprite.get_frame_progress()
+   * animated_sprite.play("walk_another_skin")
+   * animated_sprite.set_frame_and_progress(current_frame, current_progress)
+   *
+   * @summary
+   *
+   *
+   */
+  set_frame_and_progress(frame: int, progress: float): void
 
+  /** Stops the currently playing animation. The animation position is reset to [code]0[/code] and the [code]custom_speed[/code] is reset to [code]1.0[/code]. See also [method pause]. */
+  stop(): void
 
+  connect<T extends SignalsOf<AnimatedSprite3D>>(
+    signal: T,
+    method: SignalFunction<AnimatedSprite3D[T]>
+  ): number
 
-/**
- * Emitted when the animation is finished (when it plays the last frame). If the animation is looping, this signal is emitted every time the last frame is drawn.
- *
-*/
-$animation_finished: Signal<() => void>
+  /**
+   * Emitted when [member animation] changes.
+   *
+   */
+  $animation_changed: Signal<() => void>
 
-/**
- * Emitted when [member frame] changed.
- *
-*/
-$frame_changed: Signal<() => void>
+  /**
+   * Emitted when the animation reaches the end, or the start if it is played in reverse. When the animation finishes, it pauses the playback.
+   *
+   * **Note:** This signal is not emitted if an animation is looping.
+   *
+   */
+  $animation_finished: Signal<() => void>
 
+  /**
+   * Emitted when the animation loops.
+   *
+   */
+  $animation_looped: Signal<() => void>
+
+  /**
+   * Emitted when [member frame] changes.
+   *
+   */
+  $frame_changed: Signal<() => void>
+
+  /**
+   * Emitted when [member sprite_frames] changes.
+   *
+   */
+  $sprite_frames_changed: Signal<() => void>
 }
-

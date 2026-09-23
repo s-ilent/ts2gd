@@ -1,28 +1,18 @@
-
 /**
  * Translates to `determinant(x)` in the shader language.
  *
-*/
-declare class VisualShaderNodeDeterminant extends VisualShaderNode  {
+ */
+declare class VisualShaderNodeDeterminant extends VisualShaderNode {
+  /**
+   * Translates to `determinant(x)` in the shader language.
+   *
+   */
+  new(): VisualShaderNodeDeterminant
+  constructor()
+  static new(): VisualShaderNodeDeterminant
 
-  
-/**
- * Translates to `determinant(x)` in the shader language.
- *
-*/
-  new(): VisualShaderNodeDeterminant; 
-  static "new"(): VisualShaderNodeDeterminant 
-
-
-
-
-
-  connect<T extends SignalsOf<VisualShaderNodeDeterminant>>(signal: T, method: SignalFunction<VisualShaderNodeDeterminant[T]>): number;
-
-
-
-
-
-
+  connect<T extends SignalsOf<VisualShaderNodeDeterminant>>(
+    signal: T,
+    method: SignalFunction<VisualShaderNodeDeterminant[T]>
+  ): number
 }
-

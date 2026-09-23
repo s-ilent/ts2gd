@@ -1,28 +1,18 @@
-
 /**
- * Panel is a [Control] that displays an opaque background. It's commonly used as a parent and container for other types of [Control] nodes.
+ * [Panel] is a GUI control that displays a [StyleBox]. See also [PanelContainer].
  *
-*/
-declare class Panel extends Control  {
+ */
+declare class Panel extends Control {
+  /**
+   * [Panel] is a GUI control that displays a [StyleBox]. See also [PanelContainer].
+   *
+   */
+  new(): Panel
+  constructor()
+  static new(): Panel
 
-  
-/**
- * Panel is a [Control] that displays an opaque background. It's commonly used as a parent and container for other types of [Control] nodes.
- *
-*/
-  new(): Panel; 
-  static "new"(): Panel 
-
-
-
-
-
-  connect<T extends SignalsOf<Panel>>(signal: T, method: SignalFunction<Panel[T]>): number;
-
-
-
-
-
-
+  connect<T extends SignalsOf<Panel>>(
+    signal: T,
+    method: SignalFunction<Panel[T]>
+  ): number
 }
-

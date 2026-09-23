@@ -1,101 +1,87 @@
-
 /**
  * A Polygon2D is defined by a set of points. Each point is connected to the next, with the final point being connected to the first, resulting in a closed polygon. Polygon2Ds can be filled with color (solid or gradient) or filled with a given texture.
  *
- * **Note:** By default, Godot can only draw up to 4,096 polygon points at a time. To increase this limit, open the Project Settings and increase [member ProjectSettings.rendering/limits/buffers/canvas_polygon_buffer_size_kb] and [member ProjectSettings.rendering/limits/buffers/canvas_polygon_index_buffer_size_kb].
- *
-*/
-declare class Polygon2D extends Node2D  {
+ */
+declare class Polygon2D extends Node2D {
+  /**
+   * A Polygon2D is defined by a set of points. Each point is connected to the next, with the final point being connected to the first, resulting in a closed polygon. Polygon2Ds can be filled with color (solid or gradient) or filled with a given texture.
+   *
+   */
+  new(): Polygon2D
+  constructor()
+  static new(): Polygon2D
 
-  
-/**
- * A Polygon2D is defined by a set of points. Each point is connected to the next, with the final point being connected to the first, resulting in a closed polygon. Polygon2Ds can be filled with color (solid or gradient) or filled with a given texture.
- *
- * **Note:** By default, Godot can only draw up to 4,096 polygon points at a time. To increase this limit, open the Project Settings and increase [member ProjectSettings.rendering/limits/buffers/canvas_polygon_buffer_size_kb] and [member ProjectSettings.rendering/limits/buffers/canvas_polygon_index_buffer_size_kb].
- *
-*/
-  new(): Polygon2D; 
-  static "new"(): Polygon2D 
+  /** If [code]true[/code], polygon edges will be anti-aliased. */
+  antialiased: boolean
 
+  /** The polygon's fill color. If [member texture] is set, it will be multiplied by this color. It will also be the default color for vertices not set in [member vertex_colors]. */
+  color: Color
 
-/** If [code]true[/code], polygon edges will be anti-aliased. */
-antialiased: boolean;
+  /** Number of internal vertices, used for UV mapping. */
+  internal_vertex_count: int
 
+  /** Added padding applied to the bounding box when [member invert_enabled] is set to [code]true[/code]. Setting this value too small may result in a "Bad Polygon" error. */
+  invert_border: float
 
-/** The polygon's fill color. If [code]texture[/code] is defined, it will be multiplied by this color. It will also be the default color for vertices not set in [code]vertex_colors[/code]. */
-color: Color;
+  /** If [code]true[/code], the polygon will be inverted, containing the area outside the defined points and extending to the [member invert_border]. */
+  invert_enabled: boolean
 
+  /** The offset applied to each vertex. */
+  offset: Vector2
 
-/** Added padding applied to the bounding box when using [code]invert[/code]. Setting this value too small may result in a "Bad Polygon" error. */
-invert_border: float;
+  /** The polygon's list of vertices. The final point will be connected to the first. */
+  polygon: PackedVector2Array
 
-/** If [code]true[/code], polygon will be inverted, containing the area outside the defined points and extending to the [code]invert_border[/code]. */
-invert_enable: boolean;
+  /** The list of polygons, in case more than one is being represented. Every individual polygon is stored as a [PackedInt32Array] where each [int] is an index to a point in [member polygon]. If empty, this property will be ignored, and the resulting single polygon will be composed of all points in [member polygon], using the order they are stored in. */
+  polygons: any[]
 
-/** The offset applied to each vertex. */
-offset: Vector2;
+  /** Path to a [Skeleton2D] node used for skeleton-based deformations of this polygon. If empty or invalid, skeletal deformations will not be used. */
+  skeleton: NodePathType
 
-/**
- * The polygon's list of vertices. The final point will be connected to the first.
- *
- * **Note:** This returns a copy of the [PoolVector2Array] rather than a reference.
- *
-*/
-polygon: PoolVector2Array;
+  /** The polygon's fill texture. Use [member uv] to set texture coordinates. */
+  texture: Texture2D
 
+  /** Amount to offset the polygon's [member texture]. If set to [code]Vector2(0, 0)[/code], the texture's origin (its top-left corner) will be placed at the polygon's position. */
+  texture_offset: Vector2
 
+  /** The texture's rotation in radians. */
+  texture_rotation: float
 
-/** The polygon's fill texture. Use [code]uv[/code] to set texture coordinates. */
-texture: Texture;
+  /** Amount to multiply the [member uv] coordinates when using [member texture]. Larger values make the texture smaller, and vice versa. */
+  texture_scale: Vector2
 
-/** Amount to offset the polygon's [code]texture[/code]. If [code](0, 0)[/code] the texture's origin (its top-left corner) will be placed at the polygon's [code]position[/code]. */
-texture_offset: Vector2;
+  /** Texture coordinates for each vertex of the polygon. There should be one UV value per polygon vertex. If there are fewer, undefined vertices will use [code]Vector2(0, 0)[/code]. */
+  uv: PackedVector2Array
 
-/** The texture's rotation in radians. */
-texture_rotation: float;
+  /** Color for each vertex. Colors are interpolated between vertices, resulting in smooth gradients. There should be one per polygon vertex. If there are fewer, undefined vertices will use [member color]. */
+  vertex_colors: PackedColorArray
 
-/** The texture's rotation in degrees. */
-texture_rotation_degrees: float;
+  /** Adds a bone with the specified [param path] and [param weights]. */
+  add_bone(path: NodePathType, weights: PackedFloat32Array): void
 
-/** Amount to multiply the [code]uv[/code] coordinates when using a [code]texture[/code]. Larger values make the texture smaller, and vice versa. */
-texture_scale: Vector2;
+  /** Removes all bones from this [Polygon2D]. */
+  clear_bones(): void
 
-/** Texture coordinates for each vertex of the polygon. There should be one [code]uv[/code] per polygon vertex. If there are fewer, undefined vertices will use [code](0, 0)[/code]. */
-uv: PoolVector2Array;
+  /** Removes the specified bone from this [Polygon2D]. */
+  erase_bone(index: int): void
 
-/** Color for each vertex. Colors are interpolated between vertices, resulting in smooth gradients. There should be one per polygon vertex. If there are fewer, undefined vertices will use [code]color[/code]. */
-vertex_colors: PoolColorArray;
+  /** Returns the number of bones in this [Polygon2D]. */
+  get_bone_count(): int
 
-/** Adds a bone with the specified [code]path[/code] and [code]weights[/code]. */
-add_bone(path: NodePathType, weights: PoolRealArray): void;
+  /** Returns the path to the node associated with the specified bone. */
+  get_bone_path(index: int): NodePathType
 
-/** Removes all bones from this [Polygon2D]. */
-clear_bones(): void;
+  /** Returns the weight values of the specified bone. */
+  get_bone_weights(index: int): PackedFloat32Array
 
-/** Removes the specified bone from this [Polygon2D]. */
-erase_bone(index: int): void;
+  /** Sets the path to the node associated with the specified bone. */
+  set_bone_path(index: int, path: NodePathType): void
 
-/** Returns the number of bones in this [Polygon2D]. */
-get_bone_count(): int;
+  /** Sets the weight values for the specified bone. */
+  set_bone_weights(index: int, weights: PackedFloat32Array): void
 
-/** Returns the path to the node associated with the specified bone. */
-get_bone_path(index: int): NodePathType;
-
-/** Returns the height values of the specified bone. */
-get_bone_weights(index: int): PoolRealArray;
-
-/** Sets the path to the node associated with the specified bone. */
-set_bone_path(index: int, path: NodePathType): void;
-
-/** Sets the weight values for the specified bone. */
-set_bone_weights(index: int, weights: PoolRealArray): void;
-
-  connect<T extends SignalsOf<Polygon2D>>(signal: T, method: SignalFunction<Polygon2D[T]>): number;
-
-
-
-
-
-
+  connect<T extends SignalsOf<Polygon2D>>(
+    signal: T,
+    method: SignalFunction<Polygon2D[T]>
+  ): number
 }
-

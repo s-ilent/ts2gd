@@ -1,108 +1,135 @@
-
 /**
- * A RayCast represents a line from its origin to its destination position, `cast_to`. It is used to query the 2D space in order to find the closest object along the path of the ray.
+ * A raycast represents a ray from its origin to its [member target_position] that finds the closest object along its path, if it intersects any.
  *
- * RayCast2D can ignore some objects by adding them to the exception list via `add_exception`, by setting proper filtering with collision layers, or by filtering object types with type masks.
+ * [RayCast2D] can ignore some objects by adding them to an exception list, by making its detection reporting ignore [Area2D]s ([member collide_with_areas]) or [PhysicsBody2D]s ([member collide_with_bodies]), or by configuring physics layers.
  *
- * RayCast2D can be configured to report collisions with [Area2D]s ([member collide_with_areas]) and/or [PhysicsBody2D]s ([member collide_with_bodies]).
+ * [RayCast2D] calculates intersection every physics frame, and it holds the result until the next physics frame. For an immediate raycast, or if you want to configure a [RayCast2D] multiple times within the same physics frame, use [method force_raycast_update].
  *
- * Only enabled raycasts will be able to query the space and report collisions.
+ * To sweep over a region of 2D space, you can approximate the region with multiple [RayCast2D]s or use [ShapeCast2D].
  *
- * RayCast2D calculates intersection every physics frame (see [Node]), and the result is cached so it can be used later until the next frame. If multiple queries are required between physics frames (or during the same frame) use [method force_raycast_update] after adjusting the raycast.
- *
-*/
-declare class RayCast2D extends Node2D  {
+ */
+declare class RayCast2D extends Node2D {
+  /**
+   * A raycast represents a ray from its origin to its [member target_position] that finds the closest object along its path, if it intersects any.
+   *
+   * [RayCast2D] can ignore some objects by adding them to an exception list, by making its detection reporting ignore [Area2D]s ([member collide_with_areas]) or [PhysicsBody2D]s ([member collide_with_bodies]), or by configuring physics layers.
+   *
+   * [RayCast2D] calculates intersection every physics frame, and it holds the result until the next physics frame. For an immediate raycast, or if you want to configure a [RayCast2D] multiple times within the same physics frame, use [method force_raycast_update].
+   *
+   * To sweep over a region of 2D space, you can approximate the region with multiple [RayCast2D]s or use [ShapeCast2D].
+   *
+   */
+  new(): RayCast2D
+  constructor()
+  static new(): RayCast2D
 
-  
-/**
- * A RayCast represents a line from its origin to its destination position, `cast_to`. It is used to query the 2D space in order to find the closest object along the path of the ray.
- *
- * RayCast2D can ignore some objects by adding them to the exception list via `add_exception`, by setting proper filtering with collision layers, or by filtering object types with type masks.
- *
- * RayCast2D can be configured to report collisions with [Area2D]s ([member collide_with_areas]) and/or [PhysicsBody2D]s ([member collide_with_bodies]).
- *
- * Only enabled raycasts will be able to query the space and report collisions.
- *
- * RayCast2D calculates intersection every physics frame (see [Node]), and the result is cached so it can be used later until the next frame. If multiple queries are required between physics frames (or during the same frame) use [method force_raycast_update] after adjusting the raycast.
- *
-*/
-  new(): RayCast2D; 
-  static "new"(): RayCast2D 
+  /** If [code]true[/code], collisions with [Area2D]s will be reported. */
+  collide_with_areas: boolean
 
+  /** If [code]true[/code], collisions with [PhysicsBody2D]s will be reported. */
+  collide_with_bodies: boolean
 
-/** The ray's destination point, relative to the RayCast's [code]position[/code]. */
-cast_to: Vector2;
+  /** The ray's collision mask. Only objects in at least one collision layer enabled in the mask will be detected. See [url=$DOCS_URL/tutorials/physics/physics_introduction.html#collision-layers-and-masks]Collision layers and masks[/url] in the documentation for more information. */
+  collision_mask: int
 
-/** If [code]true[/code], collision with [Area2D]s will be reported. */
-collide_with_areas: boolean;
+  /** If [code]true[/code], collisions will be reported. */
+  enabled: boolean
 
-/** If [code]true[/code], collision with [PhysicsBody2D]s will be reported. */
-collide_with_bodies: boolean;
+  /** If [code]true[/code], this raycast will not report collisions with its parent node. This property only has an effect if the parent node is a [CollisionObject2D]. See also [method Node.get_parent] and [method add_exception]. */
+  exclude_parent: boolean
 
-/** The ray's collision mask. Only objects in at least one collision layer enabled in the mask will be detected. See [url=https://docs.godotengine.org/en/3.4/tutorials/physics/physics_introduction.html#collision-layers-and-masks]Collision layers and masks[/url] in the documentation for more information. */
-collision_mask: int;
+  /** If [code]true[/code], the ray will detect a hit when starting inside shapes. In this case the collision normal will be [code]Vector2(0, 0)[/code]. Does not affect concave polygon shapes. */
+  hit_from_inside: boolean
 
-/** If [code]true[/code], collisions will be reported. */
-enabled: boolean;
+  /** The ray's destination point, relative to this raycast's [member Node2D.position]. */
+  target_position: Vector2
 
-/** If [code]true[/code], the parent node will be excluded from collision detection. */
-exclude_parent: boolean;
+  /** Adds a collision exception so the ray does not report collisions with the specified [param node]. */
+  add_exception(node: CollisionObject2D): void
 
-/** Adds a collision exception so the ray does not report collisions with the specified node. */
-add_exception(node: Object): void;
+  /** Adds a collision exception so the ray does not report collisions with the specified [RID]. */
+  add_exception_rid(rid: RID): void
 
-/** Adds a collision exception so the ray does not report collisions with the specified [RID]. */
-add_exception_rid(rid: RID): void;
+  /** Removes all collision exceptions for this ray. */
+  clear_exceptions(): void
 
-/** Removes all collision exceptions for this ray. */
-clear_exceptions(): void;
+  /**
+   * Updates the collision information for the ray immediately, without waiting for the next `_physics_process` call. Use this method, for example, when the ray or its parent has changed state.
+   *
+   * **Note:** [member enabled] does not need to be `true` for this to work.
+   *
+   */
+  force_raycast_update(): void
 
-/**
- * Updates the collision information for the ray. Use this method to update the collision information immediately instead of waiting for the next `_physics_process` call, for example if the ray or its parent has changed state.
- *
- * **Note:** `enabled` is not required for this to work.
- *
-*/
-force_raycast_update(): void;
+  /**
+   * Returns the first object that the ray intersects, or `null` if no object is intersecting the ray (i.e. [method is_colliding] returns `false`).
+   *
+   * **Note:** This object is not guaranteed to be a [CollisionObject2D]. For example, if the ray intersects a [TileMapLayer], the method will return a [TileMapLayer] instance.
+   *
+   */
+  get_collider(): Object
 
-/** Returns the first object that the ray intersects, or [code]null[/code] if no object is intersecting the ray (i.e. [method is_colliding] returns [code]false[/code]). */
-get_collider(): Object;
+  /** Returns the [RID] of the first object that the ray intersects, or an empty [RID] if no object is intersecting the ray (i.e. [method is_colliding] returns [code]false[/code]). */
+  get_collider_rid(): RID
 
-/** Returns the shape ID of the first object that the ray intersects, or [code]0[/code] if no object is intersecting the ray (i.e. [method is_colliding] returns [code]false[/code]). */
-get_collider_shape(): int;
+  /**
+   * Returns the shape ID of the first object that the ray intersects, or `0` if no object is intersecting the ray (i.e. [method is_colliding] returns `false`).
+   *
+   * To get the intersected shape node, for a [CollisionObject2D] target, use:
+   *
+   * @example
+   *
+   *
+   * var target = get_collider() # A CollisionObject2D.
+   * var shape_id = get_collider_shape() # The shape index in the collider.
+   * var owner_id = target.shape_find_owner(shape_id) # The owner ID in the collider.
+   * var shape = target.shape_owner_get_owner(owner_id)
+   *
+   *
+   * var target = (CollisionObject2D)GetCollider(); // A CollisionObject2D.
+   * var shapeId = GetColliderShape(); // The shape index in the collider.
+   * var ownerId = target.ShapeFindOwner(shapeId); // The owner ID in the collider.
+   * var shape = target.ShapeOwnerGetOwner(ownerId);
+   *
+   * @summary
+   *
+   *
+   */
+  get_collider_shape(): int
 
-/** Returns an individual bit on the collision mask. */
-get_collision_mask_bit(bit: int): boolean;
+  /** Returns whether or not the specified layer of the [member collision_mask] is enabled, given a [param layer_number] between 1 and 32. */
+  get_collision_mask_value(layer_number: int): boolean
 
-/** Returns the normal of the intersecting object's shape at the collision point. */
-get_collision_normal(): Vector2;
+  /**
+   * Returns the normal of the intersecting object's shape at the collision point, or `Vector2(0, 0)` if the ray starts inside the shape and [member hit_from_inside] is `true`.
+   *
+   * **Note:** Check that [method is_colliding] returns `true` before calling this method to ensure the returned normal is valid and up-to-date.
+   *
+   */
+  get_collision_normal(): Vector2
 
-/**
- * Returns the collision point at which the ray intersects the closest object.
- *
- * **Note:** This point is in the **global** coordinate system.
- *
-*/
-get_collision_point(): Vector2;
+  /**
+   * Returns the collision point at which the ray intersects the closest object, in the global coordinate system. If [member hit_from_inside] is `true` and the ray starts inside of a collision shape, this function will return the origin point of the ray.
+   *
+   * **Note:** Check that [method is_colliding] returns `true` before calling this method to ensure the returned point is valid and up-to-date.
+   *
+   */
+  get_collision_point(): Vector2
 
-/** Returns whether any object is intersecting with the ray's vector (considering the vector length). */
-is_colliding(): boolean;
+  /** Returns whether any object is intersecting with the ray's vector (considering the vector length). */
+  is_colliding(): boolean
 
-/** Removes a collision exception so the ray does report collisions with the specified node. */
-remove_exception(node: Object): void;
+  /** Removes a collision exception so the ray can report collisions with the specified [param node]. */
+  remove_exception(node: CollisionObject2D): void
 
-/** Removes a collision exception so the ray does report collisions with the specified [RID]. */
-remove_exception_rid(rid: RID): void;
+  /** Removes a collision exception so the ray can report collisions with the specified [RID]. */
+  remove_exception_rid(rid: RID): void
 
-/** Sets or clears individual bits on the collision mask. This makes selecting the areas scanned easier. */
-set_collision_mask_bit(bit: int, value: boolean): void;
+  /** Based on [param value], enables or disables the specified layer in the [member collision_mask], given a [param layer_number] between 1 and 32. */
+  set_collision_mask_value(layer_number: int, value: boolean): void
 
-  connect<T extends SignalsOf<RayCast2D>>(signal: T, method: SignalFunction<RayCast2D[T]>): number;
-
-
-
-
-
-
+  connect<T extends SignalsOf<RayCast2D>>(
+    signal: T,
+    method: SignalFunction<RayCast2D[T]>
+  ): number
 }
-

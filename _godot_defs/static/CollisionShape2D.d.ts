@@ -1,39 +1,43 @@
-
 /**
- * Editor facility for creating and editing collision shapes in 2D space. You can use this node to represent all sorts of collision shapes, for example, add this to an [Area2D] to give it a detection shape, or add it to a [PhysicsBody2D] to create a solid object. **IMPORTANT**: this is an Editor-only helper to create shapes, use [method CollisionObject2D.shape_owner_get_shape] to get the actual shape.
+ * A node that provides a [Shape2D] to a [CollisionObject2D] parent and allows it to be edited. This can give a detection shape to an [Area2D] or turn a [PhysicsBody2D] into a solid object.
  *
-*/
-declare class CollisionShape2D extends Node2D  {
+ */
+declare class CollisionShape2D extends Node2D {
+  /**
+   * A node that provides a [Shape2D] to a [CollisionObject2D] parent and allows it to be edited. This can give a detection shape to an [Area2D] or turn a [PhysicsBody2D] into a solid object.
+   *
+   */
+  new(): CollisionShape2D
+  constructor()
+  static new(): CollisionShape2D
 
-  
-/**
- * Editor facility for creating and editing collision shapes in 2D space. You can use this node to represent all sorts of collision shapes, for example, add this to an [Area2D] to give it a detection shape, or add it to a [PhysicsBody2D] to create a solid object. **IMPORTANT**: this is an Editor-only helper to create shapes, use [method CollisionObject2D.shape_owner_get_shape] to get the actual shape.
- *
-*/
-  new(): CollisionShape2D; 
-  static "new"(): CollisionShape2D 
+  /**
+   * The collision shape color that is displayed in the editor, or in the running project if **Debug > Visible Collision Shapes** is checked at the top of the editor.
+   *
+   * **Note:** The default value is [member ProjectSettings.debug/shapes/collision/shape_color]. The `Color(0, 0, 0, 0)` value documented here is a placeholder, and not the actual default debug color.
+   *
+   */
+  debug_color: Color
 
+  /** A disabled collision shape has no effect in the world. This property should be changed with [method Object.set_deferred]. */
+  disabled: boolean
 
-/** A disabled collision shape has no effect in the world. This property should be changed with [method Object.set_deferred]. */
-disabled: boolean;
+  /**
+   * Sets whether this collision shape should only detect collision on one side (top or bottom).
+   *
+   * **Note:** This property has no effect if this [CollisionShape2D] is a child of an [Area2D] node.
+   *
+   */
+  one_way_collision: boolean
 
-/** Sets whether this collision shape should only detect collision on one side (top or bottom). */
-one_way_collision: boolean;
+  /** The margin used for one-way collision (in pixels). Higher values will make the shape thicker, and work better for colliders that enter the shape at a high velocity. */
+  one_way_collision_margin: float
 
-/** The margin used for one-way collision (in pixels). Higher values will make the shape thicker, and work better for colliders that enter the shape at a high velocity. */
-one_way_collision_margin: float;
+  /** The actual shape owned by this collision shape. */
+  shape: Shape2D
 
-/** The actual shape owned by this collision shape. */
-shape: Shape2D;
-
-
-
-  connect<T extends SignalsOf<CollisionShape2D>>(signal: T, method: SignalFunction<CollisionShape2D[T]>): number;
-
-
-
-
-
-
+  connect<T extends SignalsOf<CollisionShape2D>>(
+    signal: T,
+    method: SignalFunction<CollisionShape2D[T]>
+  ): number
 }
-

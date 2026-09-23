@@ -1,51 +1,59 @@
-
 /**
- * Dialog for confirmation of actions. This dialog inherits from [AcceptDialog], but has by default an OK and Cancel button (in host OS order).
+ * A dialog used for confirmation of actions. This window is similar to [AcceptDialog], but pressing its Cancel button can have a different outcome from pressing the OK button. The order of the two buttons varies depending on the host OS.
  *
  * To get cancel action, you can use:
  *
- * @example 
- * 
- * get_cancel().connect("pressed", self, "cancelled")
- * @summary 
- * .
+ * @example
  *
-*/
-declare class ConfirmationDialog extends AcceptDialog  {
-
-  
-/**
- * Dialog for confirmation of actions. This dialog inherits from [AcceptDialog], but has by default an OK and Cancel button (in host OS order).
  *
- * To get cancel action, you can use:
+ * get_cancel_button().pressed.connect(_on_canceled)
  *
- * @example 
- * 
- * get_cancel().connect("pressed", self, "cancelled")
- * @summary 
- * .
  *
-*/
-  new(): ConfirmationDialog; 
-  static "new"(): ConfirmationDialog 
-
-
-
-
-/**
- * Returns the cancel button.
+ * GetCancelButton().Pressed += OnCanceled;
  *
- * **Warning:** This is a required internal node, removing and freeing it may cause a crash. If you wish to hide it or any of its children, use their [member CanvasItem.visible] property.
+ * @summary
  *
-*/
-get_cancel(): Button;
+ *
+ * **Note:** [AcceptDialog] is invisible by default. To make it visible, call one of the `popup_*` methods from [Window] on the node, such as [method Window.popup_centered_clamped].
+ *
+ */
+declare class ConfirmationDialog extends AcceptDialog {
+  /**
+   * A dialog used for confirmation of actions. This window is similar to [AcceptDialog], but pressing its Cancel button can have a different outcome from pressing the OK button. The order of the two buttons varies depending on the host OS.
+   *
+   * To get cancel action, you can use:
+   *
+   * @example
+   *
+   *
+   * get_cancel_button().pressed.connect(_on_canceled)
+   *
+   *
+   * GetCancelButton().Pressed += OnCanceled;
+   *
+   * @summary
+   *
+   *
+   * **Note:** [AcceptDialog] is invisible by default. To make it visible, call one of the `popup_*` methods from [Window] on the node, such as [method Window.popup_centered_clamped].
+   *
+   */
+  new(): ConfirmationDialog
+  constructor()
+  static new(): ConfirmationDialog
 
-  connect<T extends SignalsOf<ConfirmationDialog>>(signal: T, method: SignalFunction<ConfirmationDialog[T]>): number;
+  /** The text displayed by the cancel button (see [method get_cancel_button]). */
+  cancel_button_text: string
 
+  /**
+   * Returns the cancel button.
+   *
+   * **Warning:** This is a required internal node, removing and freeing it may cause a crash. If you wish to hide it or any of its children, use their [member CanvasItem.visible] property.
+   *
+   */
+  get_cancel_button(): Button
 
-
-
-
-
+  connect<T extends SignalsOf<ConfirmationDialog>>(
+    signal: T,
+    method: SignalFunction<ConfirmationDialog[T]>
+  ): number
 }
-

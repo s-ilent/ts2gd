@@ -1,34 +1,25 @@
-
 /**
  * Has only one output port and no inputs.
  *
- * Translated to `bool` in the shader language.
+ * Translated to [code skip-lint]bool` in the shader language.
  *
-*/
-declare class VisualShaderNodeBooleanConstant extends VisualShaderNode  {
+ */
+declare class VisualShaderNodeBooleanConstant extends VisualShaderNodeConstant {
+  /**
+   * Has only one output port and no inputs.
+   *
+   * Translated to [code skip-lint]bool` in the shader language.
+   *
+   */
+  new(): VisualShaderNodeBooleanConstant
+  constructor()
+  static new(): VisualShaderNodeBooleanConstant
 
-  
-/**
- * Has only one output port and no inputs.
- *
- * Translated to `bool` in the shader language.
- *
-*/
-  new(): VisualShaderNodeBooleanConstant; 
-  static "new"(): VisualShaderNodeBooleanConstant 
+  /** A boolean constant which represents a state of this node. */
+  constant: boolean
 
-
-/** A boolean constant which represents a state of this node. */
-constant: boolean;
-
-
-
-  connect<T extends SignalsOf<VisualShaderNodeBooleanConstant>>(signal: T, method: SignalFunction<VisualShaderNodeBooleanConstant[T]>): number;
-
-
-
-
-
-
+  connect<T extends SignalsOf<VisualShaderNodeBooleanConstant>>(
+    signal: T,
+    method: SignalFunction<VisualShaderNodeBooleanConstant[T]>
+  ): number
 }
-

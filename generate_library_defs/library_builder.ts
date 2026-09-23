@@ -116,9 +116,55 @@ ${Object.keys(enums)
     const inherits = json.class["$"].inherits
     const constants = (json.class.constants ?? [])[0]?.constant ?? []
     const signals = (json.class.signals ?? [])[0]?.signal ?? []
-    const methods = methodsXml.map((method) =>
-      parseMethod(method, { containgClassName: className })
+
+    let constructorsXml = json.class.constructors?.[0]?.constructor ?? []
+    let constructorsInfo = constructorsXml
+      ?.map((ctor: any) => {
+        if (typeof ctor === "object") {
+          let params = ctor?.param
+          let decs = ctor.description?.[0] || ""
+          let returnType = ctor.return?.[0].$.type || "void"
+          let argumentList = params
+            ? params
+                .map((p: any) => {
+                  let paramName = p.$.name
+                  let paramType = godotTypeToTsType(p.$.type)
+                  return `${paramName}: ${paramType}`
+                })
+                .join(", ")
+            : ""
+          return {
+            docString: decs as string,
+            returnType: godotTypeToTsType(returnType),
+            argumentList: argumentList,
+          }
+        } else {
+          return undefined
+        }
+      })
+      .filter((ctor: any) => ctor !== undefined)
+
+    let methods = methodsXml.map((method) =>
+      parseMethod(method, {
+        containgClassName: className,
+        singletons: singletons,
+      })
     )
+    for (const ctorInfo of constructorsInfo ?? []) {
+      methods.push({
+        name: "new",
+        codegen: "",
+        argumentList: ctorInfo.argumentList,
+        isConstructor: true,
+        docString: ctorInfo.docString,
+        returnType: ctorInfo.returnType,
+        isAbstract: false,
+        isStatic: false,
+      })
+    }
+
+    // some methods are not useful in gdscript
+    // methods = methods.filter((m)=>!m.docString.includes("It is not useful to override this method in GDScript"));
     const constructorInfo = methods.filter((method) => method.isConstructor)
 
     // This is true for classes that can be constructed without a new keyword, e.g. const myVector = Vector2();
@@ -157,11 +203,19 @@ ${Object.keys(enums)
       let constructors = ""
 
       if (constructorInfo.length === 0) {
-        constructors += `  new()${typeAnnotation}; \n`
+        constructors += `  new()${typeAnnotation};\n`
+        if (!isSpecialConstructorClass) {
+          constructors += `  constructor();\n`
+        }
       } else {
         constructors += `
 ${constructorInfo
-  .map((inf) => `  new(${inf.argumentList})${typeAnnotation};`)
+  .map(
+    (inf) =>
+      `  new(${inf.argumentList})${typeAnnotation};\n${
+        isSpecialConstructorClass ? "" : `  constructor(${inf.argumentList});\n`
+      }`
+  )
   .join("\n")}
 `
       }
@@ -189,7 +243,11 @@ ${(() => {
     return `declare class ${className}Constructor {`
   } else {
     return `declare class ${className}${
-      inherits ? ` extends ${inherits} ` : ""
+      inherits
+        ? ` extends ${
+            singletons.includes(inherits) ? `${inherits}Class` : inherits
+          } `
+        : ""
     } {`
   }
 })()}
@@ -317,10 +375,13 @@ declare var ${className}: typeof ${className}Constructor & {
     const globalFunctions = await generateGdscriptLib(
       path.join(this.paths.gdscriptPath, "@GDScript.xml")
     )
+    const globalFunctions2 = await generateGdscriptLib(
+      path.join(this.paths.normalClassesPath, "@GlobalScope.xml")
+    )
 
     fs.writeFileSync(
       path.join(this.paths.staticGodotDefsPath, "@global_functions.d.ts"),
-      globalFunctions
+      globalFunctions + "\n" + globalFunctions2
     )
 
     const xmlPaths = [
@@ -359,6 +420,12 @@ declare var ${className}: typeof ${className}Constructor & {
       }
 
       if (fileName === "PackedScene.xml") {
+        continue
+      }
+      if (fileName === "Signal.xml") {
+        continue
+      }
+      if (fileName === "Callable.xml") {
         continue
       }
 

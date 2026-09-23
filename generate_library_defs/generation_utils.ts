@@ -48,6 +48,9 @@ export function godotTypeToTsType(godotType: string): string {
   if (godotType === "Array") {
     return "any[]"
   }
+  if (godotType === "Array[]") {
+    return "any[][]"
+  }
 
   if (godotType === "PackedScene") {
     return "PackedScene<any>"
@@ -68,6 +71,9 @@ export function godotTypeToTsType(godotType: string): string {
   if (godotType === "Dictionary") {
     return "Dictionary<any, any>"
   }
+  if (godotType === "Dictionary[]") {
+    return "Dictionary<any, any>[]"
+  }
 
   if (godotType === "NodePath") {
     // TODO
@@ -76,6 +82,9 @@ export function godotTypeToTsType(godotType: string): string {
 
   if (godotType.match(/^[0-9]+$/)) {
     return "int"
+  }
+  if (godotType.includes("*")) {
+    return "CPointer"
   }
 
   return godotType

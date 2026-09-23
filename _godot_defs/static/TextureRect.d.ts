@@ -1,94 +1,111 @@
-
 /**
- * Used to draw icons and sprites in a user interface. The texture's placement can be controlled with the [member stretch_mode] property. It can scale, tile, or stay centered inside its bounding rectangle.
+ * A control that displays a texture, for example an icon inside a GUI. The texture's placement can be controlled with the [member stretch_mode] property. It can scale, tile, or stay centered inside its bounding rectangle.
  *
- * **Note:** You should enable [member flip_v] when using a TextureRect to display a [ViewportTexture]. Alternatively, you can enable [member Viewport.render_target_v_flip] on the Viewport. Otherwise, the image will appear upside down.
- *
-*/
-declare class TextureRect extends Control  {
+ */
+declare class TextureRect extends Control {
+  /**
+   * A control that displays a texture, for example an icon inside a GUI. The texture's placement can be controlled with the [member stretch_mode] property. It can scale, tile, or stay centered inside its bounding rectangle.
+   *
+   */
+  new(): TextureRect
+  constructor()
+  static new(): TextureRect
 
-  
-/**
- * Used to draw icons and sprites in a user interface. The texture's placement can be controlled with the [member stretch_mode] property. It can scale, tile, or stay centered inside its bounding rectangle.
- *
- * **Note:** You should enable [member flip_v] when using a TextureRect to display a [ViewportTexture]. Alternatively, you can enable [member Viewport.render_target_v_flip] on the Viewport. Otherwise, the image will appear upside down.
- *
-*/
-  new(): TextureRect; 
-  static "new"(): TextureRect 
+  /** Defines how minimum size is determined based on the texture's size. */
+  expand_mode: int
 
+  /** If [code]true[/code], texture is flipped horizontally. */
+  flip_h: boolean
 
-/** If [code]true[/code], the texture scales to fit its bounding rectangle. */
-expand: boolean;
+  /** If [code]true[/code], texture is flipped vertically. */
+  flip_v: boolean
 
-/** If [code]true[/code], texture is flipped horizontally. */
-flip_h: boolean;
+  /** Controls the texture's behavior when resizing the node's bounding rectangle. */
+  stretch_mode: int
 
-/** If [code]true[/code], texture is flipped vertically. */
-flip_v: boolean;
+  /** The node's [Texture2D] resource. */
+  texture: Texture2D
 
+  connect<T extends SignalsOf<TextureRect>>(
+    signal: T,
+    method: SignalFunction<TextureRect[T]>
+  ): number
 
-/** Controls the texture's behavior when resizing the node's bounding rectangle. See [enum StretchMode]. */
-stretch_mode: int;
+  /**
+   * The minimum size will be equal to texture size, i.e. [TextureRect] can't be smaller than the texture.
+   *
+   */
+  static EXPAND_KEEP_SIZE: any
 
-/** The node's [Texture] resource. */
-texture: Texture;
+  /**
+   * The size of the texture won't be considered for minimum size calculation, so the [TextureRect] can be shrunk down past the texture size.
+   *
+   */
+  static EXPAND_IGNORE_SIZE: any
 
+  /**
+   * The height of the texture will be ignored. Minimum width will be equal to the current height. Useful for horizontal layouts, e.g. inside [HBoxContainer].
+   *
+   */
+  static EXPAND_FIT_WIDTH: any
 
+  /**
+   * Same as [constant EXPAND_FIT_WIDTH], but keeps texture's aspect ratio.
+   *
+   */
+  static EXPAND_FIT_WIDTH_PROPORTIONAL: any
 
-  connect<T extends SignalsOf<TextureRect>>(signal: T, method: SignalFunction<TextureRect[T]>): number;
+  /**
+   * The width of the texture will be ignored. Minimum height will be equal to the current width. Useful for vertical layouts, e.g. inside [VBoxContainer].
+   *
+   */
+  static EXPAND_FIT_HEIGHT: any
 
+  /**
+   * Same as [constant EXPAND_FIT_HEIGHT], but keeps texture's aspect ratio.
+   *
+   */
+  static EXPAND_FIT_HEIGHT_PROPORTIONAL: any
 
+  /**
+   * Scale to fit the node's bounding rectangle.
+   *
+   */
+  static STRETCH_SCALE: any
 
-/**
- * Scale to fit the node's bounding rectangle, only if `expand` is `true`. Default `stretch_mode`, for backwards compatibility. Until you set `expand` to `true`, the texture will behave like [constant STRETCH_KEEP].
- *
-*/
-static STRETCH_SCALE_ON_EXPAND: any;
+  /**
+   * Tile inside the node's bounding rectangle.
+   *
+   */
+  static STRETCH_TILE: any
 
-/**
- * Scale to fit the node's bounding rectangle.
- *
-*/
-static STRETCH_SCALE: any;
+  /**
+   * The texture keeps its original size and stays in the bounding rectangle's top-left corner.
+   *
+   */
+  static STRETCH_KEEP: any
 
-/**
- * Tile inside the node's bounding rectangle.
- *
-*/
-static STRETCH_TILE: any;
+  /**
+   * The texture keeps its original size and stays centered in the node's bounding rectangle.
+   *
+   */
+  static STRETCH_KEEP_CENTERED: any
 
-/**
- * The texture keeps its original size and stays in the bounding rectangle's top-left corner.
- *
-*/
-static STRETCH_KEEP: any;
+  /**
+   * Scale the texture to fit the node's bounding rectangle, but maintain the texture's aspect ratio.
+   *
+   */
+  static STRETCH_KEEP_ASPECT: any
 
-/**
- * The texture keeps its original size and stays centered in the node's bounding rectangle.
- *
-*/
-static STRETCH_KEEP_CENTERED: any;
+  /**
+   * Scale the texture to fit the node's bounding rectangle, center it and maintain its aspect ratio.
+   *
+   */
+  static STRETCH_KEEP_ASPECT_CENTERED: any
 
-/**
- * Scale the texture to fit the node's bounding rectangle, but maintain the texture's aspect ratio.
- *
-*/
-static STRETCH_KEEP_ASPECT: any;
-
-/**
- * Scale the texture to fit the node's bounding rectangle, center it and maintain its aspect ratio.
- *
-*/
-static STRETCH_KEEP_ASPECT_CENTERED: any;
-
-/**
- * Scale the texture so that the shorter side fits the bounding rectangle. The other side clips to the node's limits.
- *
-*/
-static STRETCH_KEEP_ASPECT_COVERED: any;
-
-
-
+  /**
+   * Scale the texture so that the shorter side fits the bounding rectangle. The other side clips to the node's limits.
+   *
+   */
+  static STRETCH_KEEP_ASPECT_COVERED: any
 }
-
