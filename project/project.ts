@@ -279,7 +279,45 @@ export class TsGdProject {
    * Compile all current source files
    * @returns false if the compilation had errors, true otherwise
    */
+
+  /**
+   * Copies the bundled runtime shim scripts into the project so that
+   * generated code can load them by res:// path.
+   */
+  ensureRuntimeShims() {
+    try {
+      const shimsSourceDir = path.join(__dirname, "..", "..", "gd_shims")
+
+      if (!fs.existsSync(shimsSourceDir)) {
+        return
+      }
+
+      const shimsDestDir = path.join(this.paths.rootPath, "_ts_shims")
+
+      if (!fs.existsSync(shimsDestDir)) {
+        fs.mkdirSync(shimsDestDir, { recursive: true })
+      }
+
+      for (const file of fs.readdirSync(shimsSourceDir)) {
+        if (!file.endsWith(".gd")) {
+          continue
+        }
+
+        const dest = path.join(shimsDestDir, file)
+
+        if (!fs.existsSync(dest)) {
+          fs.copyFileSync(path.join(shimsSourceDir, file), dest)
+        }
+      }
+    } catch {
+      // Shim availability is best-effort; generated code that needs them
+      // will fail loudly at runtime if they are missing.
+    }
+  }
+
   async compileAllSourceFiles(): Promise<boolean> {
+    this.ensureRuntimeShims()
+
     const assetsToCompile = this.assets.filter(
       (a): a is AssetSourceFile => a instanceof AssetSourceFile
     )

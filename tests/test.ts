@@ -107,6 +107,7 @@ export const compileTs = (
         init: false,
       },
       buildDynamicDefinitions: async () => {},
+      ensureRuntimeShims: () => {},
       assets: [],
       program: undefined as any,
       compileAllSourceFiles: async () => true,

@@ -18,6 +18,15 @@ export const parseIdentifier = (
     })
   }
 
+  if (name === "Infinity") {
+    return combine({
+      parent: node,
+      nodes: [],
+      props,
+      parsedStrings: () => "INF",
+    })
+  }
+
   return combine({
     parent: node,
     nodes: [],

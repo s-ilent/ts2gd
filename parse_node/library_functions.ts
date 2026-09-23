@@ -14,6 +14,10 @@ export type LibraryFunctionName =
   | "ts_imul"
   | "ts_is_integer"
   | "ts_number"
+  | "ts_new_set"
+  | "ts_new_map"
+  | "ts_new_weak_set"
+  | "ts_new_weak_map"
   | "add_vec_lib"
   | "sub_vec_lib"
   | "mul_vec_lib"
@@ -137,6 +141,38 @@ static func __ts_number(x):
   if x is String:
     return x.to_float()
   return float(x)
+`,
+  },
+
+  ts_new_set: {
+    name: "ts_new_set",
+    definition: () => `
+static func __ts_new_set(initial = null):
+  return load("res://_ts_shims/ts_set.gd").new(initial)
+`,
+  },
+
+  ts_new_map: {
+    name: "ts_new_map",
+    definition: () => `
+static func __ts_new_map(initial = null):
+  return load("res://_ts_shims/ts_map.gd").new(initial)
+`,
+  },
+
+  ts_new_weak_set: {
+    name: "ts_new_weak_set",
+    definition: () => `
+static func __ts_new_weak_set(initial = null):
+  return load("res://_ts_shims/ts_weak_set.gd").new(initial)
+`,
+  },
+
+  ts_new_weak_map: {
+    name: "ts_new_weak_map",
+    definition: () => `
+static func __ts_new_weak_map(initial = null):
+  return load("res://_ts_shims/ts_weak_map.gd").new(initial)
 `,
   },
 
