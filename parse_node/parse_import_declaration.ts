@@ -461,8 +461,9 @@ export const parseImportDeclaration = (
         }
 
         // Types (aliases, interfaces, classes used only in type positions)
-        // need no generated code. Anything used as a value that we can't
-        // resolve is worth reporting.
+        // need no generated code. Value-used bindings from modules that are
+        // not part of the project still bind through a module receiver, so
+        // use sites keep parsing; the load itself will fail at runtime.
         let usedAsValue = false
 
         for (const use of props.usages.get(element.name)?.uses ?? []) {
@@ -473,12 +474,18 @@ export const parseImportDeclaration = (
         }
 
         if (usedAsValue) {
-          addError({
-            error: ErrorName.InvalidNumber,
-            location: node,
-            description: `Import ${pathToImportedTs} not found.`,
-            stack: new Error().stack ?? "",
-          })
+          const { receiver } = receiverDeclarationLine(
+            node,
+            pathToImportedTs,
+            props,
+            importLines
+          )
+
+          registerImportedBinding(
+            localSymbol,
+            `${receiver}.${element.name.text}`,
+            props
+          )
         }
 
         continue
@@ -501,6 +508,29 @@ export const parseImportDeclaration = (
           usedAsValue = true
           break
         }
+      }
+
+      // An unresolved or ambiguous binding has no meaningful class name to
+      // bind; emitting one would produce several variables all named "any".
+      // Bindings from modules missing from the project fall through to the
+      // receiver treatment below instead.
+      if (typeString === "" || typeString === "any" || typeString === "error") {
+        if (usedAsValue) {
+          const { receiver } = receiverDeclarationLine(
+            node,
+            pathToImportedTs,
+            props,
+            importLines
+          )
+
+          registerImportedBinding(
+            localSymbol,
+            `${receiver}.${element.name.text}`,
+            props
+          )
+        }
+
+        continue
       }
 
       const isAutoload = importedSourceFile?.isAutoload() ?? false
@@ -684,5 +714,35 @@ class_name __Mod_Test_4064or
 static var Helper = load("res://helper.gd")
 static var h = Helper
 print(h)
+  `,
+}
+
+export const testImportFromMissingModuleStillBinds: Test = {
+  ts: `
+import { fieldZone } from "./zones"
+
+fieldZone(5)
+  `,
+  expected: `
+class_name __Mod_Test_4064or
+static var __ts_import_Zones = load("res://zones.gd")
+__ts_import_Zones.fieldZone(5)
+  `,
+}
+
+export const testTwoMissingModulesGetDistinctReceivers: Test = {
+  ts: `
+import { a } from "./zoo"
+import { b } from "./garden"
+
+a()
+b()
+  `,
+  expected: `
+class_name __Mod_Test_4064or
+static var __ts_import_Zoo = load("res://zoo.gd")
+static var __ts_import_Garden = load("res://garden.gd")
+__ts_import_Zoo.a()
+__ts_import_Garden.b()
   `,
 }
