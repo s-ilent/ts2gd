@@ -11,6 +11,7 @@ export type LibraryFunctionName =
   | "sub_vec_lib"
   | "mul_vec_lib"
   | "div_vec_lib"
+  | "ts_typeof"
 
 export const LibraryFunctions: {
   [key in LibraryFunctionName]: {
@@ -30,6 +31,26 @@ func __entries(dict):
     result.push_back([key, value])
   
   return result
+`,
+  },
+
+  ts_typeof: {
+    name: "ts_typeof",
+    definition: (name) => `
+func ${name}(v):
+  match typeof(v):
+    TYPE_NIL:
+      return "undefined"
+    TYPE_BOOL:
+      return "boolean"
+    TYPE_INT, TYPE_FLOAT:
+      return "number"
+    TYPE_STRING:
+      return "string"
+    TYPE_CALLABLE:
+      return "function"
+    _:
+      return "object"
 `,
   },
 

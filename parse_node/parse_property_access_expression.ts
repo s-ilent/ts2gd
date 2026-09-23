@@ -257,7 +257,7 @@ if (foo.bar === 1 as int) {
   `,
   expected: `
 var foo = { "bar": 1 }
-if ((typeof((foo.bar if foo.has("bar") else null)) == typeof(1)) and ((foo.bar if foo.has("bar") else null) == 1)):
+if (foo.bar if foo.has("bar") else null) == 1:
   print(foo.bar)
   `,
 }

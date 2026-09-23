@@ -44,28 +44,14 @@ export const parseBinaryExpression = (
         return `(${left} if (${left}) != null else ${right})`
       }
 
-      /**
-       * Godot has an annoying limitation where a == b actually throws an error (!) if a and b
-       * are not the same type.
-       */
-      if (operatorToken === "==" || operatorToken === "===") {
-        if (
-          leftTypeString !== rightTypeString ||
-          // Even if two variables have the same union type they could be different variants of that union
-          leftTypeString.includes("|")
-        ) {
-          // TODO: We should cache the left and right expressions - we evaluate them twice rn
-
-          return `((typeof(${left}) == typeof(${right})) and (${left} == ${right}))`
-        }
-      }
-
-      if (operatorToken === "!=" || operatorToken === "!==") {
-        if (leftTypeString !== rightTypeString) {
-          // TODO: We should cache the left and right expressions - we evaluate them twice rn
-
-          return `((typeof(${left}) != typeof(${right})) or ((typeof(${left}) == typeof(${right})) and (${left} != ${right})))`
-        }
+      // In Godot 4, == across differing types is legal and simply yields
+      // false (the Godot 3 hard-error limitation no longer applies), so no
+      // runtime type guard is needed. GDScript has no strict variants:
+      // === / !== behave identically to == / !=.
+      if (operatorToken === "===") {
+        operatorToken = "=="
+      } else if (operatorToken === "!==") {
+        operatorToken = "!="
       }
 
       return `${left}${needsLeftHandSpace ? " " : ""}${operatorToken} ${right}`
@@ -118,7 +104,7 @@ a == b
   expected: `
 var a
 var b  
-((typeof(a) == typeof(b)) and (a == b))
+a == b
 `,
 }
 
@@ -132,6 +118,6 @@ a != b
   expected: `
 var a
 var b  
-((typeof(a) != typeof(b)) or ((typeof(a) == typeof(b)) and (a != b)))
+a != b
 `,
 }
