@@ -93,6 +93,14 @@ export type ParseState = {
   importedBindings?: Map<ts.Symbol, string>
 
   /**
+   * Fallback for imports from modules that are not part of the project, where
+   * the checker produces no symbol to key on. Maps the local binding name to
+   * the GDScript expression emitted at use sites. Only consulted when the
+   * identifier resolves to no local declaration.
+   */
+  importedNames?: Map<string, string>
+
+  /**
    * Receiver variables already emitted for imported modules in this file,
    * keyed by the module's res path. The boolean records whether the static
    * variable declaration line has been emitted yet.

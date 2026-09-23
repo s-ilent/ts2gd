@@ -26,9 +26,11 @@ const getPathWithoutExtension = (
       importPath
     )
   } else {
-    // Handle absolute paths
+    // Handle absolute (or bare, e.g. package) paths
 
-    pathToImportedTs = path.join(props.project.paths.rootPath, importPath)
+    const rootPath: string | undefined = props.project.paths?.rootPath
+
+    pathToImportedTs = rootPath ? path.join(rootPath, importPath) : importPath
   }
 
   return pathToImportedTs
@@ -243,6 +245,28 @@ const registerImportedBinding = (
   props.importedBindings.set(localSymbol, expression)
 }
 
+/**
+ * Imports from modules that are not part of the project resolve to no checker
+ * symbol, so the symbol-keyed binding map cannot be used. Register the local
+ * name directly; use sites consult this only when the identifier resolves to
+ * no declaration of its own.
+ */
+const registerImportedName = (
+  localName: ts.Identifier | undefined,
+  expression: string,
+  props: ParseState
+) => {
+  if (!localName || !expression) {
+    return
+  }
+
+  if (!props.importedNames) {
+    props.importedNames = new Map()
+  }
+
+  props.importedNames.set(localName.text, expression)
+}
+
 export const parseImportDeclaration = (
   node: ts.ImportDeclaration,
   props: ParseState
@@ -326,13 +350,15 @@ export const parseImportDeclaration = (
       importLines
     )
 
-    registerImportedBinding(
-      props.program
-        .getTypeChecker()
-        .getSymbolAtLocation(node.importClause.name),
-      receiver,
-      props
-    )
+    const defaultSymbol = props.program
+      .getTypeChecker()
+      .getSymbolAtLocation(node.importClause.name)
+
+    if (defaultSymbol) {
+      registerImportedBinding(defaultSymbol, receiver, props)
+    } else {
+      registerImportedName(node.importClause.name, receiver, props)
+    }
   }
 
   // Namespace imports (import * as X) bind the name to the module's script
@@ -346,11 +372,15 @@ export const parseImportDeclaration = (
       importLines
     )
 
-    registerImportedBinding(
-      props.program.getTypeChecker().getSymbolAtLocation(namespaceImport.name),
-      receiver,
-      props
-    )
+    const namespaceSymbol = props.program
+      .getTypeChecker()
+      .getSymbolAtLocation(namespaceImport.name)
+
+    if (namespaceSymbol) {
+      registerImportedBinding(namespaceSymbol, receiver, props)
+    } else {
+      registerImportedName(namespaceImport.name, receiver, props)
+    }
   }
 
   if (namedBindings && namedBindings.kind === SyntaxKind.NamedImports) {
@@ -637,6 +667,19 @@ Util.doThing(5)
 class_name __Mod_Test_4064or
 static var __ts_import_Util = load("res://util.gd")
 __ts_import_Util.doThing(5)
+  `,
+}
+
+export const testNamespaceImportFromUnresolvedModule: Test = {
+  ts: `
+import * as THREE from "three"
+
+const group = THREE.Group.new()
+  `,
+  expected: `
+class_name __Mod_Test_4064or
+static var __ts_import_Three = load("res://three.gd")
+static var _group = __ts_import_Three.Group.new()
   `,
 }
 

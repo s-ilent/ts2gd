@@ -94,6 +94,14 @@ export const parseIdentifier = (
       const name = props.scope.getName(node)
 
       if (!name) {
+        // Imports from modules outside the project register their local
+        // binding names directly, because the checker produces no symbol to
+        // key on. Only identifiers that resolve to no declaration consult
+        // this map, so local shadowing is unaffected.
+        if (props.importedNames?.has(node.text)) {
+          return props.importedNames.get(node.text)!
+        }
+
         return node.text
       }
 
