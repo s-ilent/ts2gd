@@ -179,6 +179,29 @@ export const parseCallExpression = (
         )
       }
 
+      // console.log/info/debug/warn/error map onto GDScript printing. The
+      // error channel takes exactly one argument, so extra arguments are
+      // stringified and joined.
+      if (parsedExpr.content.startsWith("console.")) {
+        const method = parsedExpr.content.slice("console.".length)
+
+        const consolePrint = ["log", "info", "debug"].includes(method)
+        const consoleError = ["warn", "error"].includes(method)
+
+        if (consolePrint || consoleError) {
+          if (consoleError) {
+            const joined = parsedStringArgs
+              .map((arg) => `str(${arg})`)
+              .join(' + " " + ')
+
+            parsedExpr = { content: "push_error" }
+            parsedStringArgs = joined === "" ? [] : [joined]
+          } else {
+            parsedExpr = { content: "print" }
+          }
+        }
+      }
+
       // Rewrite this.$signal.emit() to this.emit_signal("signal")
       if (parsedExpr.content.endsWith(".emit")) {
         const secondDot = parsedExpr.content.lastIndexOf(".")
@@ -952,4 +975,18 @@ var __gen = __random_element([Vector2.UP, Vector2.DOWN])
 var __gen1 = [Callable(self, "mul_vec_lib") if __gen != null else null, {}, __gen]
 var __gen2 = __gen1[0].call(__gen1[2], 5) if __gen1 != null else null
 static var _test = __gen2`,
+}
+
+export const testConsoleRewrite: Test = {
+  ts: `
+console.log("a", 1)
+console.warn("low fuel")
+console.error("bad", code)
+  `,
+  expected: `
+class_name __Mod_Test_4064or
+print("a", 1)
+push_error(str("low fuel"))
+push_error(str("bad") + " " + str(code))
+  `,
 }
