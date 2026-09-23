@@ -69,6 +69,43 @@ export const parsePropertyAccessExpression = (
   let nullCoalesce: ExtraLine[] = []
   const tc = props.program.getTypeChecker()
 
+  // Math.* maps onto GDScript global functions and constants.
+  if (ts.isIdentifier(node.expression) && node.expression.text === "Math") {
+    const mathGlobals: Record<string, string> = {
+      abs: "abs",
+      ceil: "ceil",
+      ceili: "ceili",
+      exp: "exp",
+      floor: "floor",
+      floori: "floori",
+      log: "log",
+      max: "max",
+      min: "min",
+      pow: "pow",
+      random: "randf",
+      round: "round",
+      roundi: "roundi",
+      sign: "sign",
+      sqrt: "sqrt",
+      E: "E",
+      INF: "INF",
+      NaN: "NAN",
+      PI: "PI",
+      TAU: "TAU",
+    }
+
+    const name = node.name.text
+
+    if (name in mathGlobals) {
+      return combine({
+        parent: node,
+        nodes: [],
+        props,
+        parsedStrings: () => mathGlobals[name],
+      })
+    }
+  }
+
   let result = combine({
     parent: node,
     nodes: [node.expression, node.name],
@@ -509,5 +546,39 @@ class_name Foo
 var name: String = "hi"
 func size():
   return self.name.length()
+`,
+}
+
+export const testMathFunctionsAndConstants: Test = {
+  ts: `
+export class Foo {
+  compute(x: float) {
+    return Math.floor(x) + Math.abs(x) + Math.PI
+  }
+
+  roll() {
+    return Math.random() * 10.0
+  }
+}`,
+  expected: `
+class_name Foo
+func compute(x: float):
+  return floor(x) + abs(x) + PI
+func roll():
+  return randf() * 10.0
+`,
+}
+
+export const testMathMinMax: Test = {
+  ts: `
+export class Foo {
+  clamp01(x: float) {
+    return Math.max(0.0, Math.min(1.0, x))
+  }
+}`,
+  expected: `
+class_name Foo
+func clamp01(x: float):
+  return max(0.0, min(1.0, x))
 `,
 }
