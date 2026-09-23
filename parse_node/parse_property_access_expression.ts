@@ -678,8 +678,8 @@ ${LibraryFunctions.ts_trunc.definition("__ts_trunc")}
 ${LibraryFunctions.ts_hypot.definition("__ts_hypot")}
 ${LibraryFunctions.ts_fround.definition("__ts_fround")}
 ${LibraryFunctions.ts_imul.definition("__ts_imul")}
-func go(x, y):
-  return (__ts_trunc(x) + __ts_hypot(x, y)) + (__ts_fround(x) + __ts_imul(x, y) + atan2(y, x))
+func go(x: float, y: float):
+  return __ts_trunc(x) + __ts_hypot(x, y) + __ts_fround(x) + __ts_imul(x, y) + atan2(y, x)
   `,
 }
 
