@@ -22,6 +22,26 @@ export const parseCallExpression = (
   let expression = node.expression
   let args = node.arguments
 
+  // Number(x) conversions compile to a hoisted helper.
+  if (expression.kind === SyntaxKind.Identifier) {
+    const calleeName = (expression as ts.Identifier).text
+
+    if (calleeName === "Number") {
+      const result = combine({
+        parent: node,
+        nodes: [...args],
+        props,
+        parsedStrings: (...parsed) => `__ts_number(${parsed.join(", ")})`,
+      })
+
+      result.hoistedLibraryFunctions =
+        result.hoistedLibraryFunctions ?? new Set()
+      result.hoistedLibraryFunctions.add("ts_number")
+
+      return result
+    }
+  }
+
   if (node.expression.kind === SyntaxKind.SuperKeyword) {
     return combine({
       parent: node,

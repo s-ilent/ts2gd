@@ -17,6 +17,8 @@ import {
   isNullableNode,
 } from "../ts_utils"
 
+import { LibraryFunctionName, LibraryFunctions } from "./library_functions"
+
 const isRhs = (node: ts.PropertyAccessExpression) => {
   let parentExpression: ts.Node = node
 
@@ -87,6 +89,13 @@ export const parsePropertyAccessExpression = (
       roundi: "roundi",
       sign: "sign",
       sqrt: "sqrt",
+      sin: "sin",
+      cos: "cos",
+      tan: "tan",
+      asin: "asin",
+      acos: "acos",
+      atan: "atan",
+      atan2: "atan2",
       E: "E",
       INF: "INF",
       NaN: "NAN",
@@ -103,6 +112,59 @@ export const parsePropertyAccessExpression = (
         props,
         parsedStrings: () => mathGlobals[name],
       })
+    }
+
+    // Members without direct GDScript builtins compile to hoisted helpers.
+    const mathHoisted: Record<string, LibraryFunctionName> = {
+      trunc: "ts_trunc",
+      hypot: "ts_hypot",
+      fround: "ts_fround",
+      imul: "ts_imul",
+    }
+
+    if (name in mathHoisted) {
+      const result = combine({
+        parent: node,
+        nodes: [],
+        props,
+        parsedStrings: () => `__${mathHoisted[name]}`,
+      })
+
+      result.hoistedLibraryFunctions =
+        result.hoistedLibraryFunctions ?? new Set()
+      result.hoistedLibraryFunctions.add(mathHoisted[name])
+
+      return result
+    }
+  }
+
+  // Number.* statics map onto GDScript helpers.
+  if (ts.isIdentifier(node.expression) && node.expression.text === "Number") {
+    const name = node.name.text
+
+    if (name === "isFinite") {
+      // GDScript ships a global is_finite.
+      return combine({
+        parent: node,
+        nodes: [],
+        props,
+        parsedStrings: () => "is_finite",
+      })
+    }
+
+    if (name === "isInteger") {
+      const result = combine({
+        parent: node,
+        nodes: [],
+        props,
+        parsedStrings: () => "__ts_is_integer",
+      })
+
+      result.hoistedLibraryFunctions =
+        result.hoistedLibraryFunctions ?? new Set()
+      result.hoistedLibraryFunctions.add("ts_is_integer")
+
+      return result
     }
   }
 
@@ -200,6 +262,18 @@ export const parsePropertyAccessExpression = (
         node.expression.getText() === containingClassDecl.name?.getText()
       ) {
         return `self.${rhs}`
+      }
+
+      // JS collections are backed by generated shim classes whose get/set
+      // members are named ts_get/ts_set, because bare get/set would clash
+      // with Object's own methods in Godot.
+      const baseTypeString = tc.typeToString(exprType)
+
+      if (
+        /(?:Readonly)?(?:Weak)?(?:Set|Map)\b/.test(baseTypeString) &&
+        (rhs === "set" || rhs === "get")
+      ) {
+        return `${lhs}.ts_${rhs}`
       }
 
       // TS .length maps to different GDScript members per type:
@@ -588,4 +662,37 @@ class_name Foo
 func clamp01(x: float):
   return max(0.0, min(1.0, x))
 `,
+}
+
+export const testMathExtraFunctions: Test = {
+  ts: `
+export class Foo {
+  go(x: float, y: float) {
+    return Math.trunc(x) + Math.hypot(x, y) + Math.fround(x) + Math.imul(x, y) + Math.atan2(y, x)
+  }
+}
+  `,
+  expected: `
+class_name Foo
+${LibraryFunctions.ts_trunc.definition("__ts_trunc")}
+${LibraryFunctions.ts_hypot.definition("__ts_hypot")}
+${LibraryFunctions.ts_fround.definition("__ts_fround")}
+${LibraryFunctions.ts_imul.definition("__ts_imul")}
+func go(x, y):
+  return (__ts_trunc(x) + __ts_hypot(x, y)) + (__ts_fround(x) + __ts_imul(x, y) + atan2(y, x))
+  `,
+}
+
+export const testNumberStaticAndConvert: Test = {
+  ts: `
+let ok = Number.isInteger(5)
+let n = Number("12.5")
+  `,
+  expected: `
+class_name __Mod_Test_4064or
+${LibraryFunctions.ts_is_integer.definition("__ts_is_integer")}
+${LibraryFunctions.ts_number.definition("__ts_number")}
+static var _ok = __ts_is_integer(5)
+static var _n = __ts_number("12.5")
+  `,
 }

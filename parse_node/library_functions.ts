@@ -8,6 +8,12 @@ export type LibraryFunctionName =
   | "flatten"
   | "random_element"
   | "dict_merge"
+  | "ts_trunc"
+  | "ts_hypot"
+  | "ts_fround"
+  | "ts_imul"
+  | "ts_is_integer"
+  | "ts_number"
   | "add_vec_lib"
   | "sub_vec_lib"
   | "mul_vec_lib"
@@ -70,6 +76,67 @@ static func __dict_merge(base, extra):
       result[key] = extra[key]
 
   return result
+`,
+  },
+
+  ts_trunc: {
+    name: "ts_trunc",
+    definition: () => `
+static func __ts_trunc(x):
+  return int(x)
+`,
+  },
+
+  ts_hypot: {
+    name: "ts_hypot",
+    definition: () => `
+static func __ts_hypot(a, b):
+  return sqrt(a * a + b * b)
+`,
+  },
+
+  ts_fround: {
+    name: "ts_fround",
+    definition: () => `
+static func __ts_fround(x):
+  var packed := PackedFloat32Array([x])
+  return packed[0]
+`,
+  },
+
+  ts_imul: {
+    name: "ts_imul",
+    definition: () => `
+static func __ts_imul(a, b):
+  var r := int(a) * int(b)
+  r = r & 0xFFFFFFFF
+  if r >= 0x80000000:
+    r -= 0x100000000
+  return r
+`,
+  },
+
+  ts_is_integer: {
+    name: "ts_is_integer",
+    definition: () => `
+static func __ts_is_integer(x):
+  if x is int:
+    return true
+  if x is float:
+    return not is_nan(x) and not is_inf(x) and x == floor(x)
+  return false
+`,
+  },
+
+  ts_number: {
+    name: "ts_number",
+    definition: () => `
+static func __ts_number(x):
+  if x is bool:
+    return 1.0 if x else 0.0
+  if x is String:
+    return x.to_float()
+  return float(x)
 `,
   },
 
