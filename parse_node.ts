@@ -98,6 +98,18 @@ export type ParseState = {
    * variable declaration line has been emitted yet.
    */
   importReceivers?: Map<string, { name: string; emitted: boolean }>
+
+  /**
+   * Whether the code currently being parsed lives in a static function, in
+   * which case `self` is unavailable and callables must target the class.
+   */
+  inStaticContext?: boolean
+
+  /**
+   * The generated or declared class name of the file being parsed, used as
+   * the callable target from static contexts.
+   */
+  moduleClassName?: string
 }
 
 export enum ExtraLineType {

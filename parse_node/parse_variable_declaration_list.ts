@@ -22,6 +22,7 @@ print(a)
 print(b)
   `,
   expected: `
+class_name __Mod_Test_4064or
 static var a: int = 1
 static var b: int = 2
 print(a)

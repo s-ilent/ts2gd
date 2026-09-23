@@ -97,6 +97,7 @@ export const testBasicForOf: Test = {
 for (let x of []) print(1)
   `,
   expected: `
+class_name __Mod_Test_4064or
 for x in []:
   print(1)
   `,
@@ -107,6 +108,7 @@ export const testForOfDestructuring: Test = {
 for (let [a, b] of [[1, 2]]) print(a, b)
   `,
   expected: `
+class_name __Mod_Test_4064or
 for __gen in [[1, 2]]:
   var a = __gen[0]
   var b = __gen[1]

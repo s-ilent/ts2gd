@@ -157,6 +157,7 @@ export const testDestructure: Test = {
 let [a, [b, c]] = [1, [2, 3]]
   `,
   expected: `
+class_name __Mod_Test_4064or
 static var __gen = [1, [2, 3]]
 static var a = __gen[0]
 static var b = __gen[1][0]
@@ -170,6 +171,7 @@ let [a] = [1]
 let [b] = [1]
   `,
   expected: `
+class_name __Mod_Test_4064or
 static var __gen = [1]
 static var a = __gen[0]
 static var __gen1 = [1]
@@ -182,6 +184,7 @@ export const testDestructure3: Test = {
 let { a, b } = { a: 1, b: 2 }
   `,
   expected: `
+class_name __Mod_Test_4064or
 static var __gen = { "a": 1, "b": 2 }
 static var a = __gen.a
 static var b = __gen.b
@@ -196,6 +199,7 @@ let { a, b } = { a: 1, b: 2 }
 print(__gen)
   `,
   expected: `
+class_name __Mod_Test_4064or
 static var __gen: int = 1
 static var __gen1 = { "a": 1, "b": 2 }
 static var a = __gen1.a
@@ -209,6 +213,7 @@ export const testDestructureRename: Test = {
 let { a: a1, b: b1 } = { a: 1, b: 2 }
   `,
   expected: `
+class_name __Mod_Test_4064or
 static var __gen = { "a": 1, "b": 2 }
 static var a1 = __gen.a
 static var b1 = __gen.b
@@ -221,6 +226,7 @@ let x = 1
 let y = 'a'
   `,
   expected: `
+class_name __Mod_Test_4064or
 static var _x: int = 1  
 static var _y = "a"
   `,
@@ -291,6 +297,7 @@ let preload = 123
 print(preload)
   `,
   expected: `
+class_name __Mod_Test_4064or
 static var preload_: int = 123
 print(preload_)
   `,
@@ -301,6 +308,7 @@ export const testIntFloat1: Test = {
 let int = 1
   `,
   expected: `
+class_name __Mod_Test_4064or
 static var _int: int = 1
   `,
 }
@@ -310,6 +318,7 @@ export const testIntFloat2: Test = {
 let float = 1.0
   `,
   expected: `
+class_name __Mod_Test_4064or
 static var _float: float = 1.0
   `,
 }
@@ -319,6 +328,7 @@ export const testIntFloat3: Test = {
 let float: int = 1.0
   `,
   expected: `
+class_name __Mod_Test_4064or
 static var _float: int = 1.0
   `,
 }
@@ -328,6 +338,7 @@ export const testIntFloat4: Test = {
 let float: float = 0
   `,
   expected: `
+class_name __Mod_Test_4064or
 static var _float: float = 0
   `,
 }

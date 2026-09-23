@@ -19,6 +19,8 @@ export const parseMethodDeclaration = (
 
   props.scope.enterScope()
 
+  const previousStaticContext = props.inStaticContext
+
   let isRemote = false
   let isRemoteSync = false
   let isStatic = node.modifiers?.some((v) => v.getText() === "static") ?? false
@@ -40,6 +42,8 @@ export const parseMethodDeclaration = (
     props,
     parsedStrings: (...params) => params.join(", "),
   })
+
+  props.inStaticContext = isStatic
 
   let result = combine({
     parent: node,
@@ -80,6 +84,7 @@ ${body.trim() === "" ? "pass" : body}
   })
 
   props.scope.leaveScope()
+  props.inStaticContext = previousStaticContext
 
   return result
 }

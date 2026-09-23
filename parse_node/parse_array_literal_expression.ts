@@ -19,10 +19,10 @@ export const parseArrayLiteralExpression = (
 
 export const testArrayLiteral: Test = {
   ts: "[1, 2, 3]",
-  expected: "[1, 2, 3]",
+  expected: "class_name __Mod_Test_4064or\n[1, 2, 3]",
 }
 
 export const testEmptyArrayLiteral: Test = {
   ts: "[]",
-  expected: "[]",
+  expected: "class_name __Mod_Test_4064or\n[]",
 }

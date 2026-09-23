@@ -65,6 +65,7 @@ if (true) {
 }
   `,
   expected: `
+class_name __Mod_Test_4064or
 if true:
   print(1)
 else:
@@ -83,6 +84,7 @@ if (true) {
 }
   `,
   expected: `
+class_name __Mod_Test_4064or
 if true:
   print(1)
 else:
@@ -102,6 +104,7 @@ if (++x) {
 }
   `,
   expected: `
+class_name __Mod_Test_4064or
 x += 1
 if x:
   print(1)
@@ -119,6 +122,7 @@ if (x) {
 }
   `,
   expected: `
+class_name __Mod_Test_4064or
 if x:
   x += 1
   print(x)
@@ -137,6 +141,7 @@ if (x++) {
 }
   `,
   expected: `
+class_name __Mod_Test_4064or
 if x:
   x += 1
   print(1)
@@ -155,6 +160,7 @@ if (x) {
 }
   `,
   expected: `
+class_name __Mod_Test_4064or
 if x:
   print(x)
   x += 1
@@ -172,6 +178,7 @@ if (true) {
 }
   `,
   expected: `
+class_name __Mod_Test_4064or
 if true:
   pass
 else:
@@ -187,6 +194,7 @@ if (true) {
 }
   `,
   expected: `
+class_name __Mod_Test_4064or
 if true:
   print(1)
   `,

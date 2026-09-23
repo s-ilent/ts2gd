@@ -20,5 +20,7 @@ export const parseConditionalExpression = (
 export const testConditionalExpression: Test = {
   expectFail: true,
   ts: `const x = true ? 1 : 2`,
-  expected: `static var _x = 1 if true else 2`,
+  expected: `
+class_name __Mod_Test_4064or
+static var _x = 1 if true else 2`,
 }

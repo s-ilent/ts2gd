@@ -2,6 +2,8 @@ import ts from "typescript"
 
 import { ParseNodeType, ParseState, combine } from "../parse_node"
 import { Test } from "../tests/test"
+
+import { LibraryFunctions } from "./library_functions"
 const { SyntaxKind } = ts
 
 export const parseTypeofExpression = (
@@ -31,20 +33,8 @@ let x = new Vector2(1, 1);
 print(typeof x);
   `,
   expected: `
-func __ts_typeof(v):
-  match typeof(v):
-    TYPE_NIL:
-      return "undefined"
-    TYPE_BOOL:
-      return "boolean"
-    TYPE_INT, TYPE_FLOAT:
-      return "number"
-    TYPE_STRING:
-      return "string"
-    TYPE_CALLABLE:
-      return "function"
-    _:
-      return "object"
+class_name __Mod_Test_4064or
+${LibraryFunctions.ts_typeof.definition("__ts_typeof")}
 static var x = Vector2(1, 1)
 print(__ts_typeof(x))
   `,
@@ -60,20 +50,7 @@ export class Test {
   `,
   expected: `
 class_name Test
-func __ts_typeof(v):
-  match typeof(v):
-    TYPE_NIL:
-      return "undefined"
-    TYPE_BOOL:
-      return "boolean"
-    TYPE_INT, TYPE_FLOAT:
-      return "number"
-    TYPE_STRING:
-      return "string"
-    TYPE_CALLABLE:
-      return "function"
-    _:
-      return "object"
+${LibraryFunctions.ts_typeof.definition("__ts_typeof")}
 func check(x):
   return __ts_typeof(x) == "number"
 `,

@@ -30,6 +30,7 @@ export const testNoParensThisCausesAGodotBug: Test = {
 (foo as any)()
   `,
   expected: `
+class_name __Mod_Test_4064or
 foo()
   `,
 }

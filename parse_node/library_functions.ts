@@ -23,7 +23,7 @@ export const LibraryFunctions: {
   entries: {
     name: "entries",
     definition: () => `
-func __entries(dict):
+static func __entries(dict):
   var result = []
 
   for key in dict.keys():
@@ -38,7 +38,7 @@ func __entries(dict):
   ts_typeof: {
     name: "ts_typeof",
     definition: (name) => `
-func ${name}(v):
+static func ${name}(v):
   match typeof(v):
     TYPE_NIL:
       return "undefined"
@@ -58,7 +58,7 @@ func ${name}(v):
   dict_merge: {
     name: "dict_merge",
     definition: () => `
-func __dict_merge(base, extra):
+static func __dict_merge(base, extra):
   var result = {}
 
   if base != null:
@@ -76,7 +76,7 @@ func __dict_merge(base, extra):
   add_vec_lib: {
     name: "add_vec_lib",
     definition: () => `
-func add_vec_lib(v1, v2):
+static func add_vec_lib(v1, v2):
   return null if (v1 == null or v2 == null) else v1 + v2
 `,
   },
@@ -84,7 +84,7 @@ func add_vec_lib(v1, v2):
   sub_vec_lib: {
     name: "sub_vec_lib",
     definition: () => `
-func sub_vec_lib(v1, v2):
+static func sub_vec_lib(v1, v2):
   return null if (v1 == null or v2 == null) else v1 - v2
 `,
   },
@@ -92,7 +92,7 @@ func sub_vec_lib(v1, v2):
   div_vec_lib: {
     name: "div_vec_lib",
     definition: () => `
-func div_vec_lib(v1, v2):
+static func div_vec_lib(v1, v2):
   return null if (v1 == null or v2 == null) else v1 / v2
 `,
   },
@@ -100,7 +100,7 @@ func div_vec_lib(v1, v2):
   mul_vec_lib: {
     name: "mul_vec_lib",
     definition: () => `
-func mul_vec_lib(v1, v2):
+static func mul_vec_lib(v1, v2):
   return null if (v1 == null or v2 == null) else v1 * v2
 `,
   },
@@ -108,7 +108,7 @@ func mul_vec_lib(v1, v2):
   map: {
     name: "map",
     definition: (name: string) => `
-func ${name}(list, fn):
+static func ${name}(list, fn):
   var result = []
 
   for item in list:
@@ -121,7 +121,7 @@ func ${name}(list, fn):
   flatten: {
     name: "flatten",
     definition: (name: string) => `
-func ${name}(list):
+static func ${name}(list):
   var result = []
 
   for item in list:
@@ -140,7 +140,7 @@ func ${name}(list):
   filter: {
     name: "filter",
     definition: (name: string) => `
-func ${name}(list, fn):
+static func ${name}(list, fn):
   var result = []
 
   for item in list:
@@ -154,7 +154,7 @@ func ${name}(list, fn):
   max_by: {
     name: "max_by",
     definition: (name: string) => `
-func ${name}(list, fn):
+static func ${name}(list, fn):
   if len(list) == 0: 
     return null
 
@@ -176,7 +176,7 @@ func ${name}(list, fn):
   min_by: {
     name: "min_by",
     definition: (name: string) => `
-func ${name}(list, fn):
+static func ${name}(list, fn):
   if len(list) == 0: 
     return null
 
@@ -198,7 +198,7 @@ func ${name}(list, fn):
   join: {
     name: "join",
     definition: (name: string) => `
-func ${name}(list, join_str):
+static func ${name}(list, join_str):
   var result = ""
 
   for i in range(len(list)):
@@ -214,7 +214,7 @@ func ${name}(list, join_str):
   random_element: {
     name: "random_element",
     definition: (name: string) => `
-func ${name}(list):
+static func ${name}(list):
   if len(list) == 0: 
     return null
   return list[randi() % len(list)]

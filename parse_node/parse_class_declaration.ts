@@ -99,6 +99,14 @@ export const parseClassDeclaration = (
     })
   }
 
+  // While the class's members are parsed, its own name is the callable
+  // target for static contexts (e.g. lambdas inside static methods).
+  const previousModuleClassName = props.moduleClassName
+
+  if (node.name) {
+    props.moduleClassName = node.name.text
+  }
+
   // Preprocess set/get accessors into Godot 4 property blocks. The bodies
   // themselves are emitted by the accessor parsers; here they are assembled
   // under their property declaration with proper indentation.
@@ -195,6 +203,10 @@ export const parseClassDeclaration = (
       return `\n${blocks.join("\n")}\n${memberStrs.join("")}\n`
     },
   })
+
+  if (previousModuleClassName !== undefined) {
+    props.moduleClassName = previousModuleClassName
+  }
 }
 
 export const testRequireExportedClass: Test = {

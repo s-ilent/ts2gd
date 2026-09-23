@@ -138,6 +138,7 @@ export const testArrayHoleAndRest: Test = {
 let [a, , c, ...rest] = [1, 2, 3, 4, 5]
   `,
   expected: `
+class_name __Mod_Test_4064or
 static var __gen = [1, 2, 3, 4, 5]
 static var a = __gen[0]
 static var c = __gen[2]

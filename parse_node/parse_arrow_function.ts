@@ -151,6 +151,15 @@ export const parseArrowFunction = (
 
   const { unwrapCapturedScope } = getCapturedScope(node, props)
 
+  // Hoisted functions are static so they can be targeted by callables from
+  // static contexts as well; in instance contexts `self` still resolves to
+  // them. Inside a static function `self` is unavailable, so the callable
+  // targets the class itself.
+  const callableTarget =
+    props.inStaticContext && props.moduleClassName
+      ? props.moduleClassName
+      : "self"
+
   props.scope.enterScope()
 
   let parsed = combine({
@@ -161,7 +170,7 @@ export const parseArrowFunction = (
     parsedStrings: (body, ...args) => {
       if (node.body.kind === SyntaxKind.Block) {
         return `
-func ${name}(${[...args, "captures"].join(", ")}):
+static func ${name}(${[...args, "captures"].join(", ")}):
 ${unwrapCapturedScope}
   ${body.trim() === "" ? "pass" : body}
         `
@@ -169,7 +178,7 @@ ${unwrapCapturedScope}
         // Single line arrow function, with implicit return.
 
         return `
-func ${name}(${[...args, "captures"].join(", ")}):
+static func ${name}(${[...args, "captures"].join(", ")}):
 ${unwrapCapturedScope}
   return ${body}
         `
@@ -197,9 +206,8 @@ Declaration not provided for arrow function. This is an internal ts2gd bug. Plea
     ? getCapturedScope(decls[0] as ts.ArrowFunction, props).capturedScopeObject
     : "{}"
 
-  // NOTE: parse_call_expression expects all arrow functions to be declared on self.
   return {
-    content: `[Callable(self, "${name}"), ${capturedScopeObject}]`,
+    content: `[Callable(${callableTarget}, "${name}"), ${capturedScopeObject}]`,
     hoistedArrowFunctions: [
       {
         name,

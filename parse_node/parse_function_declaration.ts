@@ -31,6 +31,9 @@ export const parseFunctionDeclaration = (
 
   props.scope.enterScope()
 
+  const previousStaticContext = props.inStaticContext
+  props.inStaticContext = true
+
   const compiledParameters = combine({
     parent: node,
     nodes: node.parameters,
@@ -67,6 +70,7 @@ ${indentedBody.trim() === "" ? "  pass" : indentedBody}
   })
 
   props.scope.leaveScope()
+  props.inStaticContext = previousStaticContext
 
   return result
 }
@@ -78,6 +82,7 @@ function doThing(x: int): int {
 }
   `,
   expected: `
+class_name __Mod_Test_4064or
 static func doThing(x: int):
   return x * 2
   `,
@@ -90,6 +95,7 @@ export function shout(s: string): string {
 }
   `,
   expected: `
+class_name __Mod_Test_4064or
 static func shout(s: String):
   return s + "!"
   `,
@@ -106,6 +112,7 @@ export function outer(): int {
 }
   `,
   expected: `
+class_name __Mod_Test_4064or
 static func inner():
   return 1
 static func outer():
@@ -118,6 +125,7 @@ export const testAmbientFunctionEmitsNothing: Test = {
 declare function notImplemented(x: int): void
   `,
   expected: `
+class_name __Mod_Test_4064or
   `,
 }
 
@@ -130,6 +138,7 @@ function pick(x: any): any {
 }
   `,
   expected: `
+class_name __Mod_Test_4064or
 static func pick(x):
   return x
   `,
@@ -142,6 +151,7 @@ function greet(name: string = "world"): string {
 }
   `,
   expected: `
+class_name __Mod_Test_4064or
 static func greet(name = "[no value passed in]"):
   name = ("world" if (typeof(name) == TYPE_STRING and name == "[no value passed in]") else name)
   return "hi " + name
@@ -159,6 +169,7 @@ function useThing(): int {
 }
   `,
   expected: `
+class_name __Mod_Test_4064or
 static func loadThing():
   return 5
 static func useThing():
@@ -173,6 +184,7 @@ export function mix(a = 1, b: int): int {
 }
   `,
   expected: `
+class_name __Mod_Test_4064or
 static func mix(a = "[no value passed in]", b: int = null):
   a = (1 if (typeof(a) == TYPE_STRING and a == "[no value passed in]") else a)
   return a + b

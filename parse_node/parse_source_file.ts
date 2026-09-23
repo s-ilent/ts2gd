@@ -73,6 +73,32 @@ export const parseSourceFile = (
     })
   }
 
+  /**
+   * Class-less modules get a generated class name so static contexts can
+   * still form callables targeting the file's own functions.
+   */
+  const moduleClassName = (() => {
+    const rootLength = props.project.paths?.rootPath?.length ?? -1
+    const rel =
+      rootLength >= 0 && node.fileName.startsWith(props.project.paths.rootPath)
+        ? node.fileName.slice(rootLength + 1)
+        : node.fileName
+    const pascal = rel
+      .replace(/\.[^.]+$/, "")
+      .split(/[^a-zA-Z0-9]+/)
+      .filter((part) => part !== "")
+      .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+      .join("")
+
+    let hash = 0
+
+    for (let i = 0; i < rel.length; i++) {
+      hash = (hash * 31 + rel.charCodeAt(i)) >>> 0
+    }
+
+    return `__Mod_${pascal}_${hash.toString(36)}`
+  })()
+
   const parsedClassDeclarations: {
     fileName: string
     parsedClass: ParseNodeType
@@ -93,6 +119,8 @@ export const parseSourceFile = (
   let toplevelStatements: ts.Statement[] = []
 
   const files: { filePath: string; body: string }[] = []
+
+  props.moduleClassName = moduleClassName
 
   for (const statement of statements) {
     if (
@@ -183,12 +211,14 @@ ${parsedClass.content}`,
   }
 
   if (parsedClassDeclarations.length === 0) {
-    // Generate SOME code - even though it'll certainly be wrong
+    // Class-less module: emit its functions as static members of a
+    // generated named class.
 
     files.push({
       filePath: props.sourceFileAsset.gdPath,
       body: `
 ${getFileHeader()}
+class_name ${moduleClassName}
 ${hoistedEnumImports}
 ${hoistedLibraryFunctionDefinitions}
 ${hoistedArrowFunctions}

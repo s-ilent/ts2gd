@@ -22,6 +22,7 @@ export const testInt: Test = {
 let x = 1
   `,
   expected: `
+class_name __Mod_Test_4064or
 static var _x: int = 1
   `,
 }
@@ -31,6 +32,7 @@ export const testFloat: Test = {
 let x = 1.0
   `,
   expected: `
+class_name __Mod_Test_4064or
 static var _x: float = 1.0
   `,
 }

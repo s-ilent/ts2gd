@@ -53,6 +53,7 @@ export const testForIn1: Test = {
 for (let x in []);
   `,
   expected: `
+class_name __Mod_Test_4064or
 for x in []:
   pass
   `,
@@ -64,6 +65,7 @@ let x: never;
 for (x in []);
   `,
   expected: `
+class_name __Mod_Test_4064or
 static var x
 for x in []:
   pass

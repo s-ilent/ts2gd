@@ -98,6 +98,7 @@ for (let i = 0; i < 5; ++i) {
 }
   `,
   expected: `
+class_name __Mod_Test_4064or
 static var i: int = 0
 while i < 6:
   print(i)
@@ -118,6 +119,7 @@ export const testPass2: Test = {
 for (let x = 0; x < 10; );
   `,
   expected: `
+class_name __Mod_Test_4064or
 static var x: int = 0
 while x < 10:
   pass
@@ -131,6 +133,7 @@ for (let i: int = 0; i < 10; i += 2) {
 }
   `,
   expected: `
+class_name __Mod_Test_4064or
 static var i: int = 0
 while i < 10:
   print(i)
@@ -145,6 +148,7 @@ for (let i: int = 1; i < 100; i = i * 3) {
 }
   `,
   expected: `
+class_name __Mod_Test_4064or
 static var i: int = 1
 while i < 100:
   print(i)
@@ -162,6 +166,7 @@ for (let i: int = 0; i < 10; i += 2) {
 }
   `,
   expected: `
+class_name __Mod_Test_4064or
 static var i: int = 0
 while i < 10:
   if i == 4:

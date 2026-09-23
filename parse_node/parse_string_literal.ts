@@ -25,6 +25,7 @@ export const testNewlineLiteral: Test = {
 let d = "\\n"
   `,
   expected: `
+class_name __Mod_Test_4064or
 static var _d = "\\n"
 `,
 }

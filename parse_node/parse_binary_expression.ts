@@ -63,19 +63,21 @@ export const parseBinaryExpression = (
 
 export const testAdd: Test = {
   ts: "1 + 2",
-  expected: "1 + 2",
+  expected: "class_name __Mod_Test_4064or\n\n1 + 2",
 }
 
 export const testMultiply: Test = {
   ts: "1 * 2",
-  expected: "1 * 2",
+  expected: "class_name __Mod_Test_4064or\n\n1 * 2",
 }
 
 export const testAssignmentToDict: Test = {
   ts: `const foo = {};
 foo.bar = 1`,
 
-  expected: `static var foo = {}
+  expected: `
+class_name __Mod_Test_4064or
+static var foo = {}
 foo.bar = 1
 `,
 }
@@ -84,6 +86,7 @@ export const testNestedAssignmentToDict: Test = {
   ts: `const foo = { bar: {} };
 foo.bar.baz = 1`,
   expected: `
+class_name __Mod_Test_4064or
 static var foo = { "bar": {} }
 foo.bar.baz = 1
 `,
@@ -91,7 +94,7 @@ foo.bar.baz = 1
 
 export const testDoubleEqual: Test = {
   ts: "(1 as int) == (2 as int)",
-  expected: "1 == 2",
+  expected: "class_name __Mod_Test_4064or\n\n1 == 2",
 }
 
 export const testDoubleEqualDifferentTypes: Test = {
@@ -102,6 +105,7 @@ let b: string
 a == b
   `,
   expected: `
+class_name __Mod_Test_4064or
 static var a
 static var b  
 a == b
@@ -116,6 +120,7 @@ let b: string
 a != b
   `,
   expected: `
+class_name __Mod_Test_4064or
 static var a
 static var b  
 a != b

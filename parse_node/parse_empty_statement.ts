@@ -36,6 +36,7 @@ export const testPass1: Test = {
 for (let x = 0; x < 10; x++);
   `,
   expected: `
+class_name __Mod_Test_4064or
 static var x: int = 0
 while x < 10:
   x += 1
@@ -47,6 +48,7 @@ export const testPassForIn: Test = {
 for (let x in {});
   `,
   expected: `
+class_name __Mod_Test_4064or
 for x in {}:
   pass
 `,

@@ -52,6 +52,11 @@ export const parseObjectLiteralExpression = (
       props
     )
 
+    const callableTarget =
+      props.inStaticContext && props.moduleClassName
+        ? props.moduleClassName
+        : "self"
+
     props.scope.enterScope()
 
     const parsed = combine({
@@ -62,14 +67,14 @@ export const parseObjectLiteralExpression = (
       parsedStrings: (body, ...args) => {
         if (member.body && member.body.kind !== SyntaxKind.Block) {
           return `
-func ${name}(${[...args, "captures"].join(", ")}):
+static func ${name}(${[...args, "captures"].join(", ")}):
 ${unwrapCapturedScope}
   return ${body}
 `
         }
 
         return `
-func ${name}(${[...args, "captures"].join(", ")}):
+static func ${name}(${[...args, "captures"].join(", ")}):
 ${unwrapCapturedScope}
   ${body.trim() === "" ? "pass" : body}
 `
@@ -80,7 +85,7 @@ ${unwrapCapturedScope}
 
     return {
       name,
-      value: `[Callable(self, "${name}"), ${capturedScopeObject}]`,
+      value: `[Callable(${callableTarget}, "${name}"), ${capturedScopeObject}]`,
       content: parsed.content,
     }
   }
@@ -268,6 +273,7 @@ export const testObjectLiteral: Test = {
 let x = {}
   `,
   expected: `
+class_name __Mod_Test_4064or
 static var _x = {}
   `,
 }
@@ -277,6 +283,7 @@ export const testObjectLiteral2: Test = {
 let x = {a: 1}
   `,
   expected: `
+class_name __Mod_Test_4064or
 static var _x = { "a": 1 }
   `,
 }
@@ -286,6 +293,7 @@ export const testObjectLiteralShorthand: Test = {
 let x = {a}
   `,
   expected: `
+class_name __Mod_Test_4064or
 static var _x = { "a": a }
   `,
 }
@@ -295,6 +303,7 @@ export const testObjectLiteralShorthand2: Test = {
 let x = { a: 1 }
   `,
   expected: `
+class_name __Mod_Test_4064or
 static var _x = { "a": 1 }
   `,
 }
@@ -306,6 +315,7 @@ let x = {
 }
   `,
   expected: `
+class_name __Mod_Test_4064or
 static var _x = { 
   "a": 1,
 }
@@ -320,6 +330,7 @@ let x = {
 }
   `,
   expected: `
+class_name __Mod_Test_4064or
 static var _x = { 
   "a": 1,
   "b": 1,
@@ -338,6 +349,7 @@ export const testObjectLiteralMultiline3: Test = {
 }
   `,
   expected: `
+class_name __Mod_Test_4064or
 var foo = {
   "a": 1,
   "b": 2,
@@ -352,6 +364,7 @@ let base = { a: 1 }
 let x = { ...base, b: 2 }
   `,
   expected: `
+class_name __Mod_Test_4064or
 ${LibraryFunctions.dict_merge.definition("__dict_merge")}
 static var base = { "a": 1 }
 static var _x = __dict_merge(__dict_merge(base, {}), { "b": 2 })
@@ -364,6 +377,7 @@ let base = { a: 1 }
 let x = { ...base }
   `,
   expected: `
+class_name __Mod_Test_4064or
 ${LibraryFunctions.dict_merge.definition("__dict_merge")}
 static var base = { "a": 1 }
 static var _x = __dict_merge(base, {})
@@ -377,6 +391,7 @@ let b = { y: 2 }
 let c = { ...a, ...b }
   `,
   expected: `
+class_name __Mod_Test_4064or
 ${LibraryFunctions.dict_merge.definition("__dict_merge")}
 static var a = { "x": 1 }
 static var b = { "y": 2 }
@@ -394,7 +409,8 @@ let strategies = {
 }
   `,
   expected: `
-func __gen(x: int, captures):
+class_name __Mod_Test_4064or
+static func __gen(x: int, captures):
   return x + 1
 static var _strategies = {
   "name": "a",
@@ -413,7 +429,8 @@ let obj = {
 }
   `,
   expected: `
-func __gen(captures):
+class_name __Mod_Test_4064or
+static func __gen(captures):
   return self.total * 2
 static var _obj = {
   "total": 5,

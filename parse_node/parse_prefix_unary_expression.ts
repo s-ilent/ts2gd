@@ -77,6 +77,7 @@ if (true) {
 }
   `,
   expected: `
+class_name __Mod_Test_4064or
 if true:
   x += 1
   print(x)
@@ -90,6 +91,7 @@ if (true) {
 }
   `,
   expected: `
+class_name __Mod_Test_4064or
 if true:
   x += 1
   print(x)
@@ -103,6 +105,7 @@ if (true) {
 }
   `,
   expected: `
+class_name __Mod_Test_4064or
 if true:
   print(x)
   x += 1
@@ -121,6 +124,7 @@ if (true) {
 }
   `,
   expected: `
+class_name __Mod_Test_4064or
 static var x: int = 0
 if true:
   x += 1
@@ -143,6 +147,7 @@ if (true) {
 }
   `,
   expected: `
+class_name __Mod_Test_4064or
 static var x: int = 0
 if true:
   if x:

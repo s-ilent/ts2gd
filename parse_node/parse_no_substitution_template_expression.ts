@@ -26,6 +26,7 @@ woo
 \`
   `,
   expected: `
+class_name __Mod_Test_4064or
 static var _foo = "\\nwoo\\n"
 `,
 }

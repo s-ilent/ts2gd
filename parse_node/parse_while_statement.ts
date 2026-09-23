@@ -49,6 +49,7 @@ export const testPassWhile: Test = {
 while (true);
   `,
   expected: `
+class_name __Mod_Test_4064or
 while true:
   pass
   `,
@@ -62,6 +63,7 @@ while (x++ < 10) {
 }
   `,
   expected: `
+class_name __Mod_Test_4064or
 static var x: int = 0
 while x < 10:
   x += 1
@@ -75,6 +77,7 @@ let x = 0
 while (x++ < 10) { }
   `,
   expected: `
+class_name __Mod_Test_4064or
 static var x: int = 0
 while x < 10:
   x += 1
@@ -89,6 +92,7 @@ while (++x < 10) {
 }
   `,
   expected: `
+class_name __Mod_Test_4064or
 static var x: int = 0
 x += 1
 while x < 10:

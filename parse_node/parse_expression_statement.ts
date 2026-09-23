@@ -20,6 +20,7 @@ export const testExpressionStatement: Test = {
 1 + 1
   `,
   expected: `
+class_name __Mod_Test_4064or
 1 + 1
   `,
 }

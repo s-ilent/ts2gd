@@ -548,6 +548,7 @@ import { doThing } from "./util"
 doThing(5)
   `,
   expected: `
+class_name __Mod_Test_4064or
 static var __ts_import_Util = load("res://util.gd")
 __ts_import_Util.doThing(5)
   `,
@@ -561,6 +562,7 @@ import { MAX } from "./constants"
 print(MAX)
   `,
   expected: `
+class_name __Mod_Test_4064or
 static var __ts_import_Constants = load("res://constants.gd")
 print(__ts_import_Constants.MAX)
   `,
@@ -574,6 +576,7 @@ import { doThing as dt } from "./util"
 dt(5)
   `,
   expected: `
+class_name __Mod_Test_4064or
 static var __ts_import_Util = load("res://util.gd")
 __ts_import_Util.doThing(5)
   `,
@@ -587,6 +590,7 @@ import * as Utils from "./util"
 Utils.doThing(5)
   `,
   expected: `
+class_name __Mod_Test_4064or
 static var __ts_import_Util = load("res://util.gd")
 __ts_import_Util.doThing(5)
   `,
@@ -600,6 +604,7 @@ import Util from "./util"
 Util.doThing(5)
   `,
   expected: `
+class_name __Mod_Test_4064or
 static var __ts_import_Util = load("res://util.gd")
 __ts_import_Util.doThing(5)
   `,
@@ -641,6 +646,7 @@ import dataUrl from "./data/level.json?url"
 print(dataUrl)
   `,
   expected: `
+class_name __Mod_Test_4064or
 const dataUrl = "res://data/level.json"
 print(dataUrl)
   `,
@@ -658,6 +664,7 @@ a()
 b()
   `,
   expected: `
+class_name __Mod_Test_4064or
 static var __ts_import_Util = load("res://util.gd")
 __ts_import_Util.a()
 __ts_import_Util.b()
@@ -673,6 +680,7 @@ let h = Helper
 print(h)
   `,
   expected: `
+class_name __Mod_Test_4064or
 static var Helper = load("res://helper.gd")
 static var h = Helper
 print(h)

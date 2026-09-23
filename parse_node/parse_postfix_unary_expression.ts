@@ -62,6 +62,7 @@ var x = 1
 x++
   `,
   expected: `
+class_name __Mod_Test_4064or
 static var x: int = 1
 x += 1
 `,
@@ -75,6 +76,7 @@ if (x++) {
 } 
   `,
   expected: `
+class_name __Mod_Test_4064or
 static var x: int = 1
 if x:
   x += 1

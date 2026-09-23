@@ -386,14 +386,16 @@ export const parseCallExpression = (
 
 export const testBasicCall: Test = {
   ts: `foo("bar")`,
-  expected: `foo("bar")`,
+  expected: `
+class_name __Mod_Test_4064or
+foo("bar")`,
 }
 
 export const testAddVec: Test = {
   ts: `const v1: Vector2; const v2: Vector2; v1.add(v2)`,
   expected: `
-func add_vec_lib(v1, v2):
-  return null if (v1 == null or v2 == null) else v1 + v2
+class_name __Mod_Test_4064or
+${LibraryFunctions.add_vec_lib.definition("add_vec_lib")}
 static var v1
 static var v2
 add_vec_lib(v1, v2)
@@ -403,8 +405,8 @@ add_vec_lib(v1, v2)
 export const testAddVec2: Test = {
   ts: `const foo: { v: Vector2; }; const v2: Vector2; foo.v.add(v2)`,
   expected: `
-func add_vec_lib(v1, v2):
-  return null if (v1 == null or v2 == null) else v1 + v2
+class_name __Mod_Test_4064or
+${LibraryFunctions.add_vec_lib.definition("add_vec_lib")}
 static var foo
 static var v2
 add_vec_lib(foo.v, v2)
@@ -414,6 +416,7 @@ add_vec_lib(foo.v, v2)
 export const testNormalVec: Test = {
   ts: `const v1: Vector2; v1.distance_to(v1)`,
   expected: `
+class_name __Mod_Test_4064or
 static var v1
 v1.distance_to(v1)
 `,
@@ -433,9 +436,9 @@ export class Foo {
   `,
   expected: `
 class_name Foo
-func __gen(captures):
+static func __gen(captures):
   pass
-func __gen1(captures):
+static func __gen1(captures):
   pass
 func a():
   var _a = [Callable(self, "__gen"), {}]
@@ -450,7 +453,8 @@ const test = () => 5;
 test()  
   `,
   expected: `
-func __gen(captures):
+class_name __Mod_Test_4064or
+static func __gen(captures):
   return 5
 static var test = [Callable(self, "__gen"), {}]
 test[0].call(test[1])
@@ -463,8 +467,9 @@ let x: string[] = ['a', 'b', 'c']
 x.map(y => y + '1')
   `,
   expected: `
+class_name __Mod_Test_4064or
 ${LibraryFunctions.map.definition("__map")}
-func __gen(y: String, captures):
+static func __gen(y: String, captures):
   return y + "1"
 static var x = ["a", "b", "c"]
 __map(x, [Callable(self, "__gen"), {}])
@@ -481,8 +486,9 @@ x.map((y: int) => {
 })
   `,
   expected: `
+class_name __Mod_Test_4064or
 ${LibraryFunctions.map.definition("__map")}
-func __gen(y: int, captures):
+static func __gen(y: int, captures):
   var z = captures.z
   var big = captures.big
   return z + big.a + y * 3
@@ -505,6 +511,7 @@ let d = todict({ 'a': 1 })
 d.put('b', 2)
   `,
   expected: `
+class_name __Mod_Test_4064or
 static var d = { "a": 1 }
 d["b"] = 2
 `,
@@ -549,7 +556,7 @@ export class Test extends Area2D {
   expected: `
 extends Area2D
 class_name Test
-func __gen(body, captures):
+static func __gen(body, captures):
   print(body)
 func _init():
   var _x: int = 5
@@ -571,7 +578,7 @@ export class Test extends Area2D {
   expected: `
 extends Area2D
 class_name Test
-func __gen(_body, captures):
+static func __gen(_body, captures):
   var x = captures.x
   var y = captures.y
   print(x + y)
@@ -596,7 +603,7 @@ export class Test extends Area2D {
   expected: `
 extends Area2D
 class_name Test
-func __gen(_body, captures):
+static func __gen(_body, captures):
   var x = captures.x
   var y = captures.y
   self.print(x + y)
@@ -620,7 +627,7 @@ export class Test {
   `,
   expected: `
 class_name Test
-func __gen(captures):
+static func __gen(captures):
   var enem = captures.enem
   self.enemies.erase(enem)
 var enemies
@@ -636,6 +643,7 @@ let d = todict({ 'a': 1 })
 d.put([1, 2], 2)
   `,
   expected: `
+class_name __Mod_Test_4064or
 static var d = { "a": 1 }
 d[[1, 2]] = 2
 `,
@@ -665,11 +673,12 @@ let a: string[] = []
 a.filter(x => x).map(x => x)
   `,
   expected: `
+class_name __Mod_Test_4064or
 ${LibraryFunctions.filter.definition("__filter")}
 ${LibraryFunctions.map.definition("__map")}
-func __gen(x: String, captures):
+static func __gen(x: String, captures):
   return x
-func __gen1(x: String, captures):
+static func __gen1(x: String, captures):
   return x
 static var a = []
 __map(__filter(a, [Callable(self, "__gen"), {}]), [Callable(self, "__gen1"), {}])
@@ -717,8 +726,9 @@ x.map(() => {
 })
   `,
   expected: `
+class_name __Mod_Test_4064or
 ${LibraryFunctions.map.definition("__map")}
-func __gen(captures):
+static func __gen(captures):
   var big = captures.big
   return big.a + big.a
 static var big = { "a": 6 }
@@ -760,6 +770,7 @@ let x: Node = 0 as any
 x.get_node_unsafe("Foo")
   `,
   expected: `
+class_name __Mod_Test_4064or
 static var x = 0
 x.get_node("Foo")
 `,
@@ -797,7 +808,7 @@ export class Test extends Area2D {
   expected: `
 extends Area2D
 class_name Test
-func __gen(captures):
+static func __gen(captures):
   print("OK")
 signal mysig
 func _init():
@@ -826,7 +837,7 @@ export class Test extends Area2D {
   expected: `
 extends Area2D
 class_name Test
-func __gen(captures):
+static func __gen(captures):
   print("OK")
 signal mysig
 var test
@@ -897,9 +908,9 @@ export class Test extends Area2D {
   expected: `
 extends Area2D
 class_name Test
-func __gen(captures):
+static func __gen(captures):
   pass
-func __gen1(captures):
+static func __gen1(captures):
   pass
 func fn(other):
   other[0].call(other[1])
@@ -915,10 +926,8 @@ export const testLibFunction: Test = {
 let test = [Vector2.UP, Vector2.DOWN].random_element()?.mul(5)
   `,
   expected: `
-func __random_element(list):
-  if len(list) == 0:
-    return null
-  return list[randi() % len(list)]
+class_name __Mod_Test_4064or
+${LibraryFunctions.random_element.definition("__random_element")}
 var __gen = __random_element([Vector2.UP, Vector2.DOWN])
 var __gen1 = [Callable(self, "mul_vec_lib") if __gen != null else null, {}, __gen]
 var __gen2 = __gen1[0].call(__gen1[2], 5) if __gen1 != null else null
