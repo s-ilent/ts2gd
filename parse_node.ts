@@ -117,7 +117,10 @@ export type ParseState = {
    * a [Callable, captures] tuple so that closed-over variables travel with
    * the function value.
    */
-  nestedFunctionBindings?: Map<ts.Symbol, { name: string; captures: string }>
+  nestedFunctionBindings?: Map<
+    ts.Symbol,
+    { name: string; captures: () => string }
+  >
 }
 
 export enum ExtraLineType {

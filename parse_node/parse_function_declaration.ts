@@ -42,7 +42,10 @@ export const registerNestedFunctionBindings = (
   root: ts.SourceFile,
   props: ParseState
 ): void => {
-  const bindings = new Map<ts.Symbol, { name: string; captures: string }>()
+  const bindings = new Map<
+    ts.Symbol,
+    { name: string; captures: () => string }
+  >()
 
   props.nestedFunctionBindings = bindings
 
@@ -61,11 +64,19 @@ export const registerNestedFunctionBindings = (
         const uniqueName = props.scope.createUniqueNameWithBase(
           `__nested_${node.name.text}`
         )
-        const { capturedScopeObject } = getCapturedScope(node, props)
+
+        // Captures are computed lazily, on first reference: the pre-pass
+        // runs before imports register their bindings, and capture sets
+        // must reflect the rewritten references inside the body.
+        let memoizedCaptures: string | undefined
 
         bindings.set(symbol, {
           name: uniqueName,
-          captures: capturedScopeObject,
+          captures: () =>
+            (memoizedCaptures ??= getCapturedScope(
+              node,
+              props
+            ).capturedScopeObject),
         })
       }
     }

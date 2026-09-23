@@ -64,7 +64,9 @@ export const parseIdentifier = (
             ? props.moduleClassName
             : "self"
 
-        return `[Callable(${callableTarget}, "${binding.name}"), ${binding.captures}]`
+        return `[Callable(${callableTarget}, "${
+          binding.name
+        }"), ${binding.captures()}]`
       }
 
       // Module-level function declarations referenced as values become

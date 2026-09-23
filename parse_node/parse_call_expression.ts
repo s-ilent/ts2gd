@@ -78,7 +78,7 @@ export const parseCallExpression = (
         nodes: [...args],
         props,
         parsedStrings: (...parsed) =>
-          `${nestedBinding.name}(${[...parsed, nestedBinding.captures].join(
+          `${nestedBinding.name}(${[...parsed, nestedBinding.captures()].join(
             ", "
           )})`,
       })

@@ -116,6 +116,42 @@ export const getCapturedScope = (
     (v) => v.getText() !== "this"
   )
 
+  // Symbols whose references rewrite themselves (imported bindings, nested
+  // function declarations, function declarations as values) must not be
+  // captured: their body references never read the unwrapped local, and the
+  // capture entry would emit a bare, undeclared identifier.
+  const selfResolving = (
+    freeVar: ts.Identifier | ts.PropertyAccessExpression
+  ) => {
+    if (freeVar.kind !== SyntaxKind.Identifier) {
+      return false
+    }
+
+    const symbol = props.program.getTypeChecker().getSymbolAtLocation(freeVar)
+
+    if (!symbol) {
+      return false
+    }
+
+    if (props.importedBindings?.has(symbol)) {
+      return true
+    }
+
+    if (props.nestedFunctionBindings?.has(symbol)) {
+      return true
+    }
+
+    const decl = symbol.declarations?.[0]
+
+    return (
+      !!decl && ts.isFunctionDeclaration(decl) && !!decl.name && !!decl.body
+    )
+  }
+
+  const capturedVariables = freeVariablesWithoutThis.filter(
+    (freeVar) => !selfResolving(freeVar)
+  )
+
   const getNodeName = (node: ts.Node) => {
     const text = node.getText()
 
@@ -124,12 +160,12 @@ export const getCapturedScope = (
 
   const capturedScopeObject =
     "{" +
-    freeVariablesWithoutThis
+    capturedVariables
       .map((freeVar) => `"${getNodeName(freeVar)}": ${getNodeName(freeVar)}`)
       .join(", ") +
     "}"
 
-  const unwrapCapturedScope = freeVariablesWithoutThis
+  const unwrapCapturedScope = capturedVariables
     .map((v) => `  var ${getNodeName(v)} = captures.${getNodeName(v)}\n`)
     .join("")
 
