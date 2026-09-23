@@ -33,6 +33,7 @@ import { parseExpressionStatement } from "./parse_node/parse_expression_statemen
 import { parseForInStatement } from "./parse_node/parse_for_in_statement"
 import { parseForOfStatement } from "./parse_node/parse_for_of_statement"
 import { parseForStatement } from "./parse_node/parse_for_statement"
+import { parseFunctionDeclaration } from "./parse_node/parse_function_declaration"
 import { parseGetAccessor } from "./parse_node/parse_get_accessor"
 import { parseIdentifier } from "./parse_node/parse_identifier"
 import { parseIfStatement } from "./parse_node/parse_if_statement"
@@ -322,6 +323,11 @@ export const parseNode = (
       return parseForInStatement(genericNode as ts.ForInStatement, props)
     case SyntaxKind.MethodDeclaration:
       return parseMethodDeclaration(genericNode as ts.MethodDeclaration, props)
+    case SyntaxKind.FunctionDeclaration:
+      return parseFunctionDeclaration(
+        genericNode as ts.FunctionDeclaration,
+        props
+      )
     case SyntaxKind.Parameter:
       return parseParameter(genericNode as ts.ParameterDeclaration, props)
     case SyntaxKind.ElementAccessExpression:
