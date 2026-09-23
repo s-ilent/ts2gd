@@ -11,6 +11,7 @@ import {
 import { Test } from "../tests/test"
 import {
   findContainingClassDeclaration,
+  isArrayType,
   isDictionary,
   isEnumType,
   isNullableNode,
@@ -162,6 +163,18 @@ export const parsePropertyAccessExpression = (
         node.expression.getText() === containingClassDecl.name?.getText()
       ) {
         return `self.${rhs}`
+      }
+
+      // TS .length maps to different GDScript members per type:
+      // arrays expose .size(), strings expose .length() as a method.
+      if (rhs === "length" && isRhs(node)) {
+        if (isArrayType(exprType)) {
+          return `${lhs}.size()`
+        }
+
+        if (exprType.flags & ts.TypeFlags.String) {
+          return `${lhs}.length()`
+        }
       }
 
       return `${lhs}.${rhs}`
@@ -462,5 +475,39 @@ func _init():
 static func test():
   print("static")
 
+`,
+}
+
+export const testArrayLengthMapsToSize: Test = {
+  ts: `
+export class Foo {
+  items: Array<int> = [1, 2, 3]
+
+  count(): int {
+    return this.items.length
+  }
+}`,
+  expected: `
+class_name Foo
+var items = [1, 2, 3]
+func count():
+  return self.items.size()
+`,
+}
+
+export const testStringLengthMapsToLengthCall: Test = {
+  ts: `
+export class Foo {
+  name: string = "hi"
+
+  size(): int {
+    return this.name.length
+  }
+}`,
+  expected: `
+class_name Foo
+var name: String = "hi"
+func size():
+  return self.name.length()
 `,
 }
