@@ -33,7 +33,7 @@ const getClassDeclarationHeader = (
     (dec) => dec.expression.getText() === "tool"
   )
 
-  return `${isTool ? "tool\n" : ""}${
+  return `${isTool ? "@tool\n" : ""}${
     extendsFrom ? `extends ${extendsFrom}` : ""
   }
 ${props.isAutoload ? "" : `class_name ${node.name?.getText()}\n`}`
@@ -209,7 +209,7 @@ export class Test {
 }
   `,
   expected: `
-tool
+@tool
 class_name Test
 `,
 }

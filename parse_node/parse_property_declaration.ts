@@ -70,11 +70,52 @@ export const parseExports = (
             .join(", "),
       })
 
-      godotExportArgs.push(result.content)
+      godotExportArgs.push(
+        ...result.content.split(",").map((arg) => arg.trim())
+      )
     }
   }
 
-  return `export(${godotExportArgs.join(", ")}) `
+  // Godot 4: export(T) var x: T becomes @export var x: T. The variable
+  // hint already carries the type; only the prefix changes. Hint forms
+  // map onto dedicated Godot 4 annotations.
+  if (godotExportArgs.length > 1) {
+    const head = godotExportArgs[1]
+
+    if (head === "FLAGS") {
+      return `@export_flags(${godotExportArgs.slice(2).join(", ")}) `
+    }
+
+    if (head === "FILE") {
+      const restArgs = godotExportArgs.slice(2)
+
+      if (restArgs[0] === "GLOBAL") {
+        return `@export_global_file(${godotExportArgs.slice(3).join(", ")}) `
+      }
+
+      return `@export_file(${restArgs.join(", ")}) `
+    }
+
+    if (head === "DIR") {
+      const restArgs = godotExportArgs.slice(2)
+
+      if (restArgs[0] === "GLOBAL") {
+        return `@export_global_dir(${godotExportArgs.slice(3).join(", ")}) `
+      }
+
+      return `@export_dir(${restArgs.join(", ")}) `
+    }
+
+    if (head === "MULTILINE") {
+      return `@export_multiline(${godotExportArgs.slice(1).join(", ")}) `
+    }
+
+    if (head.startsWith('"')) {
+      return `@export_enum(${godotExportArgs.slice(1).join(", ")}) `
+    }
+  }
+
+  return "@export "
 }
 
 const parseExportsArrayElement = (
@@ -188,7 +229,7 @@ For instance, ${chalk.green(`@export_flags("A", "B", "C")`)}`,
     parsedStrings: (...args) => args.join(", "),
   })
 
-  return `export(int, FLAGS, ${result.content}) `
+  return `@export_flags(${result.content}) `
 }
 
 const isOnReady = (node: ts.PropertyDeclaration, props: ParseState) => {
@@ -308,7 +349,7 @@ export const parsePropertyDeclaration = (
         return ""
       }
 
-      return `${exportText}${onReady ? "onready " : ""}var ${name}${
+      return `${exportText}${onReady ? "@onready " : ""}var ${name}${
         typeHintName ? `: ${typeHintName}` : ""
       }${initializer && ` = ${initializer}`}`
     },
@@ -324,7 +365,7 @@ export class Test {
   `,
   expected: `
 class_name Test
-export(int) var foo: int
+@export var foo: int
 `,
 }
 
@@ -337,7 +378,7 @@ export class Test {
   `,
   expected: `
 class_name Test
-export(float) var foo: float
+@export var foo: float
 `,
 }
 
@@ -350,7 +391,7 @@ export class Test {
   `,
   expected: `
 class_name Test
-export(String) var foo: String
+@export var foo: String
 `,
 }
 
@@ -363,7 +404,7 @@ export class Test {
   `,
   expected: `
 class_name Test
-export(Dictionary) var foo
+@export var foo
 `,
 }
 
@@ -376,7 +417,7 @@ export class Test {
   `,
   expected: `
 class_name Test
-export(Array, float) var foo
+@export var foo
 `,
 }
 
@@ -389,7 +430,7 @@ export class Test {
   `,
   expected: `
 class_name Test
-export(Array, Dictionary) var foo
+@export var foo
 `,
 }
 
@@ -402,7 +443,7 @@ export class Test {
   `,
   expected: `
 class_name Test
-export(int) var foo
+@export var foo
 `,
 }
 
@@ -415,7 +456,7 @@ export class Test {
   `,
   expected: `
 class_name Test
-export(int) var foo
+@export var foo
 `,
 }
 
@@ -428,7 +469,7 @@ export class Test {
   `,
   expected: `
 class_name Test
-export(Dictionary) var foo
+@export var foo
 `,
 }
 
@@ -452,7 +493,7 @@ export class Test {
         expected: `
 class_name Test
 const MyEnum = preload("res://compiled/Test_MyEnum.gd").MyEnum
-export(MyEnum) var foo
+@export var foo
       `,
       },
 
@@ -475,7 +516,7 @@ export class Test {
   `,
   expected: `
 class_name Test
-export(Vector2) var foo
+@export var foo
 `,
 }
 
@@ -488,7 +529,7 @@ export class Test {
   `,
   expected: `
 class_name Test
-export(Vector2) var foo
+@export var foo
 `,
 }
 
@@ -549,7 +590,7 @@ export class Test {
   `,
   expected: `
 class_name Test
-export(int, FLAGS, "A", "B", "C") var exportFlagsTest
+@export_flags("A", "B", "C") var exportFlagsTest
 `,
 }
 
@@ -562,7 +603,7 @@ export class Test {
   `,
   expected: `
 class_name Test
-export(Array, float) var exportFlagsTest
+@export var exportFlagsTest
 `,
 }
 
@@ -575,7 +616,7 @@ export class Test {
   `,
   expected: `
 class_name Test
-export(Array, PackedScene) var exportFlagsTest
+@export var exportFlagsTest
 `,
 }
 
@@ -591,8 +632,8 @@ export class Test {
   `,
   expected: `
 class_name Test
-export(Array) var exportFlagsTest
-export(Array) var exportFlagsTest2
+@export var exportFlagsTest
+@export var exportFlagsTest2
 `,
 }
 
@@ -605,7 +646,7 @@ export class Test {
   `,
   expected: `
 class_name Test
-export(Array, Array, float) var exportFlagsTest
+@export var exportFlagsTest
 `,
 }
 
@@ -618,7 +659,7 @@ export class Test {
   `,
   expected: `
 class_name Test
-export(Color, RGBA) var exportFlagsTest
+@export var exportFlagsTest
 `,
 }
 
@@ -640,9 +681,9 @@ export class Test {
   `,
   expected: `
 class_name Test
-export(float, EXP, 100, 1000, 20) var exportFlagsTest: float
-export(String, "Value1", "Value2", "Value3") var exportFlagsTest2: String
-export(int, FLAGS, "Fire", "Water", "Earth", "Wind") var exportFlagsTest3: int
-export(String, FILE, GLOBAL, "*.png") var exportFlagsTest4: String
+@export var exportFlagsTest: float
+@export_enum("Value1", "Value2", "Value3") var exportFlagsTest2: String
+@export_flags("Fire", "Water", "Earth", "Wind") var exportFlagsTest3: int
+@export_global_file("*.png") var exportFlagsTest4: String
 `,
 }

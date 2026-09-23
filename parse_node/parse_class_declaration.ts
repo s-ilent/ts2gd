@@ -160,7 +160,7 @@ class Foo {
 }`,
   expected: `
 class_name Foo
-export(Array, PackedScene) var nodes setget nodes_set, nodes_get
+@export var nodes setget nodes_set, nodes_get
 func nodes_get():
   return []
 func nodes_set(_v):
