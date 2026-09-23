@@ -186,7 +186,7 @@ ${parsedClass.content}`,
     // Generate SOME code - even though it'll certainly be wrong
 
     files.push({
-      filePath: node.getSourceFile().fileName.slice(0, -".ts".length),
+      filePath: props.sourceFileAsset.gdPath,
       body: `
 ${getFileHeader()}
 ${hoistedEnumImports}
