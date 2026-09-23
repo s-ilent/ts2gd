@@ -13,7 +13,11 @@ import { Paths } from "../project/paths"
 
 import { createStubSourceFileAsset } from "./stubs"
 
-export const compileTs = (code: string, isAutoload: boolean): ParseNodeType => {
+export const compileTs = (
+  code: string,
+  isAutoload: boolean,
+  extraFiles?: Record<string, string>
+): ParseNodeType => {
   const filename = isAutoload ? "autoload.ts" : "Test.ts"
 
   const sourceFile = ts.createSourceFile(
@@ -22,6 +26,19 @@ export const compileTs = (code: string, isAutoload: boolean): ParseNodeType => {
     ts.ScriptTarget.Latest,
     true,
     ts.ScriptKind.TS
+  )
+
+  const extraSourceFiles = new Map(
+    Object.entries(extraFiles ?? {}).map(([name, content]) => [
+      name,
+      ts.createSourceFile(
+        name,
+        content,
+        ts.ScriptTarget.Latest,
+        true,
+        ts.ScriptKind.TS
+      ),
+    ])
   )
 
   const libDTs = ts.createSourceFile(
@@ -44,6 +61,8 @@ export const compileTs = (code: string, isAutoload: boolean): ParseNodeType => {
         return sourceFile
       } else if (name === "lib.d.ts") {
         return libDTs
+      } else if (extraSourceFiles.has(name)) {
+        return extraSourceFiles.get(name)!
       } else {
         return defaultCompilerHost.getSourceFile(name, languageVersion)
       }
@@ -163,6 +182,11 @@ export type Test = {
         files: { fileName: string; expected: string }[]
       }
   ts: string
+  /**
+   * Additional in-memory modules the snippet may import from, keyed by
+   * module file name (e.g. { "util.ts": "export function f() {}" }).
+   */
+  files?: Record<string, string>
   fileName?: string
   isAutoload?: boolean
   only?: boolean
@@ -221,7 +245,7 @@ const test = (
   let errors: TsGdError[] = []
 
   try {
-    compiled = compileTs(ts, props.isAutoload ?? false)
+    compiled = compileTs(ts, props.isAutoload ?? false, props.files)
 
     errors = __getErrorsTestOnly()
   } catch (e) {

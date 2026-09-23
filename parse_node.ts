@@ -85,6 +85,19 @@ export type ParseState = {
   usages: Map<ts.Identifier, utils.VariableInfo>
   sourceFile: ts.SourceFile
   sourceFileAsset: AssetSourceFile
+
+  /**
+   * Map from an imported binding's symbol to the GDScript expression that
+   * should be emitted in place of that identifier at use sites.
+   */
+  importedBindings?: Map<ts.Symbol, string>
+
+  /**
+   * Receiver variables already emitted for imported modules in this file,
+   * keyed by the module's res path. The boolean records whether the static
+   * variable declaration line has been emitted yet.
+   */
+  importReceivers?: Map<string, { name: string; emitted: boolean }>
 }
 
 export enum ExtraLineType {

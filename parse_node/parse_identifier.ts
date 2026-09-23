@@ -23,6 +23,14 @@ export const parseIdentifier = (
     nodes: [],
     props,
     parsedStrings: () => {
+      // Imported bindings from other modules resolve to a receiver
+      // expression registered when the import was parsed.
+      const symbol = props.program.getTypeChecker().getSymbolAtLocation(node)
+
+      if (symbol && props.importedBindings?.has(symbol)) {
+        return props.importedBindings.get(symbol)!
+      }
+
       const name = props.scope.getName(node)
 
       if (!name) {
