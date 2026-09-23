@@ -3,6 +3,7 @@ import ts, { SyntaxKind } from "typescript"
 import { ParseNodeType, ParseState, combine } from "../parse_node"
 import { Test } from "../tests/test"
 
+import { getCapturedScope } from "./parse_arrow_function"
 import { LibraryFunctions } from "./library_functions"
 
 export const parseObjectLiteralExpression = (
@@ -23,14 +24,108 @@ export const parseObjectLiteralExpression = (
   type SegmentMeta =
     | { kind: "pair"; keyIsIdentifier: boolean }
     | { kind: "spread" }
+    | { kind: "method"; key: string; value: string }
 
   // A flat node list in property order. Regular properties contribute two
   // nodes (name and value, or the shorthand name twice); spreads contribute
-  // one (the spread expression).
+  // one (the spread expression). Methods and accessors are hoisted to file
+  // level functions up front, so they contribute no nodes at all.
   const flatNodes: ts.Node[] = []
   const segmentMeta: SegmentMeta[] = []
+  const hoistedMethodFunctions: {
+    name: string
+    node: ts.ArrowFunction
+    content: string
+  }[] = []
+  const methodAccessorNames = new Set<string>()
+
+  const hoistFunctionLikeMember = (
+    member:
+      | ts.MethodDeclaration
+      | ts.GetAccessorDeclaration
+      | ts.SetAccessorDeclaration,
+    props: ParseState
+  ): { name: string; value: string; content: string } => {
+    const name = props.scope.createUniqueName()
+    const { capturedScopeObject, unwrapCapturedScope } = getCapturedScope(
+      member as unknown as ts.ArrowFunction,
+      props
+    )
+
+    props.scope.enterScope()
+
+    const parsed = combine({
+      parent: member,
+      nodes: [member.body, ...member.parameters],
+      props,
+      addIndent: true,
+      parsedStrings: (body, ...args) => {
+        if (member.body && member.body.kind !== SyntaxKind.Block) {
+          return `
+func ${name}(${[...args, "captures"].join(", ")}):
+${unwrapCapturedScope}
+  return ${body}
+`
+        }
+
+        return `
+func ${name}(${[...args, "captures"].join(", ")}):
+${unwrapCapturedScope}
+  ${body.trim() === "" ? "pass" : body}
+`
+      },
+    })
+
+    props.scope.leaveScope()
+
+    return {
+      name,
+      value: `[funcref(self, "${name}"), ${capturedScopeObject}]`,
+      content: parsed.content,
+    }
+  }
 
   for (const prop of node.properties) {
+    if (
+      prop.kind === SyntaxKind.MethodDeclaration ||
+      prop.kind === SyntaxKind.GetAccessor ||
+      prop.kind === SyntaxKind.SetAccessor
+    ) {
+      const member = prop as
+        | ts.MethodDeclaration
+        | ts.GetAccessorDeclaration
+        | ts.SetAccessorDeclaration
+
+      const key = member.name.getText()
+
+      // A setter paired with a getter on the same key cannot both occupy
+      // the dictionary slot; the getter wins.
+      if (
+        prop.kind === SyntaxKind.SetAccessor &&
+        methodAccessorNames.has(key)
+      ) {
+        continue
+      }
+
+      methodAccessorNames.add(key)
+
+      const hoisted = hoistFunctionLikeMember(member, props)
+
+      hoistedMethodFunctions.push({
+        name: hoisted.name,
+        node: member as unknown as ts.ArrowFunction,
+        content: hoisted.content,
+      })
+
+      segmentMeta.push({
+        kind: "method",
+        key: `"${key}"`,
+        value: hoisted.value,
+      })
+
+      continue
+    }
+
     if (prop.kind === SyntaxKind.PropertyAssignment) {
       const assignment = prop as ts.PropertyAssignment
 
@@ -59,8 +154,6 @@ export const parseObjectLiteralExpression = (
 
       flatNodes.push(spread.expression)
       segmentMeta.push({ kind: "spread" })
-    } else {
-      throw new Error("Unknown property in object.")
     }
   }
 
@@ -80,6 +173,21 @@ export const parseObjectLiteralExpression = (
       for (const meta of segmentMeta) {
         if (meta.kind === "spread") {
           segments.push({ kind: "spread", expr: strings[stringIndex++] })
+          continue
+        }
+
+        if (meta.kind === "method") {
+          const last = segments[segments.length - 1]
+
+          if (last && last.kind === "literal") {
+            last.pairs.push([meta.key, meta.value])
+          } else {
+            segments.push({
+              kind: "literal",
+              pairs: [[meta.key, meta.value]],
+            })
+          }
+
           continue
         }
 
@@ -146,7 +254,13 @@ ${pairs.map(([k, v]) => `  ${k}: ${v},`).join("\n")}
     result.hoistedLibraryFunctions.add("dict_merge")
   }
 
-  return result
+  return {
+    ...result,
+    hoistedArrowFunctions: [
+      ...hoistedMethodFunctions,
+      ...(result.hoistedArrowFunctions ?? []),
+    ],
+  }
 }
 
 export const testObjectLiteral: Test = {
@@ -267,5 +381,43 @@ ${LibraryFunctions.dict_merge.definition("__dict_merge")}
 var a = { "x": 1 }
 var b = { "y": 2 }
 var _c = __dict_merge(__dict_merge(a, {}), __dict_merge(b, {}))
+  `,
+}
+
+export const testObjectLiteralMethod: Test = {
+  ts: `
+let strategies = {
+  name: "a",
+  apply(x: int) {
+    return x + 1
+  },
+}
+  `,
+  expected: `
+func __gen(x: int, captures):
+  return x + 1
+var _strategies = {
+  "name": "a",
+  "apply": [funcref(self, "__gen"), {}],
+}
+  `,
+}
+
+export const testObjectLiteralGetter: Test = {
+  ts: `
+let obj = {
+  total: 5,
+  get doubled() {
+    return this.total * 2
+  },
+}
+  `,
+  expected: `
+func __gen(captures):
+  return self.total * 2
+var _obj = {
+  "total": 5,
+  "doubled": [funcref(self, "__gen"), {}],
+}
   `,
 }
