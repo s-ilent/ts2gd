@@ -15,6 +15,16 @@ import { isArrayType, isDictionary, isNullableNode } from "../ts_utils"
 import { LibraryFunctionName, LibraryFunctions } from "./library_functions"
 import { getCapturedScope } from "./parse_arrow_function"
 
+/**
+ * Typed-array static factories map onto generated copying helpers.
+ */
+const typedArrayFromShims: Record<string, LibraryFunctionName> = {
+  Int32Array: "ts_int32_from",
+  Float32Array: "ts_new_float32",
+  Float64Array: "ts_new_float64",
+  Uint8Array: "ts_new_uint8",
+}
+
 export const parseCallExpression = (
   node: ts.CallExpression,
   props: ParseState
@@ -177,6 +187,149 @@ export const parseCallExpression = (
 
         return result
       }
+    }
+
+    // JS String/Array member methods with no GDScript member equivalent
+    // map onto helpers or native members by name.
+    const baseTypeAsString = props.program
+      .getTypeChecker()
+      .typeToString(
+        props.program.getTypeChecker().getTypeAtLocation(prop.expression)
+      )
+    const isStringBase =
+      baseTypeAsString === "String" || baseTypeAsString === "string"
+    const isNumberBase = ["float", "int", "number", "Number", "Float"].includes(
+      baseTypeAsString
+    )
+
+    const helperCall = (
+      libName: LibraryFunctionName,
+      wrapArgsInArray = false
+    ) => {
+      const result = combine({
+        parent: node,
+        nodes: [prop.expression, ...args],
+        props,
+        parsedStrings: (expr, ...parsed) =>
+          `__${libName}(${[
+            expr,
+            ...(wrapArgsInArray ? ["[" + parsed.join(", ") + "]"] : parsed),
+          ].join(", ")})`,
+      })
+
+      result.hoistedLibraryFunctions =
+        result.hoistedLibraryFunctions ?? new Set()
+      result.hoistedLibraryFunctions.add(libName)
+
+      return result
+    }
+
+    if (
+      functionName === "includes" &&
+      (isStringBase || baseTypeAsString === "Array")
+    ) {
+      return helperCall("ts_includes")
+    }
+
+    if (functionName === "padStart" && isStringBase) {
+      return helperCall("ts_pad_start")
+    }
+
+    if (functionName === "toString" && (isNumberBase || isStringBase)) {
+      return helperCall("ts_number_to_string")
+    }
+
+    if (functionName === "startsWith" && isStringBase) {
+      return combine({
+        parent: node,
+        nodes: [prop.expression, ...args],
+        props,
+        parsedStrings: (expr, ...parsed) =>
+          `${expr}.begins_with(${parsed.join(", ")})`,
+      })
+    }
+
+    if (functionName === "endsWith" && isStringBase) {
+      return combine({
+        parent: node,
+        nodes: [prop.expression, ...args],
+        props,
+        parsedStrings: (expr, ...parsed) =>
+          `${expr}.ends_with(${parsed.join(", ")})`,
+      })
+    }
+
+    if (functionName === "toUpperCase" && isStringBase) {
+      return combine({
+        parent: node,
+        nodes: [prop.expression],
+        props,
+        parsedStrings: (expr) => `${expr}.to_upper()`,
+      })
+    }
+
+    if (functionName === "toLowerCase" && isStringBase) {
+      return combine({
+        parent: node,
+        nodes: [prop.expression],
+        props,
+        parsedStrings: (expr) => `${expr}.to_lower()`,
+      })
+    }
+
+    if (
+      functionName === "fromCharCode" &&
+      prop.expression.getText() === "String"
+    ) {
+      return helperCall("ts_string_from_char_code", true)
+    }
+
+    if (functionName === "isArray" && prop.expression.getText() === "Array") {
+      return combine({
+        parent: node,
+        nodes: [...args],
+        props,
+        parsedStrings: (...parsed) => `(${parsed.join(", ")}) is Array`,
+      })
+    }
+
+    if (
+      functionName === "call" &&
+      prop.expression.getText() === "Object.prototype.hasOwnProperty"
+    ) {
+      // hasOwnProperty.call(dict, key) is a plain membership check.
+      return combine({
+        parent: node,
+        nodes: [...args],
+        props,
+        parsedStrings: (...parsed) =>
+          `${parsed[0]}.has(${parsed.slice(1).join(", ")})`,
+      })
+    }
+
+    if (functionName === "from" && prop.expression.getText() === "Array") {
+      return helperCall("ts_array_from")
+    }
+
+    if (
+      functionName === "from" &&
+      ts.isIdentifier(prop.expression) &&
+      typedArrayFromShims[(prop.expression as ts.Identifier).text]
+    ) {
+      const libName =
+        typedArrayFromShims[(prop.expression as ts.Identifier).text]
+      const result = combine({
+        parent: node,
+        nodes: [...args],
+        props,
+        parsedStrings: (...parsed) => `__${libName}(${parsed.join(", ")})`,
+      })
+
+      result.hoistedLibraryFunctions =
+        result.hoistedLibraryFunctions ?? new Set()
+      result.hoistedLibraryFunctions.add(libName)
+
+      return result
     }
   }
 

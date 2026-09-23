@@ -28,10 +28,13 @@ export const parseWhileStatement = (
           .map((e) => e.line)
           .join("\n") ?? ""
 
+      // A statement whose emission is entirely an extra line (e.g. a bare
+      // `x--`) produces content starting with a newline; strip it so the
+      // body cannot escape the while block's indentation.
       return `${beforeLines}
 while ${expr.content}:
   ${afterLines}
-  ${statement.content}
+  ${statement.content.replace(/^\n+/, "")}
   ${beforeLines}
 `
     },

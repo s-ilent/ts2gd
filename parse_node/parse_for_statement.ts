@@ -66,6 +66,11 @@ export const parseForStatement = (
     nodes: [node.condition, node.statement],
     props,
     parsedStrings: (cond, statement) => {
+      // A statement whose emission is entirely an extra line (e.g. a bare
+      // `x--`) produces content starting with a newline; strip it so the
+      // body cannot escape the for block's indentation.
+      statement = statement.replace(/^\n+/, "")
+
       if (statement.trim().length === 0 && incrementLines.length === 0) {
         statement = "pass"
       }

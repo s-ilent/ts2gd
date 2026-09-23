@@ -84,7 +84,8 @@ export const parseNewExpression = (
         expr === "Color" ||
         expr === "Vector2i" ||
         expr === "Vector3i" ||
-        expr === "Rect2"
+        expr === "Rect2" ||
+        expr === "Array"
       ) {
         // Special cases that do not require .new
         return `${expr}(${args.join(", ")})`

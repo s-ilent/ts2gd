@@ -9,6 +9,25 @@ export const parseIfStatement = (
 ): ParseNodeType => {
   props.scope.enterScope()
 
+  // Body content can start with a newline (e.g. a statement whose emission
+  // is entirely an extra line, like a bare `x--`); strip those newlines so
+  // the body cannot escape the `if` block's indentation. Block content is
+  // relatively indented already (first line raw, the rest indented), so only
+  // the first line gains this level's two spaces.
+  const indentBody = (content: string): string => {
+    const trimmed = content.replace(/^\n+/, "").replace(/[ \t]+$/, "")
+
+    if (trimmed.trim() === "") {
+      return ""
+    }
+
+    const lines = trimmed.split("\n")
+
+    return (
+      lines.map((line, i) => (i === 0 ? "  " + line : line)).join("\n") + "\n"
+    )
+  }
+
   let result = combine({
     addIndent: true,
     parent: node,
@@ -21,18 +40,22 @@ export const parseIfStatement = (
         expression.extraLines?.filter((line) => line.type === "after") ?? []
 
       let thenBody =
-        afterLines.map(({ line }) => "  " + line + "\n") +
+        afterLines.map(({ line }) => "  " + line + "\n").join("") +
         (thenStatement.content.trim() === ""
           ? ""
-          : "  " + thenStatement.content)
+          : indentBody(thenStatement.content))
       let elseBody =
-        afterLines.map(({ line }) => "  " + line + "\n") +
-        (elseStatement.content.trim() === ""
+        afterLines.map(({ line }) => "  " + line + "\n").join("") +
+        (elseStatement === undefined || elseStatement.content.trim() === ""
           ? ""
-          : "  " + elseStatement.content)
+          : indentBody(elseStatement.content))
 
       if (thenBody.trim() === "") {
         thenBody = "  pass"
+      }
+
+      if (elseBody !== "" && elseBody.trim() === "") {
+        elseBody = "  pass\n"
       }
 
       return `

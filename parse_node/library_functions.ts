@@ -15,6 +15,12 @@ export type LibraryFunctionName =
   | "ts_is_integer"
   | "ts_is_safe_integer"
   | "ts_parse_int"
+  | "ts_includes"
+  | "ts_pad_start"
+  | "ts_number_to_string"
+  | "ts_string_from_char_code"
+  | "ts_array_from"
+  | "ts_int32_from"
   | "ts_number"
   | "ts_new_set"
   | "ts_new_map"
@@ -180,6 +186,71 @@ static func __ts_parse_int(s, radix = 10):
   if radix == 2:
     return str(s).bin_to_int()
   return int(str(s))
+`,
+  },
+
+  ts_includes: {
+    name: "ts_includes",
+    definition: () => `
+static func __ts_includes(hay, needle):
+  return needle in hay
+`,
+  },
+
+  ts_pad_start: {
+    name: "ts_pad_start",
+    definition: () => `
+static func __ts_pad_start(s, length, ch = " "):
+  var out := str(s)
+  while out.length() < length:
+    out = ch + out
+  return out
+`,
+  },
+
+  ts_number_to_string: {
+    name: "ts_number_to_string",
+    definition: () => `
+static func __ts_number_to_string(x, radix = 10):
+  if radix == 16:
+    return String.num_int64(int(x), 16)
+  if radix == 2:
+    return String.num_int64(int(x), 2)
+  return str(x)
+`,
+  },
+
+  ts_string_from_char_code: {
+    name: "ts_string_from_char_code",
+    definition: () => `
+static func __ts_string_from_char_code(codes):
+  var s := ""
+  for c in codes:
+    s += String.chr(c)
+  return s
+`,
+  },
+
+  ts_array_from: {
+    name: "ts_array_from",
+    definition: () => `
+static func __ts_array_from(src):
+  var out := []
+  for item in src:
+    out.append(item)
+  return out
+`,
+  },
+
+  ts_int32_from: {
+    name: "ts_int32_from",
+    definition: () => `
+static func __ts_int32_from(src):
+  var a := PackedInt32Array()
+  a.resize(src.size())
+  for i in src.size():
+    a[i] = src[i]
+  return a
 `,
   },
 
