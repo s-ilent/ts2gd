@@ -159,7 +159,7 @@ class_name __Mod_Test_4064or
 ${LibraryFunctions.ts_shr_unsigned.definition("__ts_shr_unsigned")}
 static var _a = (x >> 2) | (y << 3)
 static var _b = __ts_shr_unsigned(8, 1)
-static var flags
+static var flags: int = 0
 flags &= ~mask
   `,
 }
