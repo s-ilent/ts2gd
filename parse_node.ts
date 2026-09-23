@@ -482,6 +482,8 @@ export const parseNode = (
       return { content: "==" }
     case SyntaxKind.AsteriskToken:
       return { content: "*" }
+    case SyntaxKind.AsteriskAsteriskToken:
+      return { content: "**" }
     case SyntaxKind.PercentToken:
       return { content: "%" }
     case SyntaxKind.PlusToken:

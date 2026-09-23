@@ -419,7 +419,7 @@ static func __gen(x: int, captures):
   return x + 1
 static var _strategies = {
   "name": "a",
-  "apply": [Callable(self, "__gen"), {}],
+  "apply": [Callable(__Mod_Test_4064or, "__gen"), {}],
 }
   `,
 }
@@ -439,7 +439,7 @@ static func __gen(captures):
   return self.total * 2
 static var _obj = {
   "total": 5,
-  "doubled": [Callable(self, "__gen"), {}],
+  "doubled": [Callable(__Mod_Test_4064or, "__gen"), {}],
 }
   `,
 }

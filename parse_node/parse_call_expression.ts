@@ -461,7 +461,7 @@ static func __gen(captures):
 static func __gen1(captures):
   pass
 func a():
-  var _a = [Callable(self, "__gen"), {}]
+  var _a = [Callable(__Mod_Test_4064or, "__gen"), {}]
 func b():
   var _b = [Callable(self, "__gen1"), {}]
 `,
@@ -476,7 +476,7 @@ test()
 class_name __Mod_Test_4064or
 static func __gen(captures):
   return 5
-static var test = [Callable(self, "__gen"), {}]
+static var test = [Callable(__Mod_Test_4064or, "__gen"), {}]
 test[0].call(test[1])
 `,
 }
@@ -492,7 +492,7 @@ ${LibraryFunctions.map.definition("__map")}
 static func __gen(y: String, captures):
   return y + "1"
 static var x = ["a", "b", "c"]
-__map(x, [Callable(self, "__gen"), {}])
+__map(x, [Callable(__Mod_Test_4064or, "__gen"), {}])
 `,
 }
 
@@ -701,7 +701,7 @@ static func __gen(x: String, captures):
 static func __gen1(x: String, captures):
   return x
 static var a = []
-__map(__filter(a, [Callable(self, "__gen"), {}]), [Callable(self, "__gen1"), {}])
+__map(__filter(a, [Callable(__Mod_Test_4064or, "__gen"), {}]), [Callable(self, "__gen1"), {}])
 `,
 }
 
@@ -935,7 +935,7 @@ static func __gen1(captures):
 func fn(other):
   other[0].call(other[1])
 func _init():
-  var fnObject = [Callable(self, "__gen"), {}]
+  var fnObject = [Callable(__Mod_Test_4064or, "__gen"), {}]
   self.fn([Callable(self, "__gen1"), {}])
   fnObject[0].call(fnObject[1])
 `,

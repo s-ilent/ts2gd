@@ -110,10 +110,18 @@ export const parseVariableDeclaration = (
   const isModuleLevel =
     node.parent?.parent?.parent?.kind === SyntaxKind.SourceFile
 
+  // Static variable initializers run in a static context: `self` is not
+  // available and callables must target the class.
+  const previousStaticContext = props.inStaticContext
+
+  if (isModuleLevel) {
+    props.inStaticContext = true
+  }
+
   if (node.name.kind === SyntaxKind.Identifier) {
     props.scope.addName(node.name)
 
-    return combine({
+    const parsed = combine({
       parent: node,
       nodes: [node.name, node.initializer],
       props,
@@ -122,6 +130,10 @@ export const parseVariableDeclaration = (
           isModuleLevel ? "static " : ""
         }var ${unused}${nodeName}${typeString}${init ? " = " + init : ""}`,
     })
+
+    props.inStaticContext = previousStaticContext
+
+    return parsed
   } else {
     let destructuredNames = getDestructuredNamesAndAccessStrings(node.name)
 
@@ -131,7 +143,7 @@ export const parseVariableDeclaration = (
 
     const genName = props.scope.createUniqueName()
 
-    return combine({
+    const parsed = combine({
       parent: node,
       nodes: [node.initializer, ...destructuredNames.map((d) => d.id)],
       props,
@@ -149,6 +161,10 @@ ${nodes
 `
       },
     })
+
+    props.inStaticContext = previousStaticContext
+
+    return parsed
   }
 }
 
@@ -340,5 +356,35 @@ let float: float = 0
   expected: `
 class_name __Mod_Test_4064or
 static var _float: float = 0
+  `,
+}
+
+export const testModuleLevelCallableTargetsClass: Test = {
+  files: { "scope.ts": "export function scopedState(fn: any) { return fn }" },
+  ts: `
+import { scopedState } from "./scope"
+
+const [flag] = [true]
+const view = scopedState(() => flag)
+  `,
+  expected: `
+class_name __Mod_Test_4064or
+static func __gen1(captures):
+  var flag = captures.flag
+  return flag
+static var __ts_import_Scope = load("res://scope.gd")
+static var __gen = [true]
+static var flag = __gen[0]
+static var _view = __ts_import_Scope.scopedState([Callable(__Mod_Test_4064or, "__gen1"), {"flag": flag}])
+  `,
+}
+
+export const testExponentiation: Test = {
+  ts: `
+let p = 2 ** 10
+  `,
+  expected: `
+class_name __Mod_Test_4064or
+static var _p = 2 ** 10
   `,
 }
