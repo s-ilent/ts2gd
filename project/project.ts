@@ -286,9 +286,14 @@ export class TsGdProject {
    */
   ensureRuntimeShims() {
     try {
-      const shimsSourceDir = path.join(__dirname, "..", "..", "gd_shims")
+      // Source layout (project/) and compiled layout (js/) sit at different
+      // depths relative to the repository root; probe both.
+      const shimsSourceDir = [
+        path.join(__dirname, "..", "gd_shims"),
+        path.join(__dirname, "..", "..", "gd_shims"),
+      ].find((candidate) => fs.existsSync(candidate))
 
-      if (!fs.existsSync(shimsSourceDir)) {
+      if (!shimsSourceDir) {
         return
       }
 
