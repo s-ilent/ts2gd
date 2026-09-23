@@ -51,6 +51,7 @@ import { parsePropertyDeclaration } from "./parse_node/parse_property_declaratio
 import { parseReturnStatement } from "./parse_node/parse_return_statement"
 import { parseSetAccessor } from "./parse_node/parse_set_accessor"
 import { parseSourceFile } from "./parse_node/parse_source_file"
+import { parseThrowStatement } from "./parse_node/parse_throw_statement"
 import { parseStringLiteral } from "./parse_node/parse_string_literal"
 import { parseSuperKeyword } from "./parse_node/parse_super_keyword"
 import { parseTemplateExpression } from "./parse_node/parse_template_expression"
@@ -339,6 +340,8 @@ export const parseNode = (
       return parseIdentifier(genericNode as ts.Identifier, props)
     case SyntaxKind.ReturnStatement:
       return parseReturnStatement(genericNode as ts.ReturnStatement, props)
+    case SyntaxKind.ThrowStatement:
+      return parseThrowStatement(genericNode as ts.ThrowStatement, props)
     case SyntaxKind.StringLiteral:
       return parseStringLiteral(genericNode as ts.StringLiteral, props)
     case SyntaxKind.TemplateExpression:
