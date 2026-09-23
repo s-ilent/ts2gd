@@ -2,6 +2,7 @@ import ts, { SyntaxKind } from "typescript"
 
 import { ErrorName, addError } from "../errors"
 import { ParseNodeType, ParseState, combine } from "../parse_node"
+import { Test } from "../tests/test"
 import { ensureOptionalParametersLast } from "../ts_utils"
 
 /**
@@ -181,6 +182,41 @@ export const getCapturedScope = (
   }
 }
 
+/**
+ * Whether a node subtree references `this`. Nested function expressions and
+ * declarations bind their own this and stop the search; nested arrows share
+ * the enclosing lexical this and keep it going.
+ */
+const referencesThis = (root: ts.Node): boolean => {
+  let found = false
+
+  const walk = (n: ts.Node): void => {
+    if (found) {
+      return
+    }
+
+    if (n.kind === SyntaxKind.ThisKeyword) {
+      found = true
+
+      return
+    }
+
+    if (
+      ts.isFunctionDeclaration(n) ||
+      ts.isFunctionExpression(n) ||
+      ts.isMethodDeclaration(n)
+    ) {
+      return
+    }
+
+    ts.forEachChild(n, walk)
+  }
+
+  walk(root)
+
+  return found
+}
+
 // We emit all arrow functions as a tuple of [function object, closed-over
 // variables]. (Previously, when we passed an arrow function to another
 // function, we were just passing in captured variables as a second argument,
@@ -194,14 +230,19 @@ export const parseArrowFunction = (
 
   const { unwrapCapturedScope } = getCapturedScope(node, props)
 
-  // Hoisted functions are static so they can be targeted by callables from
-  // static contexts as well; in instance contexts `self` still resolves to
-  // them. Inside a static function `self` is unavailable, so the callable
-  // targets the class itself.
-  const callableTarget =
-    props.inStaticContext && props.moduleClassName
-      ? props.moduleClassName
-      : "self"
+  // Arrows whose body references this bind to the enclosing instance, so
+  // they hoist as instance functions; everything else hoists static so it
+  // can be targeted by callables from static contexts as well. Inside a
+  // static function `self` is unavailable, so the callable targets the
+  // class itself.
+  const isInstanceBound = referencesThis(node.body)
+  const funcKind = isInstanceBound ? "func" : "static func"
+
+  const callableTarget = isInstanceBound
+    ? "self"
+    : props.inStaticContext && props.moduleClassName
+    ? props.moduleClassName
+    : "self"
 
   props.scope.enterScope()
 
@@ -217,7 +258,7 @@ export const parseArrowFunction = (
 
       if (node.body.kind === SyntaxKind.Block) {
         return `
-static func ${name}(${signature}):
+${funcKind} ${name}(${signature}):
 ${unwrapCapturedScope}
   ${body.trim() === "" ? "pass" : body}
         `
@@ -225,7 +266,7 @@ ${unwrapCapturedScope}
         // Single line arrow function, with implicit return.
 
         return `
-static func ${name}(${signature}):
+${funcKind} ${name}(${signature}):
 ${unwrapCapturedScope}
   return ${body}
         `
@@ -264,4 +305,40 @@ Declaration not provided for arrow function. This is an internal ts2gd bug. Plea
       ...(parsed.hoistedArrowFunctions ?? []),
     ],
   }
+}
+
+export const testPropertyArrowBoundToInstance: Test = {
+  ts: `
+export class Loop {
+  running: bool = false
+
+  private frame = (now: float): void => {
+    if (!this.running) {
+      return
+    }
+  }
+}
+  `,
+  expected: `
+class_name Loop
+func __gen(_now: float, captures):
+  if not self.running:
+    return
+var running = false
+var frame = [Callable(self, "__gen"), {}]
+  `,
+}
+
+export const testPropertyArrowStaticWhenNoThis: Test = {
+  ts: `
+export class Maker {
+  make = (n: int): int => n * 2
+}
+  `,
+  expected: `
+class_name Maker
+static func __gen(n: int, captures):
+  return n * 2
+var make = [Callable(self, "__gen"), {}]
+  `,
 }

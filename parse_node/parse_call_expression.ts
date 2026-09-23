@@ -909,7 +909,7 @@ export class Test extends Area2D {
   expected: `
 extends Area2D
 class_name Test
-static func __gen(_body, captures):
+func __gen(_body, captures):
   var x = captures.x
   var y = captures.y
   self.print(x + y)
@@ -933,7 +933,7 @@ export class Test {
   `,
   expected: `
 class_name Test
-static func __gen(captures):
+func __gen(captures):
   var enem = captures.enem
   self.enemies.erase(enem)
 var enemies
