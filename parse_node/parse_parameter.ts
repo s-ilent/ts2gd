@@ -138,9 +138,9 @@ export const testArrayHoleAndRest: Test = {
 let [a, , c, ...rest] = [1, 2, 3, 4, 5]
   `,
   expected: `
-var __gen = [1, 2, 3, 4, 5]
-var a = __gen[0]
-var c = __gen[2]
-var rest = __gen.slice(3)
+static var __gen = [1, 2, 3, 4, 5]
+static var a = __gen[0]
+static var c = __gen[2]
+static var rest = __gen.slice(3)
   `,
 }

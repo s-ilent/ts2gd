@@ -45,7 +45,7 @@ func __ts_typeof(v):
       return "function"
     _:
       return "object"
-var x = Vector2(1, 1)
+static var x = Vector2(1, 1)
 print(__ts_typeof(x))
   `,
 }

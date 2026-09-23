@@ -47,6 +47,6 @@ export const testUndefined: Test = {
 let x = undefined
   `,
   expected: `
-var _x = null
+static var _x = null
   `,
 }

@@ -36,6 +36,6 @@ export const testStringInterpolation: Test = {
 let foo = \`blah \${ 10 }  \${ 20 }\`
   `,
   expected: `
-var _foo = "blah " + str(10) + "  " + str(20) + ""
+static var _foo = "blah " + str(10) + "  " + str(20) + ""
 `,
 }

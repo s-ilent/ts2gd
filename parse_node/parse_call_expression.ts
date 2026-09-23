@@ -394,8 +394,8 @@ export const testAddVec: Test = {
   expected: `
 func add_vec_lib(v1, v2):
   return null if (v1 == null or v2 == null) else v1 + v2
-var v1
-var v2
+static var v1
+static var v2
 add_vec_lib(v1, v2)
 `,
 }
@@ -405,8 +405,8 @@ export const testAddVec2: Test = {
   expected: `
 func add_vec_lib(v1, v2):
   return null if (v1 == null or v2 == null) else v1 + v2
-var foo
-var v2
+static var foo
+static var v2
 add_vec_lib(foo.v, v2)
 `,
 }
@@ -414,7 +414,7 @@ add_vec_lib(foo.v, v2)
 export const testNormalVec: Test = {
   ts: `const v1: Vector2; v1.distance_to(v1)`,
   expected: `
-var v1
+static var v1
 v1.distance_to(v1)
 `,
 }
@@ -452,7 +452,7 @@ test()
   expected: `
 func __gen(captures):
   return 5
-var test = [Callable(self, "__gen"), {}]
+static var test = [Callable(self, "__gen"), {}]
 test[0].call(test[1])
 `,
 }
@@ -466,7 +466,7 @@ x.map(y => y + '1')
 ${LibraryFunctions.map.definition("__map")}
 func __gen(y: String, captures):
   return y + "1"
-var x = ["a", "b", "c"]
+static var x = ["a", "b", "c"]
 __map(x, [Callable(self, "__gen"), {}])
 `,
 }
@@ -486,9 +486,9 @@ func __gen(y: int, captures):
   var z = captures.z
   var big = captures.big
   return z + big.a + y * 3
-var x = [1, 2, 3]
-var z: int = 5
-var big = { "a": 6 }
+static var x = [1, 2, 3]
+static var z: int = 5
+static var big = { "a": 6 }
 __map(x, [Callable(self, "__gen"), {"z": z, "big": big}])
 `,
 }
@@ -505,7 +505,7 @@ let d = todict({ 'a': 1 })
 d.put('b', 2)
   `,
   expected: `
-var d = { "a": 1 }
+static var d = { "a": 1 }
 d["b"] = 2
 `,
 }
@@ -636,7 +636,7 @@ let d = todict({ 'a': 1 })
 d.put([1, 2], 2)
   `,
   expected: `
-var d = { "a": 1 }
+static var d = { "a": 1 }
 d[[1, 2]] = 2
 `,
 }
@@ -671,7 +671,7 @@ func __gen(x: String, captures):
   return x
 func __gen1(x: String, captures):
   return x
-var a = []
+static var a = []
 __map(__filter(a, [Callable(self, "__gen"), {}]), [Callable(self, "__gen1"), {}])
 `,
 }
@@ -721,8 +721,8 @@ ${LibraryFunctions.map.definition("__map")}
 func __gen(captures):
   var big = captures.big
   return big.a + big.a
-var big = { "a": 6 }
-var x = []
+static var big = { "a": 6 }
+static var x = []
 __map(x, [Callable(self, "__gen"), {"big": big}])
 `,
 }
@@ -760,7 +760,7 @@ let x: Node = 0 as any
 x.get_node_unsafe("Foo")
   `,
   expected: `
-var x = 0
+static var x = 0
 x.get_node("Foo")
 `,
 }
@@ -922,5 +922,5 @@ func __random_element(list):
 var __gen = __random_element([Vector2.UP, Vector2.DOWN])
 var __gen1 = [Callable(self, "mul_vec_lib") if __gen != null else null, {}, __gen]
 var __gen2 = __gen1[0].call(__gen1[2], 5) if __gen1 != null else null
-var _test = __gen2`,
+static var _test = __gen2`,
 }

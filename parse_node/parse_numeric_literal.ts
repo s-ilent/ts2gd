@@ -22,7 +22,7 @@ export const testInt: Test = {
 let x = 1
   `,
   expected: `
-var _x: int = 1
+static var _x: int = 1
   `,
 }
 
@@ -31,6 +31,6 @@ export const testFloat: Test = {
 let x = 1.0
   `,
   expected: `
-var _x: float = 1.0
+static var _x: float = 1.0
   `,
 }

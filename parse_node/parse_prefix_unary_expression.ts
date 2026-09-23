@@ -121,7 +121,7 @@ if (true) {
 }
   `,
   expected: `
-var x: int = 0
+static var x: int = 0
 if true:
   x += 1
   if x:
@@ -143,7 +143,7 @@ if (true) {
 }
   `,
   expected: `
-var x: int = 0
+static var x: int = 0
 if true:
   if x:
     x += 1

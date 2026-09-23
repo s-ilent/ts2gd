@@ -268,7 +268,7 @@ export const testObjectLiteral: Test = {
 let x = {}
   `,
   expected: `
-var _x = {}
+static var _x = {}
   `,
 }
 
@@ -277,7 +277,7 @@ export const testObjectLiteral2: Test = {
 let x = {a: 1}
   `,
   expected: `
-var _x = { "a": 1 }
+static var _x = { "a": 1 }
   `,
 }
 
@@ -286,7 +286,7 @@ export const testObjectLiteralShorthand: Test = {
 let x = {a}
   `,
   expected: `
-var _x = { "a": a }
+static var _x = { "a": a }
   `,
 }
 
@@ -295,7 +295,7 @@ export const testObjectLiteralShorthand2: Test = {
 let x = { a: 1 }
   `,
   expected: `
-var _x = { "a": 1 }
+static var _x = { "a": 1 }
   `,
 }
 
@@ -306,7 +306,7 @@ let x = {
 }
   `,
   expected: `
-var _x = { 
+static var _x = { 
   "a": 1,
 }
   `,
@@ -320,7 +320,7 @@ let x = {
 }
   `,
   expected: `
-var _x = { 
+static var _x = { 
   "a": 1,
   "b": 1,
 }
@@ -353,8 +353,8 @@ let x = { ...base, b: 2 }
   `,
   expected: `
 ${LibraryFunctions.dict_merge.definition("__dict_merge")}
-var base = { "a": 1 }
-var _x = __dict_merge(__dict_merge(base, {}), { "b": 2 })
+static var base = { "a": 1 }
+static var _x = __dict_merge(__dict_merge(base, {}), { "b": 2 })
   `,
 }
 
@@ -365,8 +365,8 @@ let x = { ...base }
   `,
   expected: `
 ${LibraryFunctions.dict_merge.definition("__dict_merge")}
-var base = { "a": 1 }
-var _x = __dict_merge(base, {})
+static var base = { "a": 1 }
+static var _x = __dict_merge(base, {})
   `,
 }
 
@@ -378,9 +378,9 @@ let c = { ...a, ...b }
   `,
   expected: `
 ${LibraryFunctions.dict_merge.definition("__dict_merge")}
-var a = { "x": 1 }
-var b = { "y": 2 }
-var _c = __dict_merge(__dict_merge(a, {}), __dict_merge(b, {}))
+static var a = { "x": 1 }
+static var b = { "y": 2 }
+static var _c = __dict_merge(__dict_merge(a, {}), __dict_merge(b, {}))
   `,
 }
 
@@ -396,7 +396,7 @@ let strategies = {
   expected: `
 func __gen(x: int, captures):
   return x + 1
-var _strategies = {
+static var _strategies = {
   "name": "a",
   "apply": [Callable(self, "__gen"), {}],
 }
@@ -415,7 +415,7 @@ let obj = {
   expected: `
 func __gen(captures):
   return self.total * 2
-var _obj = {
+static var _obj = {
   "total": 5,
   "doubled": [Callable(self, "__gen"), {}],
 }

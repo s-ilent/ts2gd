@@ -62,7 +62,7 @@ while (x++ < 10) {
 }
   `,
   expected: `
-var x: int = 0
+static var x: int = 0
 while x < 10:
   x += 1
   print(x)
@@ -75,7 +75,7 @@ let x = 0
 while (x++ < 10) { }
   `,
   expected: `
-var x: int = 0
+static var x: int = 0
 while x < 10:
   x += 1
 `,
@@ -89,7 +89,7 @@ while (++x < 10) {
 }
   `,
   expected: `
-var x: int = 0
+static var x: int = 0
 x += 1
 while x < 10:
   print(x)

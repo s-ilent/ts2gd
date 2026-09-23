@@ -26,6 +26,6 @@ woo
 \`
   `,
   expected: `
-var _foo = "\\nwoo\\n"
+static var _foo = "\\nwoo\\n"
 `,
 }

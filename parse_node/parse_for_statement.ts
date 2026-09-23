@@ -98,15 +98,15 @@ for (let i = 0; i < 5; ++i) {
 }
   `,
   expected: `
-var i: int = 0
+static var i: int = 0
 while i < 6:
   print(i)
   i += 1
-var i1: int = 0
+static var i1: int = 0
 while i1 < 5:
   print(i1)
   i1 += 1
-var i2: int = 0
+static var i2: int = 0
 while i2 < 5:
   print(i2)
   i2 += 1
@@ -118,7 +118,7 @@ export const testPass2: Test = {
 for (let x = 0; x < 10; );
   `,
   expected: `
-var x: int = 0
+static var x: int = 0
 while x < 10:
   pass
   `,
@@ -131,7 +131,7 @@ for (let i: int = 0; i < 10; i += 2) {
 }
   `,
   expected: `
-var i: int = 0
+static var i: int = 0
 while i < 10:
   print(i)
   i += 2
@@ -145,7 +145,7 @@ for (let i: int = 1; i < 100; i = i * 3) {
 }
   `,
   expected: `
-var i: int = 1
+static var i: int = 1
 while i < 100:
   print(i)
   i = i * 3
@@ -162,7 +162,7 @@ for (let i: int = 0; i < 10; i += 2) {
 }
   `,
   expected: `
-var i: int = 0
+static var i: int = 0
 while i < 10:
   if i == 4:
     i += 2

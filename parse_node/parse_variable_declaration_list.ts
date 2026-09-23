@@ -22,8 +22,8 @@ print(a)
 print(b)
   `,
   expected: `
-var a: int = 1
-var b: int = 2
+static var a: int = 1
+static var b: int = 2
 print(a)
 print(b)
   `,

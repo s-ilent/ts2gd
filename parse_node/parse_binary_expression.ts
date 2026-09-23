@@ -75,7 +75,7 @@ export const testAssignmentToDict: Test = {
   ts: `const foo = {};
 foo.bar = 1`,
 
-  expected: `var foo = {}
+  expected: `static var foo = {}
 foo.bar = 1
 `,
 }
@@ -84,7 +84,7 @@ export const testNestedAssignmentToDict: Test = {
   ts: `const foo = { bar: {} };
 foo.bar.baz = 1`,
   expected: `
-var foo = { "bar": {} }
+static var foo = { "bar": {} }
 foo.bar.baz = 1
 `,
 }
@@ -102,8 +102,8 @@ let b: string
 a == b
   `,
   expected: `
-var a
-var b  
+static var a
+static var b  
 a == b
 `,
 }
@@ -116,8 +116,8 @@ let b: string
 a != b
   `,
   expected: `
-var a
-var b  
+static var a
+static var b  
 a != b
 `,
 }

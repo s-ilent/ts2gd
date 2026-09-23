@@ -34,7 +34,7 @@ export const testNormalNew: Test = {
 let foo = new Node2D()
   `,
   expected: `
-var _foo = Node2D.new()
+static var _foo = Node2D.new()
   `,
 }
 
@@ -43,7 +43,7 @@ export const testVectorNoNew: Test = {
 let foo = new Vector2()
   `,
   expected: `
-var _foo = Vector2()
+static var _foo = Vector2()
   `,
 }
 
@@ -52,6 +52,6 @@ export const testColorNoNew: Test = {
 let foo = new Color()
   `,
   expected: `
-var _foo = Color()
+static var _foo = Color()
   `,
 }

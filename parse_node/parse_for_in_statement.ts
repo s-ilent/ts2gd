@@ -64,7 +64,7 @@ let x: never;
 for (x in []);
   `,
   expected: `
-var x
+static var x
 for x in []:
   pass
   `,

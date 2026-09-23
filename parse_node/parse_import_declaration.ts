@@ -527,7 +527,7 @@ export const parseImportDeclaration = (
         ...importLines,
         ...imports.map(({ importedName, type, resPath }) => {
           if (type === "class") {
-            return `var ${importedName} = load("${resPath}")`
+            return `static var ${importedName} = load("${resPath}")`
           } else if (type === "enum") {
             return `const ${importedName} = preload("${resPath}").${importedName}`
           } else if (type === "scene") {
@@ -673,8 +673,8 @@ let h = Helper
 print(h)
   `,
   expected: `
-var Helper = load("res://helper.gd")
-var h = Helper
+static var Helper = load("res://helper.gd")
+static var h = Helper
 print(h)
   `,
 }

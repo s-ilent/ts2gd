@@ -104,6 +104,12 @@ export const parseVariableDeclaration = (
     }
   }
 
+  // Module-level variables are shared across every instance of the
+  // generated script's implicit class, and must stay reachable from the
+  // static functions that module-level functions compile to.
+  const isModuleLevel =
+    node.parent?.parent?.parent?.kind === SyntaxKind.SourceFile
+
   if (node.name.kind === SyntaxKind.Identifier) {
     props.scope.addName(node.name)
 
@@ -112,7 +118,9 @@ export const parseVariableDeclaration = (
       nodes: [node.name, node.initializer],
       props,
       parsedStrings: (nodeName, init) =>
-        `var ${unused}${nodeName}${typeString}${init ? " = " + init : ""}`,
+        `${
+          isModuleLevel ? "static " : ""
+        }var ${unused}${nodeName}${typeString}${init ? " = " + init : ""}`,
     })
   } else {
     let destructuredNames = getDestructuredNamesAndAccessStrings(node.name)
@@ -129,9 +137,14 @@ export const parseVariableDeclaration = (
       props,
       parsedStrings: (initializer, ...nodes) => {
         return `
-var ${genName} = ${initializer}
+${isModuleLevel ? "static " : ""}var ${genName} = ${initializer}
 ${nodes
-  .map((node, i) => `var ${node} = ${genName}${destructuredNames[i].access}`)
+  .map(
+    (node, i) =>
+      `${isModuleLevel ? "static " : ""}var ${node} = ${genName}${
+        destructuredNames[i].access
+      }`
+  )
   .join("\n")}
 `
       },
@@ -144,10 +157,10 @@ export const testDestructure: Test = {
 let [a, [b, c]] = [1, [2, 3]]
   `,
   expected: `
-var __gen = [1, [2, 3]]
-var a = __gen[0]
-var b = __gen[1][0]
-var c = __gen[1][1]
+static var __gen = [1, [2, 3]]
+static var a = __gen[0]
+static var b = __gen[1][0]
+static var c = __gen[1][1]
   `,
 }
 
@@ -157,10 +170,10 @@ let [a] = [1]
 let [b] = [1]
   `,
   expected: `
-var __gen = [1]
-var a = __gen[0]
-var __gen1 = [1]
-var b = __gen1[0]
+static var __gen = [1]
+static var a = __gen[0]
+static var __gen1 = [1]
+static var b = __gen1[0]
   `,
 }
 
@@ -169,9 +182,9 @@ export const testDestructure3: Test = {
 let { a, b } = { a: 1, b: 2 }
   `,
   expected: `
-var __gen = { "a": 1, "b": 2 }
-var a = __gen.a
-var b = __gen.b
+static var __gen = { "a": 1, "b": 2 }
+static var a = __gen.a
+static var b = __gen.b
   `,
 }
 
@@ -183,10 +196,10 @@ let { a, b } = { a: 1, b: 2 }
 print(__gen)
   `,
   expected: `
-var __gen: int = 1
-var __gen1 = { "a": 1, "b": 2 }
-var a = __gen1.a
-var b = __gen1.b
+static var __gen: int = 1
+static var __gen1 = { "a": 1, "b": 2 }
+static var a = __gen1.a
+static var b = __gen1.b
 print(__gen)
   `,
 }
@@ -196,9 +209,9 @@ export const testDestructureRename: Test = {
 let { a: a1, b: b1 } = { a: 1, b: 2 }
   `,
   expected: `
-var __gen = { "a": 1, "b": 2 }
-var a1 = __gen.a
-var b1 = __gen.b
+static var __gen = { "a": 1, "b": 2 }
+static var a1 = __gen.a
+static var b1 = __gen.b
   `,
 }
 
@@ -208,8 +221,8 @@ let x = 1
 let y = 'a'
   `,
   expected: `
-var _x: int = 1  
-var _y = "a"
+static var _x: int = 1  
+static var _y = "a"
   `,
 }
 
@@ -237,7 +250,7 @@ const x: Blah = new Blah();
   expected: `
 class_name Blah
 
-var _x = Blah.new()
+static var _x = Blah.new()
   `,
 }
 
@@ -278,7 +291,7 @@ let preload = 123
 print(preload)
   `,
   expected: `
-var preload_: int = 123
+static var preload_: int = 123
 print(preload_)
   `,
 }
@@ -288,7 +301,7 @@ export const testIntFloat1: Test = {
 let int = 1
   `,
   expected: `
-var _int: int = 1
+static var _int: int = 1
   `,
 }
 
@@ -297,7 +310,7 @@ export const testIntFloat2: Test = {
 let float = 1.0
   `,
   expected: `
-var _float: float = 1.0
+static var _float: float = 1.0
   `,
 }
 
@@ -306,7 +319,7 @@ export const testIntFloat3: Test = {
 let float: int = 1.0
   `,
   expected: `
-var _float: int = 1.0
+static var _float: int = 1.0
   `,
 }
 
@@ -315,6 +328,6 @@ export const testIntFloat4: Test = {
 let float: float = 0
   `,
   expected: `
-var _float: float = 0
+static var _float: float = 0
   `,
 }

@@ -62,7 +62,7 @@ var x = 1
 x++
   `,
   expected: `
-var x: int = 1
+static var x: int = 1
 x += 1
 `,
 }
@@ -75,7 +75,7 @@ if (x++) {
 } 
   `,
   expected: `
-var x: int = 1
+static var x: int = 1
 if x:
   x += 1
   print(x)

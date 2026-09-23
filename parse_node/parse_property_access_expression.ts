@@ -229,7 +229,7 @@ let foo = { bar: 1 }
 print(foo.bar)
   `,
   expected: `
-var foo = { "bar": 1 }
+static var foo = { "bar": 1 }
 print(foo.bar)
   `,
 }
@@ -242,7 +242,7 @@ if (foo.bar) {
 }
   `,
   expected: `
-var foo = { "bar": 1 }
+static var foo = { "bar": 1 }
 if foo.bar:
   print(foo.bar)
   `,
@@ -256,7 +256,7 @@ if (foo.bar === 1 as int) {
 }
   `,
   expected: `
-var foo = { "bar": 1 }
+static var foo = { "bar": 1 }
 if (foo.bar if foo.has("bar") else null) == 1:
   print(foo.bar)
   `,
@@ -268,7 +268,7 @@ let foo: { bar: number | null } = { bar: 1 }
 print(foo.bar)
   `,
   expected: `
-var foo = { "bar": 1 }
+static var foo = { "bar": 1 }
 print((foo.bar if foo.has("bar") else null))
   `,
 }
@@ -279,7 +279,7 @@ let foo: { bar?: number } = { bar: 1 }
 print(foo.bar)
   `,
   expected: `
-var foo = { "bar": 1 }
+static var foo = { "bar": 1 }
 print((foo.bar if foo.has("bar") else null))
   `,
 }
@@ -290,7 +290,7 @@ let foo: { bar?: number } = { bar: 1 }
 foo.bar = 2
   `,
   expected: `
-var foo = { "bar": 1 }
+static var foo = { "bar": 1 }
 foo.bar = 2
   `,
 }
@@ -301,7 +301,7 @@ let foo: { bar?: number }[] = [{ bar: 1 }]
 foo[0].bar = 2
   `,
   expected: `
-var foo = [{ "bar": 1 }]
+static var foo = [{ "bar": 1 }]
 foo[0].bar = 2
   `,
 }

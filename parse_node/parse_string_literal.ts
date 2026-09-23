@@ -25,6 +25,6 @@ export const testNewlineLiteral: Test = {
 let d = "\\n"
   `,
   expected: `
-var _d = "\\n"
+static var _d = "\\n"
 `,
 }
