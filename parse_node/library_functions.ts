@@ -48,6 +48,14 @@ export type LibraryFunctionName =
   | "ts_reflect_has"
   | "ts_reflect_own_keys"
   | "ts_perf_now"
+  | "ts_object_keys"
+  | "ts_object_values"
+  | "ts_object_entries"
+  | "ts_object_freeze"
+  | "ts_object_from_entries"
+  | "ts_object_assign"
+  | "ts_object_has_own"
+  | "ts_object_create"
   | "add_vec_lib"
   | "sub_vec_lib"
   | "mul_vec_lib"
@@ -263,6 +271,90 @@ static func __ts_reflect_own_keys(target):
     definition: () => `
 static func __ts_perf_now():
   return float(Time.get_ticks_msec())
+`,
+  },
+
+  ts_object_keys: {
+    name: "ts_object_keys",
+    definition: () => `
+static func __ts_object_keys(obj):
+  if obj is Dictionary:
+    return obj.keys()
+  return []
+`,
+  },
+
+  ts_object_values: {
+    name: "ts_object_values",
+    definition: () => `
+static func __ts_object_values(obj):
+  if obj is Dictionary:
+    return obj.values()
+  return []
+`,
+  },
+
+  ts_object_entries: {
+    name: "ts_object_entries",
+    definition: () => `
+static func __ts_object_entries(obj):
+  var out := []
+  if obj is Dictionary:
+    for k in obj:
+      out.append([k, obj[k]])
+  return out
+`,
+  },
+
+  ts_object_freeze: {
+    name: "ts_object_freeze",
+    definition: () => `
+static func __ts_object_freeze(obj):
+  return obj
+`,
+  },
+
+  ts_object_from_entries: {
+    name: "ts_object_from_entries",
+    definition: () => `
+static func __ts_object_from_entries(pairs):
+  var out := {}
+  if pairs is Array:
+    for pair in pairs:
+      if pair is Array and pair.size() >= 2:
+        out[pair[0]] = pair[1]
+  return out
+`,
+  },
+
+  ts_object_assign: {
+    name: "ts_object_assign",
+    definition: () => `
+static func __ts_object_assign(target, s1, s2 = null, s3 = null):
+  if target is Dictionary:
+    for src in [s1, s2, s3]:
+      if src is Dictionary:
+        for k in src:
+          target[k] = src[k]
+  return target
+`,
+  },
+
+  ts_object_has_own: {
+    name: "ts_object_has_own",
+    definition: () => `
+static func __ts_object_has_own(obj, key):
+  if obj is Dictionary:
+    return obj.has(key)
+  return false
+`,
+  },
+
+  ts_object_create: {
+    name: "ts_object_create",
+    definition: () => `
+static func __ts_object_create(_proto = null):
+  return {}
 `,
   },
 

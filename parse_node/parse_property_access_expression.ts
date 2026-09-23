@@ -214,6 +214,53 @@ export const parsePropertyAccessExpression = (
     return result
   }
 
+  // JSON.parse is an instance method in the engine; the static equivalent
+  // is parse_string.
+  if (
+    ts.isIdentifier(node.expression) &&
+    node.expression.text === "JSON" &&
+    node.name.text === "parse"
+  ) {
+    return combine({
+      parent: node,
+      nodes: [],
+      props,
+      parsedStrings: () => "JSON.parse_string",
+    })
+  }
+
+  // Object statics compile to hoisted helpers over dictionaries; freeze is
+  // a no-op that returns its argument.
+  if (ts.isIdentifier(node.expression) && node.expression.text === "Object") {
+    const objectStatics: Record<string, LibraryFunctionName> = {
+      keys: "ts_object_keys",
+      values: "ts_object_values",
+      entries: "ts_object_entries",
+      freeze: "ts_object_freeze",
+      fromEntries: "ts_object_from_entries",
+      assign: "ts_object_assign",
+      hasOwn: "ts_object_has_own",
+      create: "ts_object_create",
+    }
+
+    const name = node.name.text
+
+    if (name in objectStatics) {
+      const result = combine({
+        parent: node,
+        nodes: [],
+        props,
+        parsedStrings: () => `__${objectStatics[name]}`,
+      })
+
+      result.hoistedLibraryFunctions =
+        result.hoistedLibraryFunctions ?? new Set()
+      result.hoistedLibraryFunctions.add(objectStatics[name])
+
+      return result
+    }
+  }
+
   // Number.* statics map onto GDScript helpers.
   if (ts.isIdentifier(node.expression) && node.expression.text === "Number") {
     const name = node.name.text
@@ -878,5 +925,46 @@ class_name Foo
 ${LibraryFunctions.ts_perf_now.definition("__ts_perf_now")}
 func stamp():
   return __ts_perf_now()
+  `,
+}
+
+export const testJsonParse: Test = {
+  ts: `
+export function decode(text): int {
+  return JSON.parse(text)
+}
+  `,
+  expected: `
+class_name __Mod_Test_4064or
+static func decode(text):
+  return JSON.parse_string(text)
+  `,
+}
+
+export const testObjectStatics: Test = {
+  ts: `
+export function go(cfg): int {
+  const copy = Object.assign({}, cfg)
+  Object.freeze(copy)
+  return Object.keys(copy).size() + Object.values(copy).size() +
+    Object.entries(copy).size() + Object.hasOwn(copy, "a") +
+    Object.keys(Object.fromEntries(Object.entries(copy))).size()
+}
+  `,
+  expected: `
+class_name __Mod_Test_4064or
+${LibraryFunctions.ts_object_assign.definition("__ts_object_assign")}
+${LibraryFunctions.ts_object_freeze.definition("__ts_object_freeze")}
+${LibraryFunctions.ts_object_keys.definition("__ts_object_keys")}
+${LibraryFunctions.ts_object_values.definition("__ts_object_values")}
+${LibraryFunctions.ts_object_entries.definition("__ts_object_entries")}
+${LibraryFunctions.ts_object_has_own.definition("__ts_object_has_own")}
+${LibraryFunctions.ts_object_from_entries.definition(
+  "__ts_object_from_entries"
+)}
+static func go(cfg):
+  var copy = __ts_object_assign({}, cfg)
+  __ts_object_freeze(copy)
+  return __ts_object_keys(copy).size() + __ts_object_values(copy).size() + __ts_object_entries(copy).size() + __ts_object_has_own(copy, "a") + __ts_object_keys(__ts_object_from_entries(__ts_object_entries(copy))).size()
   `,
 }
