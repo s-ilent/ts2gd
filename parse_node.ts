@@ -110,6 +110,14 @@ export type ParseState = {
    * the callable target from static contexts.
    */
   moduleClassName?: string
+
+  /**
+   * Nested (inner) function declarations declared inside another function
+   * body, keyed by their declaration symbol. References to these rewrite to
+   * a [Callable, captures] tuple so that closed-over variables travel with
+   * the function value.
+   */
+  nestedFunctionBindings?: Map<ts.Symbol, { name: string; captures: string }>
 }
 
 export enum ExtraLineType {
@@ -131,7 +139,7 @@ export type ParseNodeType = {
   hoistedArrowFunctions?: {
     name: string
     content: string
-    node: ts.ArrowFunction
+    node: ts.ArrowFunction | ts.FunctionDeclaration
   }[]
   hoistedLibraryFunctions?: Set<LibraryFunctionName>
   extraLines?: ExtraLine[]

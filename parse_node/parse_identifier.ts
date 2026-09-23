@@ -40,6 +40,18 @@ export const parseIdentifier = (
         return props.importedBindings.get(symbol)!
       }
 
+      // Nested (inner) function declarations are values as [Callable,
+      // captures] tuples so closed-over variables travel with them.
+      if (symbol && props.nestedFunctionBindings?.has(symbol)) {
+        const binding = props.nestedFunctionBindings.get(symbol)!
+        const callableTarget =
+          props.inStaticContext && props.moduleClassName
+            ? props.moduleClassName
+            : "self"
+
+        return `[Callable(${callableTarget}, "${binding.name}"), ${binding.captures}]`
+      }
+
       const name = props.scope.getName(node)
 
       if (!name) {

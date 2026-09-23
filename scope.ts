@@ -85,6 +85,26 @@ export class Scope {
 
     return newName
   }
+
+  /**
+   * Like createUniqueName, but keeps a readable base name and deduplicates
+   * against every name already in scope (e.g. two sibling functions each
+   * declaring a nested function with the same name).
+   */
+  createUniqueNameWithBase(base: string): string {
+    const matchingNames = this.namesInScope.flat()
+    let newName = base
+    let increment = 0
+
+    while (matchingNames.filter((x) => x[1] === newName).length > 0) {
+      newName = base + String(++increment)
+    }
+
+    // Hoisted functions become class-level members, so the name is global.
+    this.namesInScope[0].push([undefined, newName])
+
+    return newName
+  }
 }
 
 const keywords = [

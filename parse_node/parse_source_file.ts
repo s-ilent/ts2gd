@@ -5,6 +5,7 @@ import { ParseNodeType, ParseState, combine, parseNode } from "../parse_node"
 import { Test } from "../tests/test"
 
 import { LibraryFunctions } from "./library_functions"
+import { registerNestedFunctionBindings } from "./parse_function_declaration"
 
 /**
  * The class_name and extends statements *must* come first in the file, so we
@@ -121,6 +122,10 @@ export const parseSourceFile = (
   const files: { filePath: string; body: string }[] = []
 
   props.moduleClassName = moduleClassName
+
+  // Register nested (inner) function declarations before parsing so forward
+  // references resolve (function declarations hoist in JS).
+  registerNestedFunctionBindings(node, props)
 
   for (const statement of statements) {
     if (

@@ -51,6 +51,30 @@ export const parseCallExpression = (
     })
   }
 
+  // Nested (inner) function declarations hoist to static functions that take
+  // a trailing captures parameter; calls pass the captured scope directly.
+  if (expression.kind === SyntaxKind.Identifier) {
+    const symbol = props.program
+      .getTypeChecker()
+      .getSymbolAtLocation(expression)
+    const nestedBinding =
+      symbol && props.nestedFunctionBindings
+        ? props.nestedFunctionBindings.get(symbol)
+        : undefined
+
+    if (nestedBinding) {
+      return combine({
+        parent: node,
+        nodes: [...args],
+        props,
+        parsedStrings: (...parsed) =>
+          `${nestedBinding.name}(${[...parsed, nestedBinding.captures].join(
+            ", "
+          )})`,
+      })
+    }
+  }
+
   // node = [[ a.b(c) ]]
   if (node.expression.kind === SyntaxKind.PropertyAccessExpression) {
     // prop = [[ a.b ]](c)

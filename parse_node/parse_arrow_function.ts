@@ -18,7 +18,7 @@ import { ensureOptionalParametersLast } from "../ts_utils"
  */
 const getFreeVariables = (
   node: ts.Node | undefined | null,
-  root: ts.ArrowFunction,
+  root: ts.ArrowFunction | ts.FunctionDeclaration,
   props: ParseState
 ): (ts.Identifier | ts.PropertyAccessExpression)[] => {
   if (!node) {
@@ -94,7 +94,7 @@ Declaration not provided for free variables. This is an internal ts2gd bug. Plea
 }
 
 export const getCapturedScope = (
-  node: ts.ArrowFunction,
+  node: ts.ArrowFunction | ts.FunctionDeclaration,
   props: ParseState
 ): {
   capturedScopeObject: string
