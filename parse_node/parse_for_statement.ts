@@ -32,7 +32,7 @@ export const parseForStatement = (
     parsedStrings: (inc) => inc,
   })
 
-  let incrementText =
+  const incrementExtraLines =
     increment.extraLines
       ?.filter(
         (line) =>
@@ -41,8 +41,23 @@ export const parseForStatement = (
       )
       .map((line) => line.line) ?? []
 
+  // Prefix/postfix ++/-- emit their side effect as an increment/decrement
+  // extra line (their content is just the operand expression). All other
+  // increment forms (i += n, i = i + n, f()) arrive via content instead.
+  // Those were previously computed and then dropped, which made every
+  // such loop infinite.
+  const contentIncrement =
+    increment.content.trim().length > 0 ? increment.content.trim() : undefined
+
+  const incrementLines =
+    incrementExtraLines.length > 0
+      ? incrementExtraLines
+      : contentIncrement
+      ? [contentIncrement]
+      : []
+
   props.mostRecentForStatement = {
-    incrementor: incrementText.join("\n"),
+    incrementor: incrementLines.join("\n"),
   }
 
   const result = combine({
@@ -51,10 +66,7 @@ export const parseForStatement = (
     nodes: [node.condition, node.statement],
     props,
     parsedStrings: (cond, statement) => {
-      if (
-        statement.trim().length === 0 &&
-        increment.content.trim().length === 0
-      ) {
+      if (statement.trim().length === 0 && incrementLines.length === 0) {
         statement = "pass"
       }
 
@@ -62,7 +74,7 @@ export const parseForStatement = (
 ${initializer || ""}
 while ${cond || "true"}:
   ${statement}
-  ${incrementText}
+  ${incrementLines.join("\n")}
 `
     },
   })
@@ -109,5 +121,53 @@ for (let x = 0; x < 10; );
 var x: int = 0
 while x < 10:
   pass
+  `,
+}
+
+export const testCompoundAssignmentIncrement: Test = {
+  ts: `
+for (let i: int = 0; i < 10; i += 2) {
+  print(i)
+}
+  `,
+  expected: `
+var i: int = 0
+while i < 10:
+  print(i)
+  i += 2
+  `,
+}
+
+export const testAssignmentIncrement: Test = {
+  ts: `
+for (let i: int = 1; i < 100; i = i * 3) {
+  print(i)
+}
+  `,
+  expected: `
+var i: int = 1
+while i < 100:
+  print(i)
+  i = i * 3
+  `,
+}
+
+export const testCompoundIncrementWithContinue: Test = {
+  ts: `
+for (let i: int = 0; i < 10; i += 2) {
+  if (i == (4 as int)) {
+    continue
+  }
+  print(i)
+}
+  `,
+  expected: `
+var i: int = 0
+while i < 10:
+  if i == 4:
+    i += 2
+    continue
+  print(i)
+  i += 2
   `,
 }
