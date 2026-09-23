@@ -25,6 +25,12 @@ const getFreeVariables = (
     return []
   }
 
+  // Identifiers in type positions (annotations, generic type arguments, type
+  // queries) are erased during emission, so they are never free variables.
+  if (ts.isTypeNode(node)) {
+    return []
+  }
+
   if (
     node.kind === SyntaxKind.Identifier ||
     node.kind === SyntaxKind.PropertyAccessExpression

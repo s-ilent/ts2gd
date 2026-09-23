@@ -364,6 +364,30 @@ static func outer():
   `,
 }
 
+export const testCaptureSkipsTypePositions: Test = {
+  ts: `
+type Phase = int
+
+export function run(phase: int): int {
+  function inner(): int {
+    const p: Phase = phase
+    return p
+  }
+
+  return inner()
+}
+  `,
+  expected: `
+class_name __Mod_Test_4064or
+static func __nested_inner(captures):
+  var phase = captures.phase
+  var p = phase
+  return p
+static func run(phase: int):
+  return __nested_inner({"phase": phase})
+  `,
+}
+
 export const testNestedFunctionSameNameInSiblings: Test = {
   ts: `
 export function first(): int {
