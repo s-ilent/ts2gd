@@ -331,6 +331,46 @@ export const parseCallExpression = (
 
       return result
     }
+
+    // Array callback methods on receivers whose type is unresolved.
+    // Function values travel as [Callable, captures] tuples, so callbacks
+    // route through helpers that adapt them for invocation instead of
+    // native members that require a bare Callable.
+    const arrayCallbackShims: Record<string, [LibraryFunctionName, number]> = {
+      map: ["ts_array_map", 1],
+      filter: ["ts_array_filter", 1],
+      sort: ["ts_array_sort", 1],
+      some: ["ts_array_some", 1],
+      every: ["ts_array_every", 1],
+      find: ["ts_array_find", 2],
+      findIndex: ["ts_array_find_index", 2],
+      forEach: ["ts_array_for_each", 1],
+      reduce: ["ts_array_reduce", 2],
+      flatMap: ["ts_array_flat_map", 1],
+    }
+
+    if (
+      functionName in arrayCallbackShims &&
+      args.length >= 1 &&
+      args.length <= arrayCallbackShims[functionName][1]
+    ) {
+      const libName = arrayCallbackShims[functionName][0]
+      const result = combine({
+        parent: node,
+        nodes: [prop.expression, ...args],
+        props,
+        parsedStrings: (expr, ...parsed) =>
+          `__${libName}(${[expr, ...parsed].join(", ")})`,
+      })
+
+      result.hoistedLibraryFunctions =
+        result.hoistedLibraryFunctions ?? new Set()
+      result.hoistedLibraryFunctions.add(libName)
+      result.hoistedLibraryFunctions.add("ts_call_fn")
+      result.hoistedLibraryFunctions.add("ts_truthy")
+
+      return result
+    }
   }
 
   // This compiles dict.put(a, b) into dict[a] = b
@@ -1245,5 +1285,62 @@ static func fallback():
 static func caller(sink = "[no value passed in]"):
   sink = (null if (typeof(sink) == TYPE_STRING and sink == "[no value passed in]") else sink)
   return ((sink if (sink) != null else [Callable(__Mod_Test_4064or, "fallback"), {}]))[0].call(((sink if (sink) != null else [Callable(__Mod_Test_4064or, "fallback"), {}]))[1])
+  `,
+}
+
+export const testArrayCallbackMethods: Test = {
+  ts: `
+const nums: any = null
+const doubled = nums.map((x: int): int => x * 2)
+const big = nums.filter((x: int): bool => x > 1)
+nums.sort((a: int, b: int): int => a - b)
+  `,
+  expected: `
+class_name __Mod_Test_4064or
+static func __ts_array_map(arr, f):
+  var out := []
+  for item in arr:
+    out.append(__ts_call_fn(f, [item]))
+  return out
+static func __ts_call_fn(f, args):
+  if f is Array and f.size() == 2 and f[0] is Callable:
+    var all_args := args.duplicate()
+    if f[1] is Dictionary and not f[1].is_empty():
+      all_args.append(f[1])
+    return f[0].callv(all_args)
+  if f is Callable:
+    return f.callv(args)
+  return null
+static func __ts_truthy(v):
+  match typeof(v):
+    TYPE_BOOL:
+      return v
+    TYPE_INT, TYPE_FLOAT:
+      return v != 0
+    TYPE_STRING:
+      return v != ""
+    TYPE_NIL:
+      return false
+    _:
+      return v != null
+static func __ts_array_filter(arr, f):
+  var out := []
+  for item in arr:
+    if __ts_truthy(__ts_call_fn(f, [item])):
+      out.append(item)
+  return out
+static func __ts_array_sort(arr, f):
+  arr.sort_custom(func(a, b): return __ts_truthy(__ts_call_fn(f, [a, b])))
+  return arr
+static func __gen(x: int, captures):
+  return x * 2
+static func __gen1(x: int, captures):
+  return x > 1
+static func __gen2(a: int, b: int, captures):
+  return a - b
+static var nums = null
+static var _doubled = __ts_array_map(nums, [Callable(__Mod_Test_4064or, "__gen"), {}])
+static var _big = __ts_array_filter(nums, [Callable(__Mod_Test_4064or, "__gen1"), {}])
+__ts_array_sort(nums, [Callable(self, "__gen2"), {}])
   `,
 }

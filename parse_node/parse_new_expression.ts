@@ -10,6 +10,15 @@ const collectionShims: Record<string, LibraryFunctionName> = {
   Map: "ts_new_map",
   WeakSet: "ts_new_weak_set",
   WeakMap: "ts_new_weak_map",
+  Array: "ts_new_array",
+}
+
+/**
+ * Boxed primitives construct plain values (there is no wrapper object).
+ */
+const primitiveShims: Record<string, LibraryFunctionName> = {
+  String: "ts_string",
+  Number: "ts_number",
 }
 
 /**
@@ -85,6 +94,27 @@ export const parseNewExpression = (
     return result
   }
 
+  // Boxed primitives construct plain values through generated helpers.
+  if (
+    node.expression.kind === SyntaxKind.Identifier &&
+    (node.expression as ts.Identifier).text in primitiveShims
+  ) {
+    const callee = (node.expression as ts.Identifier).text
+    const libName = primitiveShims[callee]
+
+    const result = combine({
+      parent: node,
+      nodes: [...(node.arguments ?? [])],
+      props,
+      parsedStrings: (...args) => `__${libName}(${args.join(", ")})`,
+    })
+
+    result.hoistedLibraryFunctions = result.hoistedLibraryFunctions ?? new Set()
+    result.hoistedLibraryFunctions.add(libName)
+
+    return result
+  }
+
   // Environment constructors build shim objects through generated helpers.
   // A proxy degrades to its target, so the wrapped object remains usable.
   if (
@@ -118,8 +148,7 @@ export const parseNewExpression = (
         expr === "Color" ||
         expr === "Vector2i" ||
         expr === "Vector3i" ||
-        expr === "Rect2" ||
-        expr === "Array"
+        expr === "Rect2"
       ) {
         // Special cases that do not require .new
         return `${expr}(${args.join(", ")})`
@@ -207,5 +236,22 @@ ${LibraryFunctions.ts_new_proxy.definition("__ts_new_proxy")}
 static var _tag = __ts_new_text_codec().encode("abc")
 static var _params = __ts_new_url_search_params("?a=1&b=2")
 static var _p = __ts_new_proxy({}, {})
+  `,
+}
+
+export const testNewArrayAndPrimitives: Test = {
+  ts: `
+let a = new Array(5)
+let s = new String(1.5)
+let n = new Number("7")
+  `,
+  expected: `
+class_name __Mod_Test_4064or
+${LibraryFunctions.ts_new_array.definition("__ts_new_array")}
+${LibraryFunctions.ts_string.definition("__ts_string")}
+${LibraryFunctions.ts_number.definition("__ts_number")}
+static var _a = __ts_new_array(5)
+static var _s = __ts_string(1.5)
+static var _n = __ts_number("7")
   `,
 }

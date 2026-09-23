@@ -56,6 +56,20 @@ export type LibraryFunctionName =
   | "ts_object_assign"
   | "ts_object_has_own"
   | "ts_object_create"
+  | "ts_truthy"
+  | "ts_call_fn"
+  | "ts_array_map"
+  | "ts_array_filter"
+  | "ts_array_sort"
+  | "ts_array_some"
+  | "ts_array_every"
+  | "ts_array_find"
+  | "ts_array_find_index"
+  | "ts_array_for_each"
+  | "ts_array_reduce"
+  | "ts_array_flat_map"
+  | "ts_new_array"
+  | "ts_string"
   | "add_vec_lib"
   | "sub_vec_lib"
   | "mul_vec_lib"
@@ -132,8 +146,8 @@ static func __ts_trunc(x):
   ts_hypot: {
     name: "ts_hypot",
     definition: () => `
-static func __ts_hypot(a, b):
-  return sqrt(a * a + b * b)
+static func __ts_hypot(a, b, c = 0.0, d = 0.0):
+  return sqrt(a * a + b * b + c * c + d * d)
 `,
   },
 
@@ -355,6 +369,173 @@ static func __ts_object_has_own(obj, key):
     definition: () => `
 static func __ts_object_create(_proto = null):
   return {}
+`,
+  },
+
+  ts_truthy: {
+    name: "ts_truthy",
+    definition: () => `
+static func __ts_truthy(v):
+  match typeof(v):
+    TYPE_BOOL:
+      return v
+    TYPE_INT, TYPE_FLOAT:
+      return v != 0
+    TYPE_STRING:
+      return v != ""
+    TYPE_NIL:
+      return false
+    _:
+      return v != null
+`,
+  },
+
+  ts_call_fn: {
+    name: "ts_call_fn",
+    definition: () => `
+static func __ts_call_fn(f, args):
+  if f is Array and f.size() == 2 and f[0] is Callable:
+    var all_args := args.duplicate()
+    if f[1] is Dictionary and not f[1].is_empty():
+      all_args.append(f[1])
+    return f[0].callv(all_args)
+  if f is Callable:
+    return f.callv(args)
+  return null
+`,
+  },
+
+  ts_array_map: {
+    name: "ts_array_map",
+    definition: () => `
+static func __ts_array_map(arr, f):
+  var out := []
+  for item in arr:
+    out.append(__ts_call_fn(f, [item]))
+  return out
+`,
+  },
+
+  ts_array_filter: {
+    name: "ts_array_filter",
+    definition: () => `
+static func __ts_array_filter(arr, f):
+  var out := []
+  for item in arr:
+    if __ts_truthy(__ts_call_fn(f, [item])):
+      out.append(item)
+  return out
+`,
+  },
+
+  ts_array_sort: {
+    name: "ts_array_sort",
+    definition: () => `
+static func __ts_array_sort(arr, f):
+  arr.sort_custom(func(a, b): return __ts_truthy(__ts_call_fn(f, [a, b])))
+  return arr
+`,
+  },
+
+  ts_array_some: {
+    name: "ts_array_some",
+    definition: () => `
+static func __ts_array_some(arr, f):
+  for item in arr:
+    if __ts_truthy(__ts_call_fn(f, [item])):
+      return true
+  return false
+`,
+  },
+
+  ts_array_every: {
+    name: "ts_array_every",
+    definition: () => `
+static func __ts_array_every(arr, f):
+  for item in arr:
+    if not __ts_truthy(__ts_call_fn(f, [item])):
+      return false
+  return true
+`,
+  },
+
+  ts_array_find: {
+    name: "ts_array_find",
+    definition: () => `
+static func __ts_array_find(arr, f, from = 0):
+  for i in range(from, arr.size()):
+    if __ts_truthy(__ts_call_fn(f, [arr[i]])):
+      return arr[i]
+  return null
+`,
+  },
+
+  ts_array_find_index: {
+    name: "ts_array_find_index",
+    definition: () => `
+static func __ts_array_find_index(arr, f, from = 0):
+  for i in range(from, arr.size()):
+    if __ts_truthy(__ts_call_fn(f, [arr[i]])):
+      return i
+  return -1
+`,
+  },
+
+  ts_array_for_each: {
+    name: "ts_array_for_each",
+    definition: () => `
+static func __ts_array_for_each(arr, f):
+  for item in arr:
+    __ts_call_fn(f, [item])
+  return null
+`,
+  },
+
+  ts_array_reduce: {
+    name: "ts_array_reduce",
+    definition: () => `
+static func __ts_array_reduce(arr, f, acc = null):
+  var start := 0
+  if acc == null and arr.size() > 0:
+    acc = arr[0]
+    start = 1
+  for i in range(start, arr.size()):
+    acc = __ts_call_fn(f, [acc, arr[i]])
+  return acc
+`,
+  },
+
+  ts_array_flat_map: {
+    name: "ts_array_flat_map",
+    definition: () => `
+static func __ts_array_flat_map(arr, f):
+  var out := []
+  for item in arr:
+    var mapped = __ts_call_fn(f, [item])
+    if mapped is Array:
+      out.append_array(mapped)
+    else:
+      out.append(mapped)
+  return out
+`,
+  },
+
+  ts_new_array: {
+    name: "ts_new_array",
+    definition: () => `
+static func __ts_new_array(size = null):
+  var a := []
+  if size is int or size is float:
+    a.resize(int(size))
+  return a
+`,
+  },
+
+  ts_string: {
+    name: "ts_string",
+    definition: () => `
+static func __ts_string(x):
+  return str(x)
 `,
   },
 
