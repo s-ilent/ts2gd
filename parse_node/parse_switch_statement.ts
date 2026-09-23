@@ -43,9 +43,16 @@ export const parseCaseClause = (
     parent: node,
     nodes: [node.expression, ...node.statements],
     props: props,
-    parsedStrings: (expr, ...statements) => `
+    parsedStrings: (expr, ...statements) => {
+      // GDScript rejects a pattern with no body; JS clauses whose body is
+      // only a `break` emit nothing (match arms break implicitly), so an
+      // empty arm needs an explicit no-op.
+      const body = statements.join("  ")
+
+      return `
 ${props.indent}${expr}:
-  ${statements.join("  ")}`,
+  ${body.trim() === "" ? "pass" : body}`
+    },
   })
 }
 
@@ -58,8 +65,12 @@ export const parseDefaultClause = (
     parent: node,
     nodes: [...node.statements],
     props,
-    parsedStrings: (expr, ...statements) => `
+    parsedStrings: (...statements) => {
+      const body = statements.join("  ")
+
+      return `
 ${props.indent}_:
-  ${statements.join("  ")}`,
+  ${body.trim() === "" ? "pass" : body}`
+    },
   })
 }

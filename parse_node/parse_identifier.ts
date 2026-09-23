@@ -1,4 +1,4 @@
-import ts from "typescript"
+import ts, { SyntaxKind } from "typescript"
 
 import { ParseNodeType, ParseState, combine } from "../parse_node"
 import { Test } from "../tests/test"
@@ -50,6 +50,28 @@ export const parseIdentifier = (
             : "self"
 
         return `[Callable(${callableTarget}, "${binding.name}"), ${binding.captures}]`
+      }
+
+      // Module-level function declarations referenced as values become
+      // [Callable, captures] tuples so that any expression combining
+      // function values (conditionals, nullish coalescing) calls uniformly
+      // through the tuple convention. Member names in property accesses
+      // resolve through the access chain, never as standalone values.
+      const isMemberName =
+        node.parent.kind === SyntaxKind.PropertyAccessExpression ||
+        node.parent.kind === SyntaxKind.QualifiedName
+
+      if (symbol && !props.importedBindings?.has(symbol) && !isMemberName) {
+        const decl = symbol.declarations?.[0]
+
+        if (decl && ts.isFunctionDeclaration(decl) && decl.name && decl.body) {
+          const callableTarget =
+            props.inStaticContext && props.moduleClassName
+              ? props.moduleClassName
+              : "self"
+
+          return `[Callable(${callableTarget}, "${decl.name.text}"), {}]`
+        }
       }
 
       const name = props.scope.getName(node)

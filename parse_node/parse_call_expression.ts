@@ -73,6 +73,26 @@ export const parseCallExpression = (
           )})`,
       })
     }
+
+    // Module-level function declarations stay direct calls.
+    const decl = symbol?.declarations?.[0]
+
+    if (
+      decl &&
+      ts.isFunctionDeclaration(decl) &&
+      decl.name &&
+      decl.body &&
+      !(symbol && props.importedBindings?.has(symbol))
+    ) {
+      const funcName = decl.name.text
+
+      return combine({
+        parent: node,
+        nodes: [...args],
+        props,
+        parsedStrings: (...parsed) => `${funcName}(${parsed.join(", ")})`,
+      })
+    }
   }
 
   // node = [[ a.b(c) ]]
@@ -394,6 +414,32 @@ export const parseCallExpression = (
         !isFromLib &&
         (calledExpressionType === ts.SyntaxKind.Parameter ||
           calledExpressionType === ts.SyntaxKind.VariableDeclaration)
+
+      // A call whose callee is a parenthesized expression (an IIFE, or a
+      // call applied to a conditional/binary of function values) must go
+      // through the function-value tuple convention; GDScript rejects
+      // calling directly on an expression.
+      let parenInner: ts.Expression | undefined
+
+      if (expression.kind === SyntaxKind.ParenthesizedExpression) {
+        parenInner = (expression as ts.ParenthesizedExpression).expression
+
+        while (parenInner.kind === SyntaxKind.ParenthesizedExpression) {
+          parenInner = (parenInner as ts.ParenthesizedExpression).expression
+        }
+      }
+
+      if (parenInner) {
+        if (parenInner.kind === SyntaxKind.PropertyAccessExpression) {
+          // A method reference is a native Callable.
+          return `${parsedExpr.content}.call(${parsedStringArgs.join(", ")})`
+        }
+
+        return `${parsedExpr.content}[0].call(${[
+          parsedExpr.content + "[1]",
+          ...parsedStringArgs,
+        ].join(", ")})`
+      }
 
       if (isFunctionObject) {
         parsedStringArgs = [...parsedStringArgs, parsedExpr.content + "[1]"]
@@ -1012,5 +1058,39 @@ class_name __Mod_Test_4064or
 print("a", 1)
 push_error(str("low fuel"))
 push_error(str("bad") + " " + str(code))
+  `,
+}
+
+export const testIifeArrow: Test = {
+  ts: `
+const value = (() => {
+  return 5
+})()
+  `,
+  expected: `
+class_name __Mod_Test_4064or
+static func __gen(captures):
+  return 5
+static var _value = ([Callable(__Mod_Test_4064or, "__gen"), {}])[0].call(([Callable(__Mod_Test_4064or, "__gen"), {}])[1])
+  `,
+}
+
+export const testCallOnConditionalOfFunctions: Test = {
+  ts: `
+function fallback(): int {
+  return 1
+}
+
+export function caller(sink = null): int {
+  return (sink ?? fallback)()
+}
+  `,
+  expected: `
+class_name __Mod_Test_4064or
+static func fallback():
+  return 1
+static func caller(sink = "[no value passed in]"):
+  sink = (null if (typeof(sink) == TYPE_STRING and sink == "[no value passed in]") else sink)
+  return ((sink if (sink) != null else [Callable(__Mod_Test_4064or, "fallback"), {}]))[0].call(((sink if (sink) != null else [Callable(__Mod_Test_4064or, "fallback"), {}]))[1])
   `,
 }
