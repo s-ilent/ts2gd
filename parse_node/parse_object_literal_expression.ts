@@ -2,6 +2,7 @@ import ts, { SyntaxKind } from "typescript"
 
 import { ParseNodeType, ParseState, combine } from "../parse_node"
 import { Test } from "../tests/test"
+import { ensureOptionalParametersLast } from "../ts_utils"
 
 import { getCapturedScope } from "./parse_arrow_function"
 import { LibraryFunctions } from "./library_functions"
@@ -65,16 +66,20 @@ export const parseObjectLiteralExpression = (
       props,
       addIndent: true,
       parsedStrings: (body, ...args) => {
+        const signature = ensureOptionalParametersLast(
+          [...args, "captures"].join(", ")
+        )
+
         if (member.body && member.body.kind !== SyntaxKind.Block) {
           return `
-static func ${name}(${[...args, "captures"].join(", ")}):
+static func ${name}(${signature}):
 ${unwrapCapturedScope}
   return ${body}
 `
         }
 
         return `
-static func ${name}(${[...args, "captures"].join(", ")}):
+static func ${name}(${signature}):
 ${unwrapCapturedScope}
   ${body.trim() === "" ? "pass" : body}
 `

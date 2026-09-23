@@ -2,6 +2,7 @@ import ts, { SyntaxKind } from "typescript"
 
 import { ErrorName, addError } from "../errors"
 import { ParseNodeType, ParseState, combine } from "../parse_node"
+import { ensureOptionalParametersLast } from "../ts_utils"
 
 /**
  * Get all identifiers in a scope that were declared in an enclosing scope.
@@ -168,9 +169,13 @@ export const parseArrowFunction = (
     props,
     addIndent: true,
     parsedStrings: (body, ...args) => {
+      const signature = ensureOptionalParametersLast(
+        [...args, "captures"].join(", ")
+      )
+
       if (node.body.kind === SyntaxKind.Block) {
         return `
-static func ${name}(${[...args, "captures"].join(", ")}):
+static func ${name}(${signature}):
 ${unwrapCapturedScope}
   ${body.trim() === "" ? "pass" : body}
         `
@@ -178,7 +183,7 @@ ${unwrapCapturedScope}
         // Single line arrow function, with implicit return.
 
         return `
-static func ${name}(${[...args, "captures"].join(", ")}):
+static func ${name}(${signature}):
 ${unwrapCapturedScope}
   return ${body}
         `
