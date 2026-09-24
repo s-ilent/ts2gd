@@ -26,6 +26,7 @@ import { parseClassDeclaration } from "./parse_node/parse_class_declaration"
 import { parseConditionalExpression } from "./parse_node/parse_conditional_expression"
 import { parseConstructor } from "./parse_node/parse_constructor"
 import { parseContinueStatement } from "./parse_node/parse_continue_statement"
+import { parseDoStatement } from "./parse_node/parse_do_statement"
 import { parseElementAccessExpression } from "./parse_node/parse_element_access_expression"
 import { parseEmptyStatement } from "./parse_node/parse_empty_statement"
 import { parseEnumDeclaration } from "./parse_node/parse_enum_declaration"
@@ -362,6 +363,8 @@ export const parseNode = (
       return parseDefaultClause(genericNode as ts.DefaultClause, props)
     case SyntaxKind.WhileStatement:
       return parseWhileStatement(genericNode as ts.WhileStatement, props)
+    case SyntaxKind.DoStatement:
+      return parseDoStatement(genericNode as ts.DoStatement, props)
     case SyntaxKind.ForStatement:
       return parseForStatement(genericNode as ts.ForStatement, props)
     case SyntaxKind.ForOfStatement:

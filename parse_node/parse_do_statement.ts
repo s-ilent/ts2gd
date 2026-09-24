@@ -1,0 +1,105 @@
+import ts from "typescript"
+
+import { ParseNodeType, ParseState, combine } from "../parse_node"
+import { Test } from "../tests/test"
+
+export const parseDoStatement = (
+  node: ts.DoStatement,
+  props: ParseState
+): ParseNodeType => {
+  const newProps = { ...props, mostRecentControlStructureIsSwitch: false }
+
+  props.scope.enterScope()
+
+  const result = combine({
+    parent: node,
+    nodes: [node.expression, node.statement],
+    props: newProps,
+    addIndent: true,
+    parsedObjs: (expr, statement) => {
+      const beforeLines =
+        expr.extraLines
+          ?.filter((line) => line.type === "before")
+          .map((e) => e.line)
+          .join("\n") ?? ""
+      const afterLines =
+        expr.extraLines
+          ?.filter((line) => line.type === "after")
+          .map((e) => e.line)
+          .join("\n") ?? ""
+
+      // GDScript has no do-while, so the body runs under `while true:` and
+      // the condition check sits at the bottom of the loop. The condition's
+      // hoisted lines (e.g. from a postfix increment in the condition) run
+      // after the check on every pass, matching JS evaluation order.
+      return `${beforeLines}
+while true:
+  ${statement.content.replace(/^\n+/, "")}
+  ${beforeLines}
+  if not ${expr.content}:
+    ${afterLines}
+    break
+  ${afterLines}
+`
+    },
+  })
+
+  result.extraLines = []
+
+  props.scope.leaveScope()
+
+  return result
+}
+
+export const testDoWhile: Test = {
+  ts: `
+let x = 0
+do {
+  x += 1
+} while (x < 3)
+  `,
+  expected: `
+class_name __Mod_Test_4064or
+static var x: int = 0
+while true:
+  x += 1
+  if not x < 3:
+    break
+`,
+}
+
+export const testDoWhilePostIncrementCondition: Test = {
+  ts: `
+let x = 0
+do {
+  print(x)
+} while (x++ < 2)
+  `,
+  expected: `
+class_name __Mod_Test_4064or
+static var x: int = 0
+while true:
+  print(x)
+  if not x < 2:
+    x += 1
+    break
+  x += 1
+`,
+}
+
+export const testDoWhileRunsOnce: Test = {
+  ts: `
+let x = 10
+do {
+  x += 1
+} while (x < 3)
+  `,
+  expected: `
+class_name __Mod_Test_4064or
+static var x: int = 10
+while true:
+  x += 1
+  if not x < 3:
+    break
+`,
+}
