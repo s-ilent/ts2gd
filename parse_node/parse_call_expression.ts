@@ -1074,6 +1074,89 @@ export const parseCallExpression = (
           declarationKinds.includes(ts.SyntaxKind.VariableDeclaration) ||
           declarationKinds.includes(ts.SyntaxKind.BindingElement))
 
+      // A variable bound to a lifted function literal (or chained through
+      // one) travels as a [Callable, captures] tuple. But when its
+      // initializer resolves to a bare Callable - a library function
+      // reference such as Math.fround (emitted as a generated helper name),
+      // or a declared function/method reference - the value is the Callable
+      // itself, and subscripting it is invalid. Such calls go through
+      // Callable.call() directly.
+      const travelsAsBareCallable = (() => {
+        if (!isFunctionObject) {
+          return false
+        }
+
+        const checker = props.program.getTypeChecker()
+
+        for (const d of symbol?.getDeclarations() ?? []) {
+          if (!ts.isVariableDeclaration(d)) {
+            continue
+          }
+
+          const init = d.initializer
+
+          if (!init) {
+            continue
+          }
+
+          if (
+            ts.isArrowFunction(init) ||
+            ts.isFunctionExpression(init) ||
+            ts.isCallExpression(init)
+          ) {
+            return false
+          }
+
+          if (ts.isIdentifier(init) || ts.isPropertyAccessExpression(init)) {
+            // Math members map onto generated helper names or GDScript
+            // builtins deterministically; both emit a bare Callable.
+            // Consult the converter's own mapping before the checker, whose
+            // symbol resolution is unreliable for ambient declarations.
+            if (
+              ts.isPropertyAccessExpression(init) &&
+              ts.isIdentifier(init.expression) &&
+              init.expression.text === "Math"
+            ) {
+              const baseDecls =
+                checker.getSymbolAtLocation(init.expression)?.declarations ?? []
+              const baseIsAmbientOrLib =
+                baseDecls.length === 0 ||
+                baseDecls.every((id) =>
+                  id.getSourceFile().fileName.endsWith(".d.ts")
+                )
+
+              if (baseIsAmbientOrLib && gdMathMember(init.name.text)) {
+                return true
+              }
+            }
+
+            const initSymbol = checker.getSymbolAtLocation(
+              ts.isIdentifier(init) ? init : init.name
+            )
+            const initDecls = initSymbol?.declarations ?? []
+
+            if (initDecls.length === 0) {
+              return false
+            }
+
+            const allLib = initDecls.every((id) =>
+              id.getSourceFile().fileName.endsWith(".d.ts")
+            )
+            const allNamedFunc = initDecls.every(
+              (id) => ts.isFunctionDeclaration(id) || ts.isMethodDeclaration(id)
+            )
+
+            return allLib || allNamedFunc
+          }
+
+          return false
+        }
+
+        return false
+      })()
+
+      const callsThroughTuple = isFunctionObject && !travelsAsBareCallable
+
       // A call whose callee is a parenthesized expression (an IIFE, or a
       // call applied to a conditional/binary of function values) must go
       // through the function-value tuple convention; GDScript rejects
@@ -1100,12 +1183,16 @@ export const parseCallExpression = (
         ].join(", ")})`
       }
 
-      if (isFunctionObject) {
+      if (callsThroughTuple) {
         parsedStringArgs = [...parsedStringArgs, parsedExpr.content + "[1]"]
       }
 
       if (isNullableNode(expression, props.program.getTypeChecker())) {
         const newName = props.scope.createUniqueName()
+        // Only a bare, variable-bound Callable callee emits the Callable
+        // itself; every other null-guarded callee content (synthetic
+        // tuples of method references, call results) keeps the tuple
+        // convention here.
         const needsExplicitSelfArg =
           expression.getText().endsWith("add") ||
           expression.getText().endsWith("sub") ||
@@ -1115,9 +1202,13 @@ export const parseCallExpression = (
         nullCoalesce = [
           {
             type: "before",
-            line: `var ${newName} = ${parsedExpr.content}[0].call(${
-              needsExplicitSelfArg ? parsedExpr.content + "[2], " : ""
-            }${parsedStringArgs}) if ${parsedExpr.content} != null else null`,
+            line: `var ${newName} = ${
+              travelsAsBareCallable
+                ? `${parsedExpr.content}.call(${parsedStringArgs})`
+                : `${parsedExpr.content}[0].call(${
+                    needsExplicitSelfArg ? parsedExpr.content + "[2], " : ""
+                  }${parsedStringArgs})`
+            } if ${parsedExpr.content} != null else null`,
             lineType: ExtraLineType.NullableIntermediateExpression,
           },
         ]
@@ -1139,8 +1230,10 @@ export const parseCallExpression = (
         return `${parsedExpr.content}.call(${parsedStringArgs.join(", ")})`
       }
 
-      if (isFunctionObject) {
+      if (callsThroughTuple) {
         return `${parsedExpr.content}[0].call(${parsedStringArgs.join(", ")})`
+      } else if (isFunctionObject) {
+        return `${parsedExpr.content}.call(${parsedStringArgs.join(", ")})`
       } else {
         return `${parsedExpr.content}(${parsedStringArgs.join(", ")})`
       }
@@ -2017,4 +2110,33 @@ static var table = __ts_new_map()
 static func pick(slot: float):
   return (table.get("k").call(slot) if (table.get("k").call(slot)) != null else null)
 `,
+}
+
+export const testCallThroughBareFunctionAlias: Test = {
+  ts: `
+const f = Math.fround
+const x = f(1.5)
+  `,
+  expected: `
+class_name __Mod_Test_4064or
+${LibraryFunctions.ts_fround.definition("__ts_fround")}
+static var f = __ts_fround
+static var _x = f.call(1.5)
+  `,
+}
+
+export const testOptionalCallThroughBareFunctionAlias: Test = {
+  ts: `
+const f = Math.fround
+export function go(v: number | null): number | null {
+  return f?.(v) ?? 0
+}
+  `,
+  expected: `
+class_name __Mod_Test_4064or
+${LibraryFunctions.ts_fround.definition("__ts_fround")}
+static var f = __ts_fround
+static func go(v):
+  return (f.call(v) if (f.call(v)) != null else 0)
+  `,
 }
