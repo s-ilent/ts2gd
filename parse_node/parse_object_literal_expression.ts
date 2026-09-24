@@ -540,6 +540,8 @@ static func make():
   return {
     "tick": [Callable(__Mod_Test_4064or, "__gen"), {}],
   }
-null
+
+static func _static_init():
+  null
   `,
 }

@@ -36,7 +36,9 @@ print(typeof x);
 class_name __Mod_Test_4064or
 ${LibraryFunctions.ts_typeof.definition("__ts_typeof")}
 static var x = Vector2(1, 1)
-print(__ts_typeof(x))
+
+static func _static_init():
+  print(__ts_typeof(x))
   `,
 }
 
