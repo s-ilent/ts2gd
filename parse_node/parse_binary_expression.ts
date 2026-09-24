@@ -48,6 +48,24 @@ export const parseBinaryExpression = (
     return result
   }
 
+  // Same for the compound assignment form, which GDScript also lacks.
+  if (
+    node.operatorToken.kind ===
+    SyntaxKind.GreaterThanGreaterThanGreaterThanEqualsToken
+  ) {
+    const result = combine({
+      parent: node,
+      nodes: [node.left, node.right],
+      props,
+      parsedStrings: (l, r) => `${l} = __ts_shr_unsigned(${l}, ${r})`,
+    })
+
+    result.hoistedLibraryFunctions = result.hoistedLibraryFunctions ?? new Set()
+    result.hoistedLibraryFunctions.add("ts_shr_unsigned")
+
+    return result
+  }
+
   const checker = props.program.getTypeChecker()
 
   const leftType = checker.getTypeAtLocation(node.left)
@@ -161,5 +179,18 @@ static var _a = (x >> 2) | (y << 3)
 static var _b = __ts_shr_unsigned(8, 1)
 static var flags: int = 0
 flags &= ~mask
+  `,
+}
+
+export const testUnsignedShiftAssign: Test = {
+  ts: `
+let x = 8
+x >>>= 1
+  `,
+  expected: `
+class_name __Mod_Test_4064or
+${LibraryFunctions.ts_shr_unsigned.definition("__ts_shr_unsigned")}
+static var x: int = 8
+x = __ts_shr_unsigned(x, 1)
   `,
 }

@@ -1,0 +1,104 @@
+import ts from "typescript"
+
+import {
+  ExtraLine,
+  ExtraLineType,
+  ParseNodeType,
+  ParseState,
+  combine,
+} from "../parse_node"
+import { Test } from "../tests/test"
+
+const { SyntaxKind } = ts
+
+// Whether evaluating the expression can change program state. Pure reads
+// (identifiers, literals, property accesses) are dropped outright.
+const hasSideEffects = (node: ts.Expression): boolean => {
+  if (ts.isCallExpression(node) || ts.isNewExpression(node)) {
+    return true
+  }
+
+  if (ts.isPrefixUnaryExpression(node) || ts.isPostfixUnaryExpression(node)) {
+    return true
+  }
+
+  if (ts.isBinaryExpression(node)) {
+    switch (node.operatorToken.kind) {
+      case SyntaxKind.EqualsToken:
+      case SyntaxKind.PlusEqualsToken:
+      case SyntaxKind.MinusEqualsToken:
+      case SyntaxKind.AsteriskEqualsToken:
+      case SyntaxKind.SlashEqualsToken:
+      case SyntaxKind.PercentEqualsToken:
+      case SyntaxKind.AmpersandEqualsToken:
+      case SyntaxKind.BarEqualsToken:
+      case SyntaxKind.CaretEqualsToken:
+      case SyntaxKind.LessThanLessThanEqualsToken:
+      case SyntaxKind.GreaterThanGreaterThanEqualsToken:
+      case SyntaxKind.AsteriskAsteriskEqualsToken:
+        return true
+      default:
+        return false
+    }
+  }
+
+  return false
+}
+
+export const parseVoidExpression = (
+  node: ts.VoidExpression,
+  props: ParseState
+): ParseNodeType => {
+  // `void expr` evaluates expr for its side effects and yields undefined,
+  // which maps onto GDScript null. Pure operands collapse to plain null.
+  if (!hasSideEffects(node.expression)) {
+    return combine({
+      parent: node,
+      nodes: [],
+      props,
+      parsedStrings: () => "null",
+    })
+  }
+
+  const hoist: { holder?: string } = {}
+
+  const result = combine({
+    parent: node,
+    nodes: [node.expression],
+    props,
+    parsedStrings: (inner) => {
+      hoist.holder = inner
+      return "null"
+    },
+  })
+
+  const hoistedLine = hoist.holder
+
+  if (hoistedLine && hoistedLine.trim() !== "") {
+    const line: ExtraLine = {
+      type: "before",
+      line: hoistedLine,
+      lineType: ExtraLineType.NullableIntermediateExpression,
+    }
+
+    result.extraLines = [line, ...(result.extraLines ?? [])]
+  }
+
+  return result
+}
+
+export const testVoidZero: Test = {
+  ts: "void 0",
+  expected: "class_name __Mod_Test_4064or\n\nnull",
+}
+
+export const testVoidCallInInitializer: Test = {
+  ts: "function f() {}\nconst x = void f()",
+  expected: `
+class_name __Mod_Test_4064or
+static func f():
+  pass
+f()
+static var _x = null
+`,
+}

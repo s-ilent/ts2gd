@@ -26,6 +26,7 @@ import { parseClassDeclaration } from "./parse_node/parse_class_declaration"
 import { parseConditionalExpression } from "./parse_node/parse_conditional_expression"
 import { parseConstructor } from "./parse_node/parse_constructor"
 import { parseContinueStatement } from "./parse_node/parse_continue_statement"
+import { parseDeleteExpression } from "./parse_node/parse_delete_expression"
 import { parseDoStatement } from "./parse_node/parse_do_statement"
 import { parseElementAccessExpression } from "./parse_node/parse_element_access_expression"
 import { parseEmptyStatement } from "./parse_node/parse_empty_statement"
@@ -59,6 +60,7 @@ import { parseSuperKeyword } from "./parse_node/parse_super_keyword"
 import { parseTemplateExpression } from "./parse_node/parse_template_expression"
 import { parseThisKeyword } from "./parse_node/parse_this_keyword"
 import { parseTypeAliasDeclaration } from "./parse_node/parse_type_alias_declaration"
+import { parseVoidExpression } from "./parse_node/parse_void_expression"
 import { parseTypeReference } from "./parse_node/parse_type_reference"
 import { parseTypeofExpression } from "./parse_node/parse_typeof_expression"
 import { parseVariableDeclaration } from "./parse_node/parse_variable_declaration"
@@ -365,6 +367,18 @@ export const parseNode = (
       return parseWhileStatement(genericNode as ts.WhileStatement, props)
     case SyntaxKind.DoStatement:
       return parseDoStatement(genericNode as ts.DoStatement, props)
+    case SyntaxKind.VoidExpression:
+      return parseVoidExpression(genericNode as ts.VoidExpression, props)
+    case SyntaxKind.DeleteExpression:
+      return parseDeleteExpression(genericNode as ts.DeleteExpression, props)
+    case SyntaxKind.BigIntLiteral:
+      // GDScript ints are already 64-bit; a bigint literal is just an int.
+      return {
+        content: genericNode.getText().replace(/n$/i, ""),
+      }
+    case SyntaxKind.OmittedExpression:
+      // Sparse array slots (and other omitted positions) hold null.
+      return { content: "null" }
     case SyntaxKind.ForStatement:
       return parseForStatement(genericNode as ts.ForStatement, props)
     case SyntaxKind.ForOfStatement:
