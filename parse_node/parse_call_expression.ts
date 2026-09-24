@@ -273,6 +273,26 @@ export const parseCallExpression = (
 
       return result
     }
+
+    // String(x) coerces to string; GDScript's str() does the same. The bare
+    // String constructor has no GDScript equivalent callable form.
+    if (calleeName === "String") {
+      if (args.length === 0) {
+        return combine({
+          parent: node,
+          nodes: [],
+          props,
+          parsedStrings: () => '""',
+        })
+      }
+
+      return combine({
+        parent: node,
+        nodes: [...args],
+        props,
+        parsedStrings: (...parsed) => `str(${parsed.join(", ")})`,
+      })
+    }
   }
 
   if (node.expression.kind === SyntaxKind.SuperKeyword) {
@@ -579,7 +599,11 @@ export const parseCallExpression = (
       return helperCall("ts_includes")
     }
 
-    if (functionName === "padStart" && isStringBase) {
+    // padStart exists only on JS strings, so any call to it is a string
+    // call regardless of what the checker reports for the base expression
+    // (constructor calls and helper results often surface as non-string
+    // types here).
+    if (functionName === "padStart") {
       return helperCall("ts_pad_start")
     }
 
@@ -1108,6 +1132,23 @@ export const testBasicCall: Test = {
   expected: `
 class_name __Mod_Test_4064or
 foo("bar")`,
+}
+
+export const testStringConstructorCoercesToStr: Test = {
+  ts: `const t = String(5)`,
+  expected: `
+class_name __Mod_Test_4064or
+static var _t = str(5)
+`,
+}
+
+export const testPadStartOnConstructorCall: Test = {
+  ts: `const t = String(5).padStart(3, "0")`,
+  expected: `
+class_name __Mod_Test_4064or
+${LibraryFunctions.ts_pad_start.definition("ts_pad_start")}
+static var _t = __ts_pad_start(str(5), 3, "0")
+`,
 }
 
 export const testDestructuredFunctionValueCall: Test = {
