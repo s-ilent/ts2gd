@@ -3,12 +3,17 @@ import ts from "typescript"
 import { ParseNodeType, ParseState, combine } from "../parse_node"
 import { Test } from "../tests/test"
 
+import { escapeGdString } from "./parse_string_literal"
+
 export const parseTemplateExpression = (
   node: ts.TemplateExpression,
   props: ParseState
 ): ParseNodeType => {
+  // Template spans go through the same escaping as plain string literals:
+  // embedded quotes, backslashes and control characters must not terminate
+  // or corrupt the emitted GDScript string.
   const sanitizeText = (text: string) => {
-    return text.replaceAll("\n", "\\n")
+    return escapeGdString(text)
   }
 
   return combine({

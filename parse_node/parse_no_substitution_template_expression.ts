@@ -3,12 +3,16 @@ import ts from "typescript"
 import { ParseNodeType, ParseState, combine } from "../parse_node"
 import { Test } from "../tests/test"
 
+import { escapeGdString } from "./parse_string_literal"
+
 export const parseNoSubstitutionTemplateLiteral = (
   node: ts.NoSubstitutionTemplateLiteral,
   props: ParseState
 ): ParseNodeType => {
+  // Same escaping as plain string literals (quotes, backslashes, control
+  // characters).
   const sanitizeText = (text: string) => {
-    return text.replaceAll("\n", "\\n")
+    return escapeGdString(text)
   }
 
   return combine({
