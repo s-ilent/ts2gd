@@ -52,6 +52,7 @@ import { parsePostfixUnaryExpression } from "./parse_node/parse_postfix_unary_ex
 import { parsePrefixUnaryExpression } from "./parse_node/parse_prefix_unary_expression"
 import { parsePropertyAccessExpression } from "./parse_node/parse_property_access_expression"
 import { parsePropertyDeclaration } from "./parse_node/parse_property_declaration"
+import { parseRegularExpressionLiteral } from "./parse_node/parse_regular_expression_literal"
 import { parseReturnStatement } from "./parse_node/parse_return_statement"
 import { parseSetAccessor } from "./parse_node/parse_set_accessor"
 import { parseSourceFile } from "./parse_node/parse_source_file"
@@ -373,6 +374,14 @@ export const parseNode = (
       return parseDefaultClause(genericNode as ts.DefaultClause, props)
     case SyntaxKind.LabeledStatement:
       return parseLabeledStatement(genericNode as ts.LabeledStatement, props)
+    case SyntaxKind.ExportDeclaration:
+      // Re-exports (export * from / export { x } from) emit nothing; use
+      // sites bind directly to the module that declares each symbol.
+      return { content: "" }
+    case SyntaxKind.ExportAssignment:
+      // export default <expr> needs no statement of its own; the exported
+      // declaration itself is emitted.
+      return { content: "" }
     case SyntaxKind.WhileStatement:
       return parseWhileStatement(genericNode as ts.WhileStatement, props)
     case SyntaxKind.DoStatement:
@@ -381,6 +390,11 @@ export const parseNode = (
       return parseVoidExpression(genericNode as ts.VoidExpression, props)
     case SyntaxKind.DeleteExpression:
       return parseDeleteExpression(genericNode as ts.DeleteExpression, props)
+    case SyntaxKind.RegularExpressionLiteral:
+      return parseRegularExpressionLiteral(
+        genericNode as ts.RegularExpressionLiteral,
+        props
+      )
     case SyntaxKind.BigIntLiteral:
       // GDScript ints are already 64-bit; a bigint literal is just an int.
       return {

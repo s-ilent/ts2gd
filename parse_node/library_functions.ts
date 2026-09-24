@@ -36,6 +36,7 @@ export type LibraryFunctionName =
   | "ts_new_uint8"
   | "ts_shr_unsigned"
   | "array_concat"
+  | "ts_regex"
   | "ts_env"
   | "ts_promise_all"
   | "ts_promise_resolve"
@@ -131,6 +132,21 @@ static func __ts_array_concat(base, extra):
     result.append_array(extra)
 
   return result
+`,
+  },
+
+  ts_regex: {
+    name: "ts_regex",
+    definition: () => `
+static func __ts_regex(pattern: String, flags: String) -> RegEx:
+  var regex = RegEx.new()
+  var effective = pattern
+
+  if flags.contains("i"):
+    effective = "(?i)" + effective
+
+  regex.compile(effective)
+  return regex
 `,
   },
 

@@ -616,6 +616,32 @@ export const parseCallExpression = (
       })
     }
 
+    // RegExp receivers: JS test/exec map onto GDScript RegEx.search.
+    const receiverTypeString = props.program.getTypeChecker().typeToString(type)
+
+    if (
+      receiverTypeString === "RegExp" &&
+      (functionName === "test" || functionName === "exec")
+    ) {
+      if (functionName === "test") {
+        return combine({
+          parent: node,
+          nodes: [prop.expression, ...args],
+          props,
+          parsedStrings: (expr, ...parsed) =>
+            `(${expr}.search(${parsed.join(", ")}) != null)`,
+        })
+      }
+
+      return combine({
+        parent: node,
+        nodes: [prop.expression, ...args],
+        props,
+        parsedStrings: (expr, ...parsed) =>
+          `${expr}.search(${parsed.join(", ")})`,
+      })
+    }
+
     if (functionName === "toLowerCase" && isStringBase) {
       return combine({
         parent: node,
@@ -1812,5 +1838,24 @@ static var arr = [1]
 a.m.callv(arr)
 func m(x: int):
   print(x)
+`,
+}
+
+export const testRegexTestCall: Test = {
+  ts: 'const r = /abc/i\nconst b = r.test("xabcx")\nprint(b)',
+  expected: `
+class_name __Mod_Test_4064or
+static func __ts_regex(pattern: String, flags: String) -> RegEx:
+  var regex = RegEx.new()
+  var effective = pattern
+
+  if flags.contains("i"):
+    effective = "(?i)" + effective
+
+  regex.compile(effective)
+  return regex
+static var r = __ts_regex("abc", "i")
+static var b = (r.search("xabcx") != null)
+print(b)
 `,
 }
