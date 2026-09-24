@@ -3,6 +3,7 @@ import ts from "typescript"
 import { ParseNodeType, ParseState, combine } from "../parse_node"
 import { ensureOptionalParametersLast } from "../ts_utils"
 import { Test } from "../tests/test"
+import { mangleGdName } from "../scope"
 
 import { LibraryFunctions } from "./library_functions"
 import { getCapturedScope } from "./parse_arrow_function"
@@ -126,7 +127,9 @@ export const parseFunctionDeclaration = (
       : undefined
   })()
 
-  const funcName = nestedBinding ? nestedBinding.name : node.name.text
+  const funcName = nestedBinding
+    ? nestedBinding.name
+    : mangleGdName(node.name.text)
 
   props.scope.enterScope()
 

@@ -2,6 +2,7 @@ import ts, { SyntaxKind } from "typescript"
 
 import { ParseNodeType, ParseState, combine } from "../parse_node"
 import { Test } from "../tests/test"
+import { mangleGdName } from "../scope"
 
 import { LibraryFunctions } from "./library_functions"
 
@@ -167,7 +168,9 @@ export const parseIdentifier = (
               ? props.moduleClassName
               : "self"
 
-          return `[Callable(${callableTarget}, "${decl.name.text}"), {}]`
+          return `[Callable(${callableTarget}, "${mangleGdName(
+            decl.name.text
+          )}"), {}]`
         }
       }
 
