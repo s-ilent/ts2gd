@@ -20,6 +20,7 @@ export type LibraryFunctionName =
   | "ts_number_to_string"
   | "ts_string_from_char_code"
   | "ts_array_from"
+  | "ts_glob"
   | "ts_int32_from"
   | "ts_number"
   | "ts_new_set"
@@ -690,11 +691,26 @@ static func __ts_string_from_char_code(codes):
   ts_array_from: {
     name: "ts_array_from",
     definition: () => `
-static func __ts_array_from(src):
+static func __ts_array_from(src, f = null):
   var out := []
-  for item in src:
-    out.append(item)
+  if src is Dictionary and src.has("length"):
+    for i in range(int(src.get("length"))):
+      out.append(null if f == null else __ts_call_fn(f, [i]))
+  elif src is String:
+    for i in range(src.length()):
+      out.append(src[i] if f == null else __ts_call_fn(f, [src[i]]))
+  else:
+    for item in src:
+      out.append(item if f == null else __ts_call_fn(f, [item]))
   return out
+`,
+  },
+
+  ts_glob: {
+    name: "ts_glob",
+    definition: () => `
+static func __ts_glob(pattern, options = null):
+  return load("res://_ts_shims/ts_glob.gd").glob(pattern, options)
 `,
   },
 

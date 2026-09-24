@@ -117,7 +117,10 @@ export type ParseState = {
    * keyed by the module's res path. The boolean records whether the static
    * variable declaration line has been emitted yet.
    */
-  importReceivers?: Map<string, { name: string; emitted: boolean }>
+  importReceivers?: Map<
+    string,
+    { name: string; emitted: boolean; linePushed?: boolean }
+  >
 
   /**
    * Whether the code currently being parsed lives in a static function, in
@@ -599,6 +602,12 @@ export const parseNode = (
     case SyntaxKind.UndefinedKeyword:
       return { content: "null" }
     case SyntaxKind.NullKeyword:
+      return { content: "null" }
+    case SyntaxKind.MetaProperty:
+      // `import.meta` / `new.target` have no value form in GDScript. The
+      // members the corpus actually reads are mapped in the property-access
+      // and call parsers (`import.meta.env`, `import.meta.glob`); anything
+      // else stands in as null so the surrounding chain still parses.
       return { content: "null" }
     case SyntaxKind.AmpersandToken:
       return { content: "&" }
