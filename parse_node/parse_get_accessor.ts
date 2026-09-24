@@ -13,9 +13,9 @@ export const parseGetAccessor = (
 ): ParseNodeType => {
   return combine({
     parent: node,
-    nodes: [node.body, ...node.parameters],
+    nodes: [...node.parameters, node.body],
     props,
-    parsedStrings: (body) => body || "pass",
+    parsedStrings: (...allParsed) => allParsed[allParsed.length - 1] || "pass",
   })
 }
 

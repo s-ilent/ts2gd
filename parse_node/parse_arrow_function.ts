@@ -194,9 +194,19 @@ export const getCapturedScope = (
   )
 
   const getNodeName = (node: ts.Node) => {
-    const text = node.getText()
+    // Captured names must match the references inside the emitted body,
+    // which resolve through the scope (and may be renamed, e.g. a local or
+    // parameter whose source name is a GDScript keyword). Fall back to the
+    // source text when the declaration has not been registered yet.
+    if (ts.isIdentifier(node)) {
+      const scopeName = props.scope.getName(node)
 
-    return text
+      if (scopeName) {
+        return scopeName
+      }
+    }
+
+    return node.getText()
   }
 
   const capturedScopeObject =
@@ -280,12 +290,18 @@ export const parseArrowFunction = (
 
   props.scope.enterScope()
 
+  // Parameters are parsed before the body so that references inside the
+  // body resolve through the scope to the parameters' emitted (possibly
+  // renamed) names; parsing the body first would resolve those references
+  // before the parameter names are registered, leaking source text.
   let parsed = combine({
     parent: node,
-    nodes: [node.body, ...node.parameters],
+    nodes: [...node.parameters, node.body],
     props,
     addIndent: true,
-    parsedObjs: (bodyParsed, ...argParsed) => {
+    parsedObjs: (...allParsed) => {
+      const bodyParsed = allParsed[allParsed.length - 1]
+      const argParsed = allParsed.slice(0, -1)
       const signature = ensureOptionalParametersLast(
         [...argParsed.map((a) => a.content), "captures"].join(", ")
       )
@@ -475,4 +491,48 @@ static func apply(f, b):
 static func check(b):
   return apply([Callable(__Mod_Test_4064or, "__gen"), {}], b)
 `,
+}
+
+export const testArrowSelfParamReferencesResolve: Test = {
+  ts: `
+export function outer(): void {
+  function fly(self: { x: number }, tx: number): void {
+    print(self.x + tx)
+  }
+  const step = (self: { x: number }, tx: number): void => {
+    fly(self, tx)
+  }
+  step({ x: 1 }, 2)
+}
+  `,
+  expected: `
+class_name __Mod_Test_4064or
+static func __nested_fly(self_, tx: float, captures):
+  print(self_.x + tx)
+static func __gen(self_, tx: float, captures):
+  __nested_fly(self_, tx, {})
+static func outer():
+  var step = [Callable(__Mod_Test_4064or, "__gen"), {}]
+  step[0].call({ "x": 1 }, 2, step[1])
+  `,
+}
+
+export const testCapturedKeywordNameUsesScopeName: Test = {
+  ts: `
+export function pick(): boolean {
+  let floor = 3.5
+  const match = (r: { f: number }) => r.f == floor
+  return match({ f: 3.5 })
+}
+  `,
+  expected: `
+class_name __Mod_Test_4064or
+static func __gen(r, captures):
+  var floor_ = captures.floor_
+  return r.f == floor_
+static func pick():
+  var floor_: float = 3.5
+  var match_ = [Callable(__Mod_Test_4064or, "__gen"), {"floor_": floor_}]
+  return match_[0].call({ "f": 3.5 }, match_[1])
+  `,
 }
