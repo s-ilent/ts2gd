@@ -567,6 +567,14 @@ export const parseCallExpression = (
       )
     const isStringBase =
       baseTypeAsString === "String" || baseTypeAsString === "string"
+    // Array-ish types surface under many spellings (`number[]`,
+    // `readonly T[]`, tuples, `Array<T>`), none of which stringify as
+    // "Array"; key on the shape rather than one exact name.
+    const isArrayBase =
+      baseTypeAsString.endsWith("]") ||
+      baseTypeAsString === "Array" ||
+      baseTypeAsString.startsWith("Array<") ||
+      baseTypeAsString.startsWith("ReadonlyArray<")
     const isNumberBase = ["float", "int", "number", "Number", "Float"].includes(
       baseTypeAsString
     )
@@ -595,7 +603,7 @@ export const parseCallExpression = (
 
     if (
       functionName === "includes" &&
-      (isStringBase || baseTypeAsString === "Array")
+      (isStringBase || isArrayBase || baseTypeAsString === "Array")
     ) {
       return helperCall("ts_includes")
     }
@@ -2077,6 +2085,24 @@ export const testMathMemberCallInvocation: Test = {
 class_name __Mod_Test_4064or
 static var _t = ceil(1.5)
 `,
+}
+
+export const testArrayIncludesMapsToHelper: Test = {
+  ts: `
+const xs: number[] = [1, 2];
+const okA = [3, 8, 14, 15].includes(8);
+const okB = xs.includes(2);
+print(okA && okB);
+  `,
+  expected: `
+class_name __Mod_Test_4064or
+static func __ts_includes(hay, needle):
+  return needle in hay
+static var xs = [1, 2]
+static var okA = __ts_includes([3, 8, 14, 15], 8)
+static var okB = __ts_includes(xs, 2)
+print(okA and okB)
+  `,
 }
 
 export const testOptionalChainFunctionValueCall: Test = {
