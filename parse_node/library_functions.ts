@@ -35,6 +35,7 @@ export type LibraryFunctionName =
   | "ts_new_int8"
   | "ts_new_uint8"
   | "ts_shr_unsigned"
+  | "array_concat"
   | "ts_env"
   | "ts_promise_all"
   | "ts_promise_resolve"
@@ -114,6 +115,22 @@ static func ${name}(v):
       return "function"
     _:
       return "object"
+`,
+  },
+
+  array_concat: {
+    name: "array_concat",
+    definition: () => `
+static func __ts_array_concat(base, extra):
+  var result = []
+
+  if base != null:
+    result.append_array(base)
+
+  if extra != null:
+    result.append_array(extra)
+
+  return result
 `,
   },
 

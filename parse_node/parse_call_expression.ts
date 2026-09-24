@@ -25,6 +25,229 @@ const typedArrayFromShims: Record<string, LibraryFunctionName> = {
   Uint8Array: "ts_new_uint8",
 }
 
+type CalleeRestInfo = {
+  isRest: boolean
+  /** Number of non-rest parameters preceding the rest parameter. */
+  fixedCount: number
+  /** True when the callee takes only a rest parameter. */
+  pureRest: boolean
+}
+
+const resolveCalleeRestInfo = (
+  expression: ts.Expression,
+  props: ParseState
+): CalleeRestInfo | null => {
+  const checker = props.program.getTypeChecker()
+
+  let symbol: ts.Symbol | undefined
+
+  if (ts.isIdentifier(expression)) {
+    symbol = checker.getSymbolAtLocation(expression)
+  } else if (ts.isPropertyAccessExpression(expression)) {
+    symbol = checker.getSymbolAtLocation(expression.name)
+  }
+
+  const decl = symbol?.declarations?.[0]
+
+  if (!decl) {
+    return null
+  }
+
+  // Godot API and standard library declarations live in .d.ts files and
+  // already have dedicated emitters; only user code needs rest folding.
+  if (decl.getSourceFile().fileName.endsWith(".d.ts")) {
+    return null
+  }
+
+  // Hoisted nested functions take a trailing captures argument; their call
+  // sites are handled by the dedicated dispatch below.
+  if (symbol && props.nestedFunctionBindings?.has(symbol)) {
+    return null
+  }
+
+  if (
+    !ts.isFunctionDeclaration(decl) &&
+    !ts.isMethodDeclaration(decl) &&
+    !ts.isFunctionExpression(decl) &&
+    !ts.isArrowFunction(decl)
+  ) {
+    return null
+  }
+
+  const parameters = decl.parameters
+
+  if (!parameters.some((p) => p.dotDotDotToken)) {
+    return null
+  }
+
+  return {
+    isRest: true,
+    fixedCount: parameters.length - 1,
+    pureRest: parameters.length === 1,
+  }
+}
+
+// The plain textual form of a call target when the callee is a function
+// declaration or hoisted nested function; null otherwise. Function
+// identifiers parse as callables tuples in value positions, which is the
+// wrong shape for a call target, so those two cases stay plain names.
+const plainCalleeName = (
+  expression: ts.Expression,
+  props: ParseState
+): string | null => {
+  if (!ts.isIdentifier(expression)) {
+    return null
+  }
+
+  const symbol = props.program.getTypeChecker().getSymbolAtLocation(expression)
+
+  if (symbol && props.nestedFunctionBindings?.has(symbol)) {
+    return props.nestedFunctionBindings.get(symbol)!.name
+  }
+
+  const decl = symbol?.declarations?.[0]
+
+  if (
+    decl &&
+    ts.isFunctionDeclaration(decl) &&
+    decl.name &&
+    decl.body &&
+    !(symbol && props.importedBindings?.has(symbol))
+  ) {
+    return decl.name.text
+  }
+
+  return null
+}
+
+type ArgGroup = {
+  spread: boolean
+  elements: ts.Expression[]
+}
+
+// Groups call arguments into consecutive plain and spread runs, unwrapping
+// spread elements into their inner expressions.
+const buildArgGroups = (args: readonly ts.Expression[]): ArgGroup[] => {
+  const groups: ArgGroup[] = []
+
+  for (const arg of args) {
+    const spread = ts.isSpreadElement(arg)
+    const inner = spread ? (arg as ts.SpreadElement).expression : arg
+    const last = groups[groups.length - 1]
+
+    if (last && last.spread === spread) {
+      last.elements.push(inner)
+    } else {
+      groups.push({ spread, elements: [inner] })
+    }
+  }
+
+  return groups
+}
+
+// Folds parsed argument groups into one GDScript array expression. Spread
+// groups contribute their elements directly; plain groups become array
+// literals.
+const foldArgGroups = (
+  groups: ArgGroup[],
+  parsed: readonly string[],
+  copyLoneSpread = true
+): string => {
+  let index = 0
+  let accumulator: string | null = null
+
+  for (const group of groups) {
+    const slice = parsed.slice(index, index + group.elements.length)
+    index += group.elements.length
+
+    const part = group.spread ? slice.join(", ") : `[${slice.join(", ")}]`
+
+    accumulator =
+      accumulator === null ? part : `__ts_array_concat(${accumulator}, ${part})`
+  }
+
+  // A lone spread passes the array itself, which must not alias whatever
+  // list the callee retains, so it goes through a copy. Consumers that
+  // immediately reduce the array (Math.max/min) can skip it.
+  if (
+    copyLoneSpread &&
+    accumulator !== null &&
+    groups.length === 1 &&
+    groups[0].spread
+  ) {
+    accumulator = `__ts_array_concat([], ${accumulator})`
+  }
+
+  return accumulator ?? "[]"
+}
+
+const argGroupsNeedConcat = (groups: ArgGroup[]): boolean => {
+  return groups.length > 1 || (groups.length === 1 && groups[0].spread)
+}
+
+/**
+ * Groups call arguments into consecutive plain and spread runs, then folds
+ * them into a single GDScript array expression. Spread groups contribute
+ * their elements directly; plain groups become array literals.
+ */
+const foldSpreadGroups = (
+  args: readonly (ts.Expression | ts.SpreadElement)[],
+  parsed: readonly string[]
+): string => {
+  const groups: { spread: boolean; count: number }[] = []
+
+  for (const arg of args) {
+    const spread = ts.isSpreadElement(arg)
+    const last = groups[groups.length - 1]
+
+    if (last && last.spread === spread) {
+      last.count += 1
+    } else {
+      groups.push({ spread, count: 1 })
+    }
+  }
+
+  let index = 0
+  let accumulator: string | null = null
+
+  for (const group of groups) {
+    const slice = parsed.slice(index, index + group.count)
+    index += group.count
+
+    const part = group.spread ? slice.join(", ") : `[${slice.join(", ")}]`
+
+    accumulator =
+      accumulator === null ? part : `__ts_array_concat(${accumulator}, ${part})`
+  }
+
+  // A lone spread passes the array itself, which must not alias the
+  // callee's stored argument list, so it goes through a copy.
+  if (accumulator !== null && groups[0].spread && groups.length === 1) {
+    accumulator = `__ts_array_concat([], ${accumulator})`
+  }
+
+  return accumulator ?? "[]"
+}
+
+const countSpreadGroups = (
+  args: readonly (ts.Expression | ts.SpreadElement)[]
+): number => {
+  let groups = 0
+  let previous: boolean | null = null
+
+  for (const arg of args) {
+    const spread = ts.isSpreadElement(arg)
+
+    if (spread && previous !== true) {
+      groups += 1
+    }
+
+    previous = spread
+  }
+
+  return groups
+}
+
 export const parseCallExpression = (
   node: ts.CallExpression,
   props: ParseState
@@ -59,6 +282,131 @@ export const parseCallExpression = (
       props,
       parsedStrings: () => "",
     })
+  }
+
+  const calleeRestInfo = resolveCalleeRestInfo(node.expression, props)
+  const hasSpreadArgs = args.some((a) => ts.isSpreadElement(a))
+
+  if (calleeRestInfo) {
+    // Functions declaring a rest parameter receive their trailing arguments
+    // as a single array in GDScript, which has no variadic signatures.
+    // Calls pass the fixed arguments normally and fold the remainder into
+    // one array expression.
+    const fixedCount = calleeRestInfo.fixedCount
+    const firstSpread = args.findIndex((a) => ts.isSpreadElement(a))
+
+    if (firstSpread >= 0 && firstSpread < fixedCount) {
+      addError({
+        error: ErrorName.UnknownTsSyntax,
+        location: node,
+        stack: new Error().stack ?? "",
+        description: `Spread arguments cannot cross the boundary between fixed and rest parameters in this call:\n\n${node.getText()}`,
+      })
+
+      return combine({
+        parent: node,
+        nodes: [],
+        props,
+        parsedStrings: () => "",
+      })
+    }
+
+    if (hasSpreadArgs || args.length > fixedCount) {
+      const fixedGroups = buildArgGroups(args.slice(0, fixedCount))
+      const restGroups = buildArgGroups(args.slice(fixedCount))
+      const plainName = plainCalleeName(node.expression, props)
+      const fixedNodes = fixedGroups.flatMap((g) => g.elements)
+      const restNodes = restGroups.flatMap((g) => g.elements)
+
+      const result = combine({
+        parent: node,
+        nodes: [
+          ...(plainName !== null ? [] : [node.expression]),
+          ...fixedNodes,
+          ...restNodes,
+        ],
+        props,
+        parsedStrings: (...parsed) => {
+          const offset = plainName !== null ? 0 : 1
+          const target = plainName !== null ? plainName! : parsed[0]
+          const fixedParsed = parsed.slice(offset, offset + fixedNodes.length)
+          const restParsed = parsed.slice(offset + fixedNodes.length)
+          const folded = foldArgGroups(restGroups, restParsed)
+
+          return `${target}(${[...fixedParsed, folded].join(", ")})`
+        },
+      })
+
+      if (argGroupsNeedConcat(restGroups)) {
+        result.hoistedLibraryFunctions =
+          result.hoistedLibraryFunctions ?? new Set()
+        result.hoistedLibraryFunctions.add("array_concat")
+      }
+
+      return result
+    }
+  } else if (hasSpreadArgs) {
+    // Spread arguments compile to callv over one concatenated argument
+    // array. Math.max/min are variadic GDScript globals rather than
+    // callables, so they fold onto Array.max()/Array.min() instead.
+    const mathExtreme =
+      ts.isPropertyAccessExpression(node.expression) &&
+      ts.isIdentifier(node.expression.expression) &&
+      (node.expression.expression as ts.Identifier).text === "Math" &&
+      (node.expression.name.text === "max" ||
+        node.expression.name.text === "min")
+
+    const groups = buildArgGroups(args)
+
+    if (mathExtreme) {
+      const method =
+        (node.expression as ts.PropertyAccessExpression).name.text === "max"
+          ? "max()"
+          : "min()"
+
+      const result = combine({
+        parent: node,
+        nodes: groups.flatMap((g) => g.elements),
+        props,
+        parsedStrings: (...parsed) =>
+          `${foldArgGroups(groups, parsed, false)}.${method}`,
+      })
+
+      if (argGroupsNeedConcat(groups)) {
+        result.hoistedLibraryFunctions =
+          result.hoistedLibraryFunctions ?? new Set()
+        result.hoistedLibraryFunctions.add("array_concat")
+      }
+
+      return result
+    }
+
+    const plainName = plainCalleeName(node.expression, props)
+
+    const result = combine({
+      parent: node,
+      nodes: [
+        ...(plainName !== null ? [] : [node.expression]),
+        ...groups.flatMap((g) => g.elements),
+      ],
+      props,
+      parsedStrings: (...parsed) => {
+        const offset = plainName !== null ? 0 : 1
+        const target = plainName !== null ? plainName! : parsed[0]
+        const argParsed = parsed.slice(offset)
+        const folded = foldArgGroups(groups, argParsed)
+
+        return `${target}.callv(${folded})`
+      },
+    })
+
+    if (argGroupsNeedConcat(groups)) {
+      result.hoistedLibraryFunctions =
+        result.hoistedLibraryFunctions ?? new Set()
+      result.hoistedLibraryFunctions.add("array_concat")
+    }
+
+    return result
   }
 
   // Nested (inner) function declarations hoist to static functions that take
@@ -291,6 +639,39 @@ export const parseCallExpression = (
         props,
         parsedStrings: (...parsed) => `(${parsed.join(", ")}) is Array`,
       })
+    }
+
+    if (functionName === "apply") {
+      // f.apply(thisArg, args) spreads args onto the call; GDScript's
+      // callv does the same. The thisArg is dropped - the callable already
+      // carries its receiver. A pure rest-parameter callee instead takes
+      // the array as its single argument.
+      const callArgs = args.slice(1)
+      const plainName = plainCalleeName(prop.expression, props)
+      const restInfo = resolveCalleeRestInfo(prop.expression, props)
+
+      if (callArgs.length <= 1) {
+        const result = combine({
+          parent: node,
+          nodes: [
+            ...(plainName !== null ? [] : [prop.expression]),
+            ...callArgs,
+          ],
+          props,
+          parsedStrings: (...parsed) => {
+            const offset = plainName !== null ? 0 : 1
+            const target = plainName !== null ? plainName! : parsed[0]
+            const arrParsed = parsed.slice(offset)
+            const argArray = arrParsed[0] ?? "[]"
+
+            return restInfo?.pureRest
+              ? `${target}(${argArray})`
+              : `${target}.callv(${argArray})`
+          },
+        })
+
+        return result
+      }
     }
 
     if (
@@ -1343,4 +1724,93 @@ static var _doubled = __ts_array_map(nums, [Callable(__Mod_Test_4064or, "__gen")
 static var _big = __ts_array_filter(nums, [Callable(__Mod_Test_4064or, "__gen1"), {}])
 __ts_array_sort(nums, [Callable(self, "__gen2"), {}])
   `,
+}
+
+export const testRestParameterPlainCall: Test = {
+  ts: "function f(...args: int[]) { print(args) }\nf(1, 2, 3)",
+  expected: `
+class_name __Mod_Test_4064or
+static func f(args: Array):
+  print(args)
+f([1, 2, 3])
+`,
+}
+
+export const testRestParameterSpreadCall: Test = {
+  ts: "function f(...args: int[]) { print(args) }\nconst a = [4, 5]\nf(...a)",
+  expected: `
+class_name __Mod_Test_4064or
+${LibraryFunctions.array_concat.definition("__ts_array_concat")}
+static func f(args: Array):
+  print(args)
+static var a = [4, 5]
+f(__ts_array_concat([], a))
+`,
+}
+
+export const testRestParameterMixedCall: Test = {
+  ts: "function f(n: int, ...rest: int[]) { print(rest) }\nf(1, 2, 3)",
+  expected: `
+class_name __Mod_Test_4064or
+static func f(_n: int, rest: Array):
+  print(rest)
+f(1, [2, 3])
+`,
+}
+
+export const testRestMethodCall: Test = {
+  ts: "export class A { m(...args: int[]) { print(args) } }\nconst a = new A()\na.m(1, 2)",
+  expected: `
+class_name A
+static var a = A.new()
+a.m([1, 2])
+func m(args: Array):
+  print(args)
+`,
+}
+
+export const testSpreadCallFixedFunction: Test = {
+  ts: "function g(x: int) { print(x) }\nconst a = [1]\ng(...a)",
+  expected: `
+class_name __Mod_Test_4064or
+${LibraryFunctions.array_concat.definition("__ts_array_concat")}
+static func g(x: int):
+  print(x)
+static var a = [1]
+g.callv(__ts_array_concat([], a))
+`,
+}
+
+export const testMathMaxSpread: Test = {
+  ts: "const a = [1, 5, 3]\nprint(Math.max(...a))\nprint(Math.max(0, ...a))",
+  expected: `
+class_name __Mod_Test_4064or
+${LibraryFunctions.array_concat.definition("__ts_array_concat")}
+static var a = [1, 5, 3]
+print(a.max())
+print(__ts_array_concat([0], a).max())
+`,
+}
+
+export const testApplyCall: Test = {
+  ts: "function g(x: int, y: int) { print(x) }\nconst a = [1, 2]\ng.apply(null, a)",
+  expected: `
+class_name __Mod_Test_4064or
+static func g(x: int, _y: int):
+  print(x)
+static var a = [1, 2]
+g.callv(a)
+`,
+}
+
+export const testApplyMethod: Test = {
+  ts: "export class A { m(x: int) { print(x) } }\nconst a = new A()\nconst arr = [1]\na.m.apply(a, arr)",
+  expected: `
+class_name A
+static var a = A.new()
+static var arr = [1]
+a.m.callv(arr)
+func m(x: int):
+  print(x)
+`,
 }

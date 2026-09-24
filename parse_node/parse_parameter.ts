@@ -45,6 +45,23 @@ export const parseParameter = (
     return result
   }
 
+  // Rest parameters (function f(...args)) have no GDScript signature
+  // equivalent: the parameter receives one untyped Array holding the
+  // trailing call arguments.
+  if (node.dotDotDotToken) {
+    props.scope.addName(node.name)
+
+    const usages = props.usages.get(node.name as ts.Identifier)
+    const unusedPrefix = usages?.uses.length === 0 ? "_" : ""
+
+    return combine({
+      parent: node,
+      nodes: [],
+      props,
+      parsedStrings: () => `${unusedPrefix}${node.name.getText()}: Array`,
+    })
+  }
+
   const type = getGodotType(
     node,
     props.program.getTypeChecker().getTypeAtLocation(node),
