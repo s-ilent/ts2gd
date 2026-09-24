@@ -1125,6 +1125,20 @@ export const parseCallExpression = (
         return `${newName}`
       }
 
+      // GDScript only allows applying call arguments directly to an
+      // identifier, a member access, or a subscript. When the callee's
+      // emitted content is a parenthesized null-guarded conditional (an
+      // optional-chained function-value access) or a call result (a curried
+      // lookup, an optional call on a call result, or an immediately-invoked
+      // function value), the arguments must go through Callable.call().
+      if (
+        !isFunctionObject &&
+        (expression.kind === SyntaxKind.CallExpression ||
+          parsedExpr.content.endsWith("else null)"))
+      ) {
+        return `${parsedExpr.content}.call(${parsedStringArgs.join(", ")})`
+      }
+
       if (isFunctionObject) {
         return `${parsedExpr.content}[0].call(${parsedStringArgs.join(", ")})`
       } else {
@@ -1969,5 +1983,38 @@ export const testMathMemberCallInvocation: Test = {
   expected: `
 class_name __Mod_Test_4064or
 static var _t = ceil(1.5)
+`,
+}
+
+export const testOptionalChainFunctionValueCall: Test = {
+  ts: `
+export function relay(def?: { childKinds?: string[] }): boolean {
+  return def?.childKinds?.includes("a") === true;
+}
+  `,
+  expected: `
+class_name __Mod_Test_4064or
+static func relay(def):
+  var __gen = def
+  var __gen1 = (__gen.childKinds if __gen != null else null)
+  return (__gen1.includes if __gen1 != null else null).call("a") == true
+`,
+}
+
+export const testOptionalCallOnCallResult: Test = {
+  ts: `
+const table = new Map<string, (slot: number) => number>();
+
+export function pick(slot: number): number | null {
+  return table.get("k")?.(slot) ?? null;
+}
+  `,
+  expected: `
+class_name __Mod_Test_4064or
+${LibraryFunctions.ts_new_map.definition("__ts_new_map")}
+static var table = __ts_new_map()
+
+static func pick(slot: float):
+  return (table.get("k").call(slot) if (table.get("k").call(slot)) != null else null)
 `,
 }
