@@ -106,7 +106,10 @@ export const parseParameter = (
     },
   })
 
-  result.extraLines = initializers
+  // The default-value expression may itself hoist intermediate lines
+  // (null-guarded member accesses); those must precede the fallback
+  // assignment, which references the names they declare.
+  result.extraLines = [...(result.extraLines ?? []), ...initializers]
 
   return result
 }
@@ -161,4 +164,22 @@ static var a = __gen[0]
 static var c = __gen[2]
 static var rest = __gen.slice(3)
   `,
+}
+
+export const testParameterDefaultHoistsNullableIntermediate: Test = {
+  ts: `
+interface Run { npcRegisters: number[] }
+interface State { quest: { run?: Run | null } }
+
+export function questVisible(state: State, registers: number[] | undefined = state.quest.run?.npcRegisters): boolean {
+  return registers != null;
+}
+  `,
+  expected: `
+class_name __Mod_Test_4064or
+static func questVisible(state, registers = "[no value passed in]"):
+  var __gen = (state.quest.run if state.quest.has("run") else null)
+  registers = ((__gen.npcRegisters if __gen != null else null) if (typeof(registers) == TYPE_STRING and registers == "[no value passed in]") else registers)
+  return registers != null
+`,
 }
