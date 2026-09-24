@@ -1009,11 +1009,17 @@ export const parseCallExpression = (
         }
       }
 
-      const calledExpressionType = symbol?.getDeclarations()?.[0].kind
+      // Function values may be bound by a plain declaration, a parameter, or
+      // a destructuring binding element (`const { rng } = ctx`); all three
+      // travel under the [Callable, captures] tuple convention.
+      const declarationKinds = (symbol?.getDeclarations() ?? []).map(
+        (d) => d.kind
+      )
       const isFunctionObject =
         !isFromLib &&
-        (calledExpressionType === ts.SyntaxKind.Parameter ||
-          calledExpressionType === ts.SyntaxKind.VariableDeclaration)
+        (declarationKinds.includes(ts.SyntaxKind.Parameter) ||
+          declarationKinds.includes(ts.SyntaxKind.VariableDeclaration) ||
+          declarationKinds.includes(ts.SyntaxKind.BindingElement))
 
       // A call whose callee is a parenthesized expression (an IIFE, or a
       // call applied to a conditional/binary of function values) must go
@@ -1102,6 +1108,34 @@ export const testBasicCall: Test = {
   expected: `
 class_name __Mod_Test_4064or
 foo("bar")`,
+}
+
+export const testDestructuredFunctionValueCall: Test = {
+  ts: `
+export function makeCtx(): { rng: () => number } {
+  const n = 5
+  return { rng: () => n }
+}
+const { rng } = makeCtx()
+const x = rng()
+  `,
+  expected: `
+class_name __Mod_Test_4064or
+static func __gen(captures):
+  var n = captures.n
+
+  return n
+
+static func makeCtx():
+  var n: int = 5
+
+  return { "rng": [Callable(__Mod_Test_4064or, "__gen"), {"n": n}] }
+
+static var __gen1 = makeCtx()
+static var rng = __gen1.rng
+
+static var _x = rng[0].call(rng[1])
+`,
 }
 
 export const testAddVec: Test = {
