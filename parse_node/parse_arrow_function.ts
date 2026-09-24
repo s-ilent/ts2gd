@@ -5,6 +5,8 @@ import { ParseNodeType, ParseState, combine } from "../parse_node"
 import { Test } from "../tests/test"
 import { ensureOptionalParametersLast } from "../ts_utils"
 
+import { LibraryFunctions } from "./library_functions"
+
 /**
  * Get all identifiers in a scope that were declared in an enclosing scope.
  *
@@ -17,6 +19,33 @@ import { ensureOptionalParametersLast } from "../ts_utils"
  *
  * in foo(), `a` is not a free variable, but `b` is.
  */
+/**
+ * Walk an expression's children for free variables. Property names are
+ * members of the base's type rather than variables, so a property access
+ * contributes only its base side; element-access arguments are value
+ * positions and do contribute.
+ */
+const walkFreeVariableChildren = (
+  node: ts.Node,
+  root: ts.ArrowFunction | ts.FunctionDeclaration | ts.FunctionExpression,
+  props: ParseState
+): (ts.Identifier | ts.PropertyAccessExpression)[] => {
+  const result: (ts.Identifier | ts.PropertyAccessExpression)[][] = []
+
+  ts.forEachChild(node, (child) => {
+    if (
+      ts.isPropertyAccessExpression(node) &&
+      child === (node as ts.PropertyAccessExpression).name
+    ) {
+      return
+    }
+
+    result.push(getFreeVariables(child, root, props))
+  })
+
+  return result.flat()
+}
+
 const getFreeVariables = (
   node: ts.Node | undefined | null,
   root: ts.ArrowFunction | ts.FunctionDeclaration | ts.FunctionExpression,
@@ -37,25 +66,39 @@ const getFreeVariables = (
     node.kind === SyntaxKind.PropertyAccessExpression
   ) {
     // In cases like "a.b.c", only return "a".
-    while (node.kind === SyntaxKind.PropertyAccessExpression) {
-      const pae = node as ts.PropertyAccessExpression
-      node = pae.expression
+    let base: ts.Node = node
+
+    while (ts.isPropertyAccessExpression(base)) {
+      base = (base as ts.PropertyAccessExpression).expression
     }
 
-    const symbol = props.program.getTypeChecker().getSymbolAtLocation(node)
+    // The shortcut above only applies when the chain bottoms out at an
+    // identifier. Chains rooted in other expressions (call results, element
+    // accesses, `this`, `super`) may hold free variables of their own — the
+    // call arguments inside `map.get(key).first()` being the canonical case
+    // — so walk the whole expression instead of dropping the subtree.
+    if (!ts.isIdentifier(base)) {
+      // `import.meta` / `new.target` are keywords, not variable references.
+      if (base.kind === SyntaxKind.MetaProperty) {
+        return []
+      }
+
+      return walkFreeVariableChildren(node, root, props)
+    }
+
+    const symbol = props.program.getTypeChecker().getSymbolAtLocation(base)
 
     // A shorthand property (`{ rng }`) names a binding; the checker reports
     // a synthesized symbol for the property itself, which breaks the
     // declaration walk below. Resolve through the value symbol instead.
     const shorthandValueSymbol =
-      node.kind === SyntaxKind.Identifier &&
-      node.parent &&
-      ts.isShorthandPropertyAssignment(node.parent) &&
-      (node.parent as ts.ShorthandPropertyAssignment).name === node
+      base.parent &&
+      ts.isShorthandPropertyAssignment(base.parent) &&
+      (base.parent as ts.ShorthandPropertyAssignment).name === base
         ? props.program
             .getTypeChecker()
             .getShorthandAssignmentValueSymbol(
-              node.parent as ts.ShorthandPropertyAssignment
+              base.parent as ts.ShorthandPropertyAssignment
             )
         : undefined
 
@@ -68,7 +111,7 @@ const getFreeVariables = (
       ) {
         addError({
           error: ErrorName.DeclarationNotGiven,
-          location: node,
+          location: base,
           stack: new Error().stack ?? "",
           description: `
 Declaration not provided for free variables. This is an internal ts2gd bug. Please report it.
@@ -96,7 +139,7 @@ Declaration not provided for free variables. This is an internal ts2gd bug. Plea
       }
 
       if (isFreeVariable) {
-        const found = [node as ts.Identifier | ts.PropertyAccessExpression]
+        const found = [base as ts.Identifier | ts.PropertyAccessExpression]
 
         // A free variable bound to a nested function drags that function's
         // own free variables along: the parent's captures dict must carry
@@ -115,23 +158,17 @@ Declaration not provided for free variables. This is an internal ts2gd bug. Plea
         return []
       }
     } else {
-      if (node.kind === SyntaxKind.Identifier) {
+      if (base.kind === SyntaxKind.Identifier) {
         // Expressions like this.get_node("HBoxContainer/BuildButton").visible give
         // "no symbol" logs. I don't understand why
-        console.error(node.getText(), "no symbol")
+        console.error(base.getText(), "no symbol")
       }
     }
 
     return []
   }
 
-  let result: (ts.Identifier | ts.PropertyAccessExpression)[][] = []
-
-  ts.forEachChild(node, (ch) => {
-    result.push(getFreeVariables(ch, root, props))
-  })
-
-  return result.flat()
+  return walkFreeVariableChildren(node, root, props)
 }
 
 export const getCapturedScope = (
@@ -168,7 +205,22 @@ export const getCapturedScope = (
       return false
     }
 
-    const symbol = props.program.getTypeChecker().getSymbolAtLocation(freeVar)
+    const checker = props.program.getTypeChecker()
+
+    const shorthandParent =
+      freeVar.parent &&
+      ts.isShorthandPropertyAssignment(freeVar.parent) &&
+      (freeVar.parent as ts.ShorthandPropertyAssignment).name === freeVar
+        ? (freeVar.parent as ts.ShorthandPropertyAssignment)
+        : undefined
+
+    // A shorthand (`{ step }`) reports the contextual property symbol at its
+    // identifier; resolve through the value symbol so the checks below see
+    // the same declaration the reference site's rewrite is keyed on.
+    const symbol = shorthandParent
+      ? checker.getShorthandAssignmentValueSymbol(shorthandParent) ??
+        checker.getSymbolAtLocation(freeVar)
+      : checker.getSymbolAtLocation(freeVar)
 
     if (!symbol) {
       return false
@@ -306,11 +358,23 @@ export const parseArrowFunction = (
         [...argParsed.map((a) => a.content), "captures"].join(", ")
       )
 
+      // Parameter parsing hoists lines that belong at the top of the
+      // generated function: destructured bindings (`var mode = __gen.mode`),
+      // default-value fallbacks (`n = (3 if ... else n)`) and any
+      // intermediate lines the default expressions themselves hoisted.
+      // Dropping them leaves the body — and the captures dicts of nested
+      // lifted callables — referencing names that were never declared.
+      const paramLines = argParsed
+        .flatMap((a) => a.extraLines ?? [])
+        .map((l) => "  " + l.line)
+      const paramBlock = paramLines.length ? paramLines.join("\n") + "\n" : ""
+
       if (node.body.kind === SyntaxKind.Block) {
         return `
 ${funcKind} ${name}(${signature}):
-${unwrapCapturedScope}
-  ${bodyParsed.content.trim() === "" ? "pass" : bodyParsed.content}
+${unwrapCapturedScope}${paramBlock}  ${
+          bodyParsed.content.trim() === "" ? "pass" : bodyParsed.content
+        }
         `
       } else {
         // Single line arrow function, with implicit return. Hoisted
@@ -326,8 +390,9 @@ ${unwrapCapturedScope}
 
         return `
 ${funcKind} ${name}(${signature}):
-${unwrapCapturedScope}${before ? "\n" + before : ""}
-  return ${bodyParsed.content}
+${unwrapCapturedScope}${paramBlock}${
+          before ? "\n" + before + "\n" : ""
+        }  return ${bodyParsed.content}
         `
       }
     },
@@ -534,5 +599,119 @@ static func pick():
   var floor_: float = 3.5
   var match_ = [Callable(__Mod_Test_4064or, "__gen"), {"floor_": floor_}]
   return match_[0].call({ "f": 3.5 }, match_[1])
+  `,
+}
+
+export const testCapturesThroughChainedCallArguments: Test = {
+  ts: `
+const RINGS: Map<number, number | undefined> = new Map()
+
+export function createBrain(ctx: { scope: number }): void {
+  function ring(id: number): number | undefined {
+    return RINGS.get(ctx.scope)?.get(id);
+  }
+  ring(1);
+}
+  `,
+  expected: `
+class_name __Mod_Test_4064or
+${LibraryFunctions.ts_new_map.definition("__ts_new_map")}
+static func __nested_ring(id: float, captures):
+  var RINGS = captures.RINGS
+  var ctx = captures.ctx
+  var __gen = RINGS.ts_get(ctx.scope)
+  return (__gen.get if __gen != null else null).call(id)
+static var RINGS = __ts_new_map()
+static func createBrain(ctx):
+  __nested_ring(1, {"RINGS": RINGS, "ctx": ctx})
+  `,
+}
+
+export const testShorthandNestedFunctionNotCaptured: Test = {
+  ts: `
+interface Opts { onEnter(): void; step(e: unknown, tx: number, tz: number): void }
+function run(e: unknown, o: Opts): boolean { void e; void o; return true }
+export function factory(enemy: { hp: number }): void {
+  let swipeResolved = false
+  function step(e: unknown, tx: number, tz: number): void { void e; void tx; void tz }
+  function tick(state: unknown, e: unknown): boolean {
+    const r = run(e, { onEnter: () => { swipeResolved = false }, step })
+    return r
+  }
+  tick({}, {})
+}
+  `,
+  expected: `
+class_name __Mod_Test_4064or
+static func __nested_step(e, tx: float, tz: float, captures):
+  null
+  null
+  null
+static func __nested_tick(_state, e, captures):
+  var swipeResolved = captures.swipeResolved
+  var r = run(e, { "onEnter": [Callable(__Mod_Test_4064or, "__gen"), {"swipeResolved": swipeResolved}], "step": [Callable(__Mod_Test_4064or, "__nested_step"), {}] })
+  return r
+static func __gen(captures):
+  var swipeResolved = captures.swipeResolved
+  swipeResolved = false
+static func run(e, o):
+  null
+  null
+  return true
+static func factory(_enemy):
+  var swipeResolved = false
+  __nested_tick({}, {}, {"swipeResolved": swipeResolved})
+  `,
+}
+
+export const testArrowDestructuredParameterBindings: Test = {
+  ts: `
+type Factory = (enemy: { hp: number }, opts: { mode: string; players: number }) => { tick: (s: number, e: number) => boolean }
+export const makeBrain: Factory = (enemy, { mode, players }) => {
+  let initialized = false
+  function tick(state: number, e: number): boolean {
+    if (!initialized) { initialized = true }
+    return mode === "multi" && e > players
+  }
+  return { tick }
+}
+void makeBrain
+  `,
+  expected: `
+class_name __Mod_Test_4064or
+static func __gen(_enemy, __gen1, captures):
+  var mode = __gen1.mode
+  var players = __gen1.players
+  var initialized = false
+  return { "tick": [Callable(__Mod_Test_4064or, "__nested_tick"), {"initialized": initialized, "mode": mode, "players": players}] }
+static func __nested_tick(_state: float, e: float, captures):
+  var initialized = captures.initialized
+  var mode = captures.mode
+  var players = captures.players
+  if not initialized:
+    initialized = true
+  return mode == "multi" and e > players
+static var makeBrain = [Callable(__Mod_Test_4064or, "__gen"), {}]
+null
+  `,
+}
+
+export const testArrowParameterDefaultInitializers: Test = {
+  ts: `
+interface State { quest?: { run?: { npcRegisters: number[] } | null } }
+export const visible = (state: State, registers: number[] | undefined = state.quest?.run?.npcRegisters): boolean => {
+  return registers != null
+}
+void visible
+  `,
+  expected: `
+class_name __Mod_Test_4064or
+static func __gen(state, registers = "[no value passed in]", captures = null):
+  var __gen1 = state.quest
+  var __gen2 = (__gen1.run if __gen1 != null else null)
+  registers = ((__gen2.npcRegisters if __gen2 != null else null) if (typeof(registers) == TYPE_STRING and registers == "[no value passed in]") else registers)
+  return registers != null
+static var visible = [Callable(__Mod_Test_4064or, "__gen"), {}]
+null
   `,
 }
