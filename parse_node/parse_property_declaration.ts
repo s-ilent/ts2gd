@@ -3,6 +3,7 @@ import ts, { SyntaxKind } from "typescript"
 
 import { ErrorName, addError } from "../errors"
 import { ParseNodeType, ParseState, combine } from "../parse_node"
+import { mangleMemberDeclName } from "../scope"
 import { Test } from "../tests/test"
 import { getGodotType, getTypeHierarchy, isEnumType } from "../ts_utils"
 
@@ -349,7 +350,11 @@ export const parsePropertyDeclaration = (
         return ""
       }
 
-      return `${exportText}${onReady ? "@onready " : ""}var ${name}${
+      // Members clashing with native property names (Object.script) are
+      // renamed; symbol-resolved access sites apply the same rule.
+      const declaredName = mangleMemberDeclName(name, node.getSourceFile())
+
+      return `${exportText}${onReady ? "@onready " : ""}var ${declaredName}${
         typeHintName ? `: ${typeHintName}` : ""
       }${initializer && ` = ${initializer}`}`
     },
@@ -686,4 +691,33 @@ class_name Test
 @export_flags("Fire", "Water", "Earth", "Wind") var exportFlagsTest3: int
 @export_global_file("*.png") var exportFlagsTest4: String
 `,
+}
+
+export const testScriptPropertyDeclarationMangled: Test = {
+  ts: `
+export class Holder {
+  script: int = 3
+
+  read() {
+    return this.script
+  }
+}`,
+  expected: `
+class_name Holder
+var script_: int = 3
+func read():
+  return self.script_
+`,
+}
+
+export const testScriptDictionaryKeyUntouched: Test = {
+  ts: `
+const cfg = { script: "a" }
+const s = cfg.script
+  `,
+  expected: `
+class_name __Mod_Test_4064or
+static var cfg = { "script": "a" }
+static var _s = cfg.script
+  `,
 }

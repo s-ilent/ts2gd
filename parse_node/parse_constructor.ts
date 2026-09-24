@@ -1,6 +1,7 @@
 import ts from "typescript"
 
 import { ParseState, combine, ParseNodeType } from "../parse_node"
+import { mangleGdName } from "../scope"
 import { ensureOptionalParametersLast, getGodotType } from "../ts_utils"
 import { Test } from "../tests/test"
 
@@ -10,7 +11,10 @@ const getParameterText = (node: ts.ConstructorDeclaration): string => {
   const parts: string[] = []
 
   for (const param of node.parameters) {
-    const paramName = param.name.getText()
+    // The signature must spell parameter names exactly like the body's
+    // scope-resolved references do (Scope.addName applies the same
+    // mangling when the parameter is registered).
+    const paramName = mangleGdName(param.name.getText())
     let text = paramName
 
     if (param.initializer) {
@@ -40,7 +44,10 @@ export const parseConstructor = (
   const assignmentLines: string[] = []
 
   for (const param of paramProps) {
-    const name = param.name.getText()
+    // The field name is a class member, and the assignment's right side
+    // names the parameter: both spellings are mangled identically, and the
+    // scope-registered parameter name matches the signature.
+    const name = mangleGdName(param.name.getText())
     const type = getGodotType(
       param,
       props.program.getTypeChecker().getTypeAtLocation(param),
@@ -181,5 +188,24 @@ var x: int = 0
 
 func _init(mult, base = 5):
   self.x = mult * base
+`,
+}
+
+export const testConstructorParameterPropertyScriptMangled: Test = {
+  ts: `
+export class QuestVm {
+  constructor(readonly script) {}
+
+  current() {
+    return this.script
+  }
+}`,
+  expected: `
+class_name QuestVm
+var script_
+func _init(script_):
+  self.script_ = script_
+func current():
+  return self.script_
 `,
 }

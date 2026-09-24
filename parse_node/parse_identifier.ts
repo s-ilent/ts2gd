@@ -2,7 +2,7 @@ import ts, { SyntaxKind } from "typescript"
 
 import { ParseNodeType, ParseState, combine } from "../parse_node"
 import { Test } from "../tests/test"
-import { mangleGdName } from "../scope"
+import { mangleGdName, mangleMemberAccessName } from "../scope"
 
 import { LibraryFunctions } from "./library_functions"
 
@@ -209,6 +209,16 @@ export const parseIdentifier = (
           if (node.text === "Error") {
             return "__ts_Error"
           }
+        }
+
+        // Member names in property access chains resolve through the access
+        // chain rather than the scope. A member whose name collides with a
+        // native property (Object.script) is renamed at its declaration, so
+        // an access follows when it resolves to a project-source member;
+        // accesses into declaration files (native properties) and plain
+        // type-level properties (Dictionaries) keep the source spelling.
+        if (isAccessName) {
+          return mangleMemberAccessName(node.text, symbol)
         }
 
         return node.text

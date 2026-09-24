@@ -294,6 +294,12 @@ const keywords = [
   "WorkerThreadPool",
   "XRServer",
 
+  // Native member names. Object carries a `script` property, so a declared
+  // member with that name fails to parse ("Member script redefined").
+  // Declared names are renamed with a trailing underscore for consistency
+  // with the keyword handling above.
+  "script",
+
   // Builtin type names cannot be used as declared names in GDScript.
   "Array",
   "bool",
@@ -327,3 +333,43 @@ const keywords = [
  */
 export const mangleGdName = (name: string): string =>
   keywords.includes(name) ? name + "_" : name
+
+/**
+ * Class members whose names collide with native properties (see the
+ * native member names in the keyword list above) are renamed at their
+ * declaration sites, and every symbol-resolved access to such a member
+ * must follow. Accesses that resolve into declaration files (Godot or TS
+ * library types) keep the native spelling so that assigning a native
+ * property like Node.script is untouched, and accesses resolving to plain
+ * type-level properties (interfaces compiled to Dictionaries) stay raw so
+ * dictionary keys are preserved.
+ */
+export const mangleMemberDeclName = (
+  name: string,
+  sourceFile: ts.SourceFile
+): string =>
+  keywords.includes(name) && !sourceFile.isDeclarationFile ? name + "_" : name
+
+export const mangleMemberAccessName = (
+  name: string,
+  symbol?: ts.Symbol
+): string => {
+  if (!keywords.includes(name) || !symbol?.declarations?.[0]) {
+    return name
+  }
+
+  const decl = symbol.declarations[0]
+
+  if (decl.getSourceFile().isDeclarationFile) {
+    return name
+  }
+
+  const isValueMember =
+    ts.isPropertyDeclaration(decl) ||
+    ts.isMethodDeclaration(decl) ||
+    ts.isGetAccessorDeclaration(decl) ||
+    ts.isSetAccessorDeclaration(decl) ||
+    ts.isParameterPropertyDeclaration(decl, decl.parent)
+
+  return isValueMember ? name + "_" : name
+}
