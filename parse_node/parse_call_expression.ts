@@ -14,6 +14,7 @@ import { isArrayType, isDictionary, isNullableNode } from "../ts_utils"
 
 import { LibraryFunctionName, LibraryFunctions } from "./library_functions"
 import { getCapturedScope } from "./parse_arrow_function"
+import { gdMathMember } from "./parse_property_access_expression"
 
 /**
  * Typed-array static factories map onto generated copying helpers.
@@ -605,6 +606,34 @@ export const parseCallExpression = (
     // types here).
     if (functionName === "padStart") {
       return helperCall("ts_pad_start")
+    }
+
+    // Math.fn.call(...) is an unbound invocation of a Math builtin; the
+    // receiver carries no state, so it maps onto the same global call.
+    if (
+      functionName === "call" &&
+      ts.isPropertyAccessExpression(prop.expression) &&
+      ts.isIdentifier(prop.expression.expression) &&
+      (prop.expression.expression as ts.Identifier).text === "Math"
+    ) {
+      const mapped = gdMathMember(prop.expression.name.text)
+
+      if (mapped) {
+        const result = combine({
+          parent: node,
+          nodes: [...args],
+          props,
+          parsedStrings: (...parsed) => `${mapped.gd}(${parsed.join(", ")})`,
+        })
+
+        if (mapped.helper) {
+          result.hoistedLibraryFunctions =
+            result.hoistedLibraryFunctions ?? new Set()
+          result.hoistedLibraryFunctions.add(mapped.helper)
+        }
+
+        return result
+      }
     }
 
     if (functionName === "toString" && (isNumberBase || isStringBase)) {
@@ -1932,5 +1961,13 @@ static func __ts_regex(pattern: String, flags: String) -> RegEx:
 static var r = __ts_regex("abc", "i")
 static var b = (r.search("xabcx") != null)
 print(b)
+`,
+}
+
+export const testMathMemberCallInvocation: Test = {
+  ts: `const t = Math.ceil.call(1.5)`,
+  expected: `
+class_name __Mod_Test_4064or
+static var _t = ceil(1.5)
 `,
 }

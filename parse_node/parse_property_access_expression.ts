@@ -19,6 +19,61 @@ import {
 
 import { LibraryFunctionName, LibraryFunctions } from "./library_functions"
 
+const mathGlobals: Record<string, string> = {
+  abs: "abs",
+  ceil: "ceil",
+  ceili: "ceili",
+  exp: "exp",
+  floor: "floor",
+  floori: "floori",
+  log: "log",
+  max: "max",
+  min: "min",
+  pow: "pow",
+  random: "randf",
+  round: "round",
+  roundi: "roundi",
+  sign: "sign",
+  sqrt: "sqrt",
+  sin: "sin",
+  cos: "cos",
+  tan: "tan",
+  asin: "asin",
+  acos: "acos",
+  atan: "atan",
+  atan2: "atan2",
+  E: "E",
+  INF: "INF",
+  NaN: "NAN",
+  PI: "PI",
+  TAU: "TAU",
+}
+
+// Members without direct GDScript builtins compile to hoisted helpers.
+const mathHoisted: Record<string, LibraryFunctionName> = {
+  trunc: "ts_trunc",
+  hypot: "ts_hypot",
+  fround: "ts_fround",
+  imul: "ts_imul",
+}
+
+// Resolves a Math member to its emitted GDScript form, so other parsers
+// (e.g. unbound `.call` invocations like Math.ceil.call(x)) can reuse the
+// same mapping.
+export const gdMathMember = (
+  name: string
+): { gd: string; helper?: LibraryFunctionName } | undefined => {
+  if (name in mathGlobals) {
+    return { gd: mathGlobals[name] }
+  }
+
+  if (name in mathHoisted) {
+    return { gd: `__${mathHoisted[name]}`, helper: mathHoisted[name] }
+  }
+
+  return undefined
+}
+
 const isRhs = (node: ts.PropertyAccessExpression) => {
   let parentExpression: ts.Node = node
 
@@ -73,66 +128,21 @@ export const parsePropertyAccessExpression = (
 
   // Math.* maps onto GDScript global functions and constants.
   if (ts.isIdentifier(node.expression) && node.expression.text === "Math") {
-    const mathGlobals: Record<string, string> = {
-      abs: "abs",
-      ceil: "ceil",
-      ceili: "ceili",
-      exp: "exp",
-      floor: "floor",
-      floori: "floori",
-      log: "log",
-      max: "max",
-      min: "min",
-      pow: "pow",
-      random: "randf",
-      round: "round",
-      roundi: "roundi",
-      sign: "sign",
-      sqrt: "sqrt",
-      sin: "sin",
-      cos: "cos",
-      tan: "tan",
-      asin: "asin",
-      acos: "acos",
-      atan: "atan",
-      atan2: "atan2",
-      E: "E",
-      INF: "INF",
-      NaN: "NAN",
-      PI: "PI",
-      TAU: "TAU",
-    }
+    const mapped = gdMathMember(node.name.text)
 
-    const name = node.name.text
-
-    if (name in mathGlobals) {
-      return combine({
-        parent: node,
-        nodes: [],
-        props,
-        parsedStrings: () => mathGlobals[name],
-      })
-    }
-
-    // Members without direct GDScript builtins compile to hoisted helpers.
-    const mathHoisted: Record<string, LibraryFunctionName> = {
-      trunc: "ts_trunc",
-      hypot: "ts_hypot",
-      fround: "ts_fround",
-      imul: "ts_imul",
-    }
-
-    if (name in mathHoisted) {
+    if (mapped) {
       const result = combine({
         parent: node,
         nodes: [],
         props,
-        parsedStrings: () => `__${mathHoisted[name]}`,
+        parsedStrings: () => mapped.gd,
       })
 
-      result.hoistedLibraryFunctions =
-        result.hoistedLibraryFunctions ?? new Set()
-      result.hoistedLibraryFunctions.add(mathHoisted[name])
+      if (mapped.helper) {
+        result.hoistedLibraryFunctions =
+          result.hoistedLibraryFunctions ?? new Set()
+        result.hoistedLibraryFunctions.add(mapped.helper)
+      }
 
       return result
     }
