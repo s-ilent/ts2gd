@@ -51,7 +51,16 @@ export const parseArrayLiteralExpression = (
         const slice = args.slice(index, index + group.elements.length)
         index += group.elements.length
 
-        parts.push(group.spread ? slice.join(", ") : `[${slice.join(", ")}]`)
+        if (group.spread) {
+          // Each spread element folds as its own concat step; joining a
+          // multi-element spread group into one argument list would call
+          // the 2-argument helper with every element flat.
+          for (const item of slice) {
+            parts.push(item)
+          }
+        } else {
+          parts.push(`[${slice.join(", ")}]`)
+        }
       }
 
       // Fold left to right through the concat helper. A leading plain group
@@ -67,7 +76,12 @@ export const parseArrayLiteralExpression = (
       }
 
       // A lone spread ([...a]) must still produce a copy of a.
-      if (accumulator !== null && groups[0].spread && groups.length === 1) {
+      if (
+        accumulator !== null &&
+        groups[0].spread &&
+        groups.length === 1 &&
+        groups[0].elements.length === 1
+      ) {
         accumulator = `__ts_array_concat([], ${accumulator})`
       }
 

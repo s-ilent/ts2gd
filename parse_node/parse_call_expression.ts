@@ -156,14 +156,29 @@ const foldArgGroups = (
   copyLoneSpread = true
 ): string => {
   let index = 0
-  let accumulator: string | null = null
+  const parts: string[] = []
 
   for (const group of groups) {
     const slice = parsed.slice(index, index + group.elements.length)
     index += group.elements.length
 
-    const part = group.spread ? slice.join(", ") : `[${slice.join(", ")}]`
+    if (group.spread) {
+      // Each spread element folds as its own concat step; joining a
+      // multi-element spread group into one argument list would call the
+      // 2-argument helper with every element flat.
+      for (const item of slice) {
+        parts.push(item)
+      }
+    } else {
+      parts.push(`[${slice.join(", ")}]`)
+    }
+  }
 
+  // Fold left to right through the concat helper; the helper always builds
+  // a fresh array, so source arrays are never mutated.
+  let accumulator: string | null = null
+
+  for (const part of parts) {
     accumulator =
       accumulator === null ? part : `__ts_array_concat(${accumulator}, ${part})`
   }
@@ -175,7 +190,8 @@ const foldArgGroups = (
     copyLoneSpread &&
     accumulator !== null &&
     groups.length === 1 &&
-    groups[0].spread
+    groups[0].spread &&
+    groups[0].elements.length === 1
   ) {
     accumulator = `__ts_array_concat([], ${accumulator})`
   }
@@ -431,6 +447,27 @@ export const parseCallExpression = (
     return result
   }
 
+  // Array(n) without new is the holey-array constructor call; GDScript's
+  // Array has no such constructor, so it routes through the same helper as
+  // new Array(n).
+  if (
+    ts.isIdentifier(node.expression) &&
+    (node.expression as ts.Identifier).text === "Array" &&
+    args.length === 1
+  ) {
+    const result = combine({
+      parent: node,
+      nodes: [...args],
+      props,
+      parsedStrings: (...parsed) => `__ts_new_array(${parsed.join(", ")})`,
+    })
+
+    result.hoistedLibraryFunctions = result.hoistedLibraryFunctions ?? new Set()
+    result.hoistedLibraryFunctions.add("ts_new_array")
+
+    return result
+  }
+
   // Nested (inner) function declarations hoist to static functions that take
   // a trailing captures parameter; calls pass the captured scope directly.
   if (expression.kind === SyntaxKind.Identifier) {
@@ -638,6 +675,70 @@ export const parseCallExpression = (
     // types here).
     if (functionName === "padStart") {
       return helperCall("ts_pad_start")
+    }
+
+    // JS slice always returns a fresh array with clamped, negative-tolerant
+    // bounds; the no-arg form is a copy. GDScript's native slice requires
+    // both arguments and String has none at all.
+    if (functionName === "slice" && isArrayBase) {
+      const result = combine({
+        parent: node,
+        nodes: [prop.expression, ...args],
+        props,
+        parsedStrings: (expr, ...parsed) =>
+          `__ts_array_slice(${[expr, ...parsed].join(", ")})`,
+      })
+
+      result.hoistedLibraryFunctions =
+        result.hoistedLibraryFunctions ?? new Set()
+      result.hoistedLibraryFunctions.add("ts_array_slice")
+
+      return result
+    }
+
+    if (functionName === "slice" && isStringBase) {
+      const result = combine({
+        parent: node,
+        nodes: [prop.expression, ...args],
+        props,
+        parsedStrings: (expr, ...parsed) =>
+          parsed.length === 0
+            ? expr
+            : `__ts_string_slice(${[expr, ...parsed].join(", ")})`,
+      })
+
+      if (result.hoistedLibraryFunctions === undefined) {
+        result.hoistedLibraryFunctions = new Set()
+      }
+
+      result.hoistedLibraryFunctions.add("ts_string_slice")
+
+      return result
+    }
+
+    // JS fill/sort return the array, GDScript's return void; calls used as
+    // expressions route through helpers that mutate and hand the array
+    // back. Statement-position calls are also safe through the helper.
+    if (
+      (functionName === "fill" || functionName === "sort") &&
+      isArrayBase &&
+      args.length === (functionName === "fill" ? 1 : 0)
+    ) {
+      const libName =
+        functionName === "fill" ? "ts_array_filled" : "ts_array_sorted"
+      const result = combine({
+        parent: node,
+        nodes: [prop.expression, ...args],
+        props,
+        parsedStrings: (expr, ...parsed) =>
+          `__${libName}(${[expr, ...parsed].join(", ")})`,
+      })
+
+      result.hoistedLibraryFunctions =
+        result.hoistedLibraryFunctions ?? new Set()
+      result.hoistedLibraryFunctions.add(libName)
+
+      return result
     }
 
     // Math.fn.call(...) is an unbound invocation of a Math builtin; the
@@ -2453,4 +2554,129 @@ static var assets = __ts_glob("../../data/quests/*/*", { "eager": true })
 func count():
   return __ts_object_keys(assets).length
   `,
+}
+
+export const testMultiSpreadFoldsThroughConcatHelper: Test = {
+  ts: `
+const a = [1]
+const b = [2]
+const c = [3]
+export function all(): number[] {
+  return [...a, ...b, ...c]
+}
+  `,
+  expected: `
+# This file has been autogenerated by ts2gd. DO NOT EDIT!
+
+
+class_name __Mod_Test_4064or
+
+
+static func __ts_array_concat(base, extra):
+  var result = []
+
+  if base != null:
+    result.append_array(base)
+
+  if extra != null:
+    result.append_array(extra)
+
+  return result
+
+
+
+static var a = [1]
+
+
+static var b = [2]
+
+
+static var c = [3]
+
+
+static func all():
+  return __ts_array_concat(__ts_array_concat(a, b), c)
+
+`,
+}
+
+export const testSliceMapsToHelpers: Test = {
+  ts: `
+export class Test {
+  static tail(xs: number[], code: string) {
+    return [xs.slice(2), code.slice(4), xs.slice()]
+  }
+}
+  `,
+  expected: `
+# This file has been autogenerated by ts2gd. DO NOT EDIT!
+
+
+
+class_name Test
+    
+
+
+static func __ts_array_slice(arr, start = null, end = null):
+  var n: int = arr.size()
+  var b: int = 0 if start == null else (start if start >= 0 else n + start)
+  var e: int = n if end == null else (end if end >= 0 else n + end)
+  b = max(b, 0)
+  e = min(e, n)
+  var out := []
+  for i in range(b, e):
+    out.append(arr[i])
+  return out
+
+
+static func __ts_string_slice(s, start = null, end = null):
+  var n: int = s.length()
+  var b: int = 0 if start == null else (start if start >= 0 else n + start)
+  var e: int = n if end == null else (end if end >= 0 else n + end)
+  b = max(b, 0)
+  e = min(e, n)
+  var out := ""
+  for i in range(b, e):
+    out += s[i]
+  return out
+
+
+
+
+
+static func tail(xs, code: String):
+  return [__ts_array_slice(xs, 2), __ts_string_slice(code, 4), __ts_array_slice(xs)]
+`,
+}
+
+export const testArrayConstructorCallAllocates: Test = {
+  ts: `
+export class Test {
+  static blanks(n: number) {
+    return Array(n).fill(null)
+  }
+}
+  `,
+  expected: `
+# This file has been autogenerated by ts2gd. DO NOT EDIT!
+
+
+
+class_name Test
+    
+
+
+static func __ts_new_array(size = null):
+  var a := []
+  if size is int or size is float:
+    a.resize(int(size))
+  return a
+
+
+
+
+
+static func blanks(n: float):
+  return __ts_new_array(n).fill(null)
+`,
 }
