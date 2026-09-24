@@ -44,8 +44,28 @@ const getFreeVariables = (
 
     const symbol = props.program.getTypeChecker().getSymbolAtLocation(node)
 
-    if (symbol) {
-      if (!symbol.declarations || symbol.declarations.length === 0) {
+    // A shorthand property (`{ rng }`) names a binding; the checker reports
+    // a synthesized symbol for the property itself, which breaks the
+    // declaration walk below. Resolve through the value symbol instead.
+    const shorthandValueSymbol =
+      node.kind === SyntaxKind.Identifier &&
+      node.parent &&
+      ts.isShorthandPropertyAssignment(node.parent) &&
+      (node.parent as ts.ShorthandPropertyAssignment).name === node
+        ? props.program
+            .getTypeChecker()
+            .getShorthandAssignmentValueSymbol(
+              node.parent as ts.ShorthandPropertyAssignment
+            )
+        : undefined
+
+    const effectiveSymbol = shorthandValueSymbol ?? symbol
+
+    if (effectiveSymbol) {
+      if (
+        !effectiveSymbol.declarations ||
+        effectiveSymbol.declarations.length === 0
+      ) {
         addError({
           error: ErrorName.DeclarationNotGiven,
           location: node,
@@ -56,7 +76,7 @@ Declaration not provided for free variables. This is an internal ts2gd bug. Plea
         })
         return []
       }
-      const decl = symbol.declarations[0]
+      const decl = effectiveSymbol.declarations[0]
 
       if (decl.getSourceFile() !== root.getSourceFile()) {
         return []
@@ -386,5 +406,38 @@ static func outer():
   var playhead: int = 0
   var playRate: int = 1
   return __nested_footsteps({"playhead": playhead, "playRate": playRate})
+`,
+}
+
+export const testShorthandPropertyCaptured: Test = {
+  ts: `
+export function outer(ctx: { rng: () => number; stats: number }): number {
+  const { rng, stats } = ctx;
+  let A = 2;
+  function resolve(state: number): number {
+    return consume(state, A, { stats, rng, atp: stats * 2 });
+  }
+  function consume(s: number, a: number, o: { stats: number; rng: () => number; atp: number }): number {
+    return stats + s + a + (o.atp > 0 ? 1 : 0);
+  }
+  return resolve(1) + stats;
+}
+  `,
+  expected: `
+class_name __Mod_Test_4064or
+static func __nested_resolve(state: float, captures):
+  var stats = captures.stats
+  var A = captures.A
+  var rng = captures.rng
+  return __nested_consume(state, A, { "stats": stats, "rng": rng, "atp": stats * 2 }, {"stats": stats})
+static func __nested_consume(s: float, a: float, o, captures):
+  var stats = captures.stats
+  return stats + s + a + (1 if o.atp > 0 else 0)
+static func outer(ctx):
+  var __gen = ctx
+  var rng = __gen.rng
+  var stats = __gen.stats
+  var A: int = 2
+  return __nested_resolve(1, {"stats": stats, "A": A, "rng": rng}) + stats
 `,
 }
