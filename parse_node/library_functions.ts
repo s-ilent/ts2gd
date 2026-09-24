@@ -21,6 +21,11 @@ export type LibraryFunctionName =
   | "ts_string_from_char_code"
   | "ts_array_from"
   | "ts_glob"
+  | "ts_array_slice"
+  | "ts_string_slice"
+  | "ts_array_filled"
+  | "ts_array_sorted"
+  | "ts_error_class"
   | "ts_int32_from"
   | "ts_number"
   | "ts_new_set"
@@ -711,6 +716,63 @@ static func __ts_array_from(src, f = null):
     definition: () => `
 static func __ts_glob(pattern, options = null):
   return load("res://_ts_shims/ts_glob.gd").glob(pattern, options)
+`,
+  },
+
+  ts_array_slice: {
+    name: "ts_array_slice",
+    definition: () => `
+static func __ts_array_slice(arr, start = null, end = null):
+  var n: int = arr.size()
+  var b: int = 0 if start == null else (start if start >= 0 else n + start)
+  var e: int = n if end == null else (end if end >= 0 else n + end)
+  b = max(b, 0)
+  e = min(e, n)
+  var out := []
+  for i in range(b, e):
+    out.append(arr[i])
+  return out
+`,
+  },
+
+  ts_string_slice: {
+    name: "ts_string_slice",
+    definition: () => `
+static func __ts_string_slice(s, start = null, end = null):
+  var n: int = s.length()
+  var b: int = 0 if start == null else (start if start >= 0 else n + start)
+  var e: int = n if end == null else (end if end >= 0 else n + end)
+  b = max(b, 0)
+  e = min(e, n)
+  var out := ""
+  for i in range(b, e):
+    out += s[i]
+  return out
+`,
+  },
+
+  ts_array_filled: {
+    name: "ts_array_filled",
+    definition: () => `
+static func __ts_array_filled(arr, value):
+  arr.fill(value)
+  return arr
+`,
+  },
+
+  ts_array_sorted: {
+    name: "ts_array_sorted",
+    definition: () => `
+static func __ts_array_sorted(arr):
+  arr.sort()
+  return arr
+`,
+  },
+
+  ts_error_class: {
+    name: "ts_error_class",
+    definition: () => `
+static var __ts_Error = load("res://_ts_shims/ts_error.gd")
 `,
   },
 

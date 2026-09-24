@@ -90,6 +90,10 @@ export const parseIdentifier = (
     !scopeName &&
     (ambientReceiverGlobals.has(name) || ambientCallGlobals.has(name))
 
+  // The global Error value maps to the shim class; the hoist is decided
+  // before parsing so the load line only lands when the mapping fires.
+  const isGlobalError = !isAccessName && !scopeName && name === "Error"
+
   const result = combine({
     parent: node,
     nodes: [],
@@ -197,6 +201,14 @@ export const parseIdentifier = (
           if (ambientCallGlobals.has(node.text)) {
             return `__ts_env().${node.text}`
           }
+
+          // The global Error constructor/value stands in for the shim script
+          // resource: Error.new(...) becomes __ts_Error.new(...), and
+          // instanceof Error is rewritten separately (is requires a type
+          // name, not a value).
+          if (node.text === "Error") {
+            return "__ts_Error"
+          }
         }
 
         return node.text
@@ -206,9 +218,11 @@ export const parseIdentifier = (
     },
   })
 
-  if (isAmbientGlobal) {
+  if (isAmbientGlobal || isGlobalError) {
     result.hoistedLibraryFunctions = result.hoistedLibraryFunctions ?? new Set()
-    result.hoistedLibraryFunctions.add("ts_env")
+    result.hoistedLibraryFunctions.add(
+      isGlobalError ? "ts_error_class" : "ts_env"
+    )
   }
 
   return result

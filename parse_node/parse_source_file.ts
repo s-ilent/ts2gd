@@ -29,6 +29,12 @@ const getClassDeclarationHeader = (
     const type = extendsClause?.types[0]
 
     extendsFrom = type?.getText() ?? ""
+
+    // JS Error has no GDScript counterpart; Error subclasses extend the
+    // shim script through its resource path.
+    if (extendsFrom === "Error") {
+      extendsFrom = '"res://_ts_shims/ts_error.gd"'
+    }
   }
 
   const isTool = !!node.decorators?.find(

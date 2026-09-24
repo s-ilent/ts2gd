@@ -52,6 +52,24 @@ export const parseNewExpression = (
   node: ts.NewExpression,
   props: ParseState
 ): ParseNodeType => {
+  // new Error(...) constructs the shim class resource.
+  if (
+    node.expression.kind === SyntaxKind.Identifier &&
+    (node.expression as ts.Identifier).text === "Error"
+  ) {
+    const result = combine({
+      parent: node,
+      nodes: [...(node.arguments ?? [])],
+      props,
+      parsedStrings: (...args) => `__ts_Error.new(${args.join(", ")})`,
+    })
+
+    result.hoistedLibraryFunctions = result.hoistedLibraryFunctions ?? new Set()
+    result.hoistedLibraryFunctions.add("ts_error_class")
+
+    return result
+  }
+
   // JS collections are constructed through generated shim classes.
   if (
     node.expression.kind === SyntaxKind.Identifier &&
