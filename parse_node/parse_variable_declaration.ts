@@ -106,8 +106,13 @@ export const parseVariableDeclaration = (
 
   // Module-level variables are shared across every instance of the
   // generated script's implicit class, and must stay reachable from the
-  // static functions that module-level functions compile to.
+  // static functions that module-level functions compile to. The immediate
+  // grandparent must be a VariableStatement: a for-loop initializer's
+  // declaration list also sits three levels under the SourceFile (its
+  // grandparent is the ForStatement), and those are block-scoped locals of
+  // whatever function contains the loop.
   const isModuleLevel =
+    node.parent?.parent?.kind === SyntaxKind.VariableStatement &&
     node.parent?.parent?.parent?.kind === SyntaxKind.SourceFile
 
   // Static variable initializers run in a static context: `self` is not
