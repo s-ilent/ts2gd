@@ -5,6 +5,7 @@ import { ParseNodeType, ParseState, combine, parseNode } from "../parse_node"
 import { Test } from "../tests/test"
 
 import { LibraryFunctions, LibraryFunctionName } from "./library_functions"
+import { preRegisterImportAliases } from "./parse_import_declaration"
 import { registerNestedFunctionBindings } from "./parse_function_declaration"
 
 /**
@@ -129,6 +130,15 @@ export const parseSourceFile = (
   // references resolve (function declarations hoist in JS).
   registerNestedFunctionBindings(node, props)
 
+  // Reserve import receivers and register imported binding names before any
+  // class body is parsed: class members parse first, and their references
+  // to imported modules must resolve to the receiver expressions.
+  for (const statement of statements) {
+    if (statement.kind === SyntaxKind.ImportDeclaration) {
+      preRegisterImportAliases(statement as ts.ImportDeclaration, props)
+    }
+  }
+
   for (const statement of statements) {
     if (
       statement.kind !== SyntaxKind.ClassDeclaration &&
@@ -179,25 +189,104 @@ export const parseSourceFile = (
     }
   }
 
-  const codegenToplevelStatements =
-    toplevelStatements.length > 0
+  /**
+   * Executable statements cannot live in a GDScript class body ("Unexpected
+   * 'for' in class body"). They compile into a static init function that
+   * Godot calls when the class loads, mirroring JS module-evaluation
+   * semantics. Declarations stay where they were.
+   */
+  const executableStatementKinds = new Set<number>([
+    SyntaxKind.IfStatement,
+    SyntaxKind.ForStatement,
+    SyntaxKind.ForOfStatement,
+    SyntaxKind.ForInStatement,
+    SyntaxKind.WhileStatement,
+    SyntaxKind.DoStatement,
+    SyntaxKind.SwitchStatement,
+    SyntaxKind.ExpressionStatement,
+    SyntaxKind.LabeledStatement,
+    SyntaxKind.TryStatement,
+    SyntaxKind.ThrowStatement,
+    SyntaxKind.DebuggerStatement,
+    SyntaxKind.ReturnStatement,
+  ])
+
+  const moduleDeclarations = toplevelStatements.filter(
+    (statement) => !executableStatementKinds.has(statement.kind)
+  )
+  const moduleInitStatements = toplevelStatements.filter((statement) =>
+    executableStatementKinds.has(statement.kind)
+  )
+
+  // Toplevel code is static: callables built inside it (and module-level
+  // function values) must target the file's class rather than an instance.
+  // For class-ful files that is the declared class itself, since module
+  // declarations are emitted at file level next to its members.
+  const enclosingClassName = allClasses[0]?.name?.getText() ?? moduleClassName
+  const previousModuleClassName = props.moduleClassName
+  props.moduleClassName = enclosingClassName
+
+  const previousStaticContext = props.inStaticContext
+  props.inStaticContext = true
+
+  const codegenToplevelDeclarations =
+    moduleDeclarations.length > 0
       ? combine({
-          nodes: toplevelStatements,
-          parent: toplevelStatements[0].parent,
+          nodes: moduleDeclarations,
+          parent: moduleDeclarations[0].parent,
           props,
           parsedStrings: (...strs) => strs.join("\n"),
         })
       : undefined
 
-  for (const lf of codegenToplevelStatements?.hoistedLibraryFunctions ?? []) {
+  let codegenModuleInit: ParseNodeType | undefined
+
+  if (moduleInitStatements.some((s) => s.kind !== SyntaxKind.EmptyStatement)) {
+    codegenModuleInit = combine({
+      nodes: moduleInitStatements,
+      parent: moduleInitStatements[0].parent,
+      props,
+      parsedStrings: (...strs) => {
+        const body = strs
+          .filter((s) => s.trim() !== "")
+          .map((s) =>
+            s
+              .split("\n")
+              .map((line) => (line.trim() === "" ? line : "  " + line))
+              .join("\n")
+          )
+          .join("\n")
+
+        return `static func _static_init():${body ? "\n" + body : "\n  pass"}`
+      },
+    })
+  }
+
+  props.inStaticContext = previousStaticContext
+
+  props.moduleClassName = previousModuleClassName
+
+  for (const lf of codegenToplevelDeclarations?.hoistedLibraryFunctions ?? []) {
     hoistedLibraryFunctionNames.add(lf)
   }
 
-  for (const af of codegenToplevelStatements?.hoistedArrowFunctions ?? []) {
+  for (const af of codegenToplevelDeclarations?.hoistedArrowFunctions ?? []) {
     hoistedArrowFunctions += af.content + "\n"
   }
 
-  for (const fi of codegenToplevelStatements?.files ?? []) {
+  for (const fi of codegenToplevelDeclarations?.files ?? []) {
+    files.push(fi)
+  }
+
+  for (const lf of codegenModuleInit?.hoistedLibraryFunctions ?? []) {
+    hoistedLibraryFunctionNames.add(lf)
+  }
+
+  for (const af of codegenModuleInit?.hoistedArrowFunctions ?? []) {
+    hoistedArrowFunctions += af.content + "\n"
+  }
+
+  for (const fi of codegenModuleInit?.files ?? []) {
     files.push(fi)
   }
 
@@ -217,7 +306,8 @@ ${getClassDeclarationHeader(classDecl, props)}
 ${hoistedEnumImports}
 ${hoistedLibraryFunctionDefinitions}
 ${hoistedArrowFunctions}
-${codegenToplevelStatements?.content ?? ""}
+${codegenToplevelDeclarations?.content ?? ""}
+${codegenModuleInit?.content ?? ""}
 ${parsedClass.content}`,
     })
   }
@@ -234,7 +324,8 @@ class_name ${moduleClassName}
 ${hoistedEnumImports}
 ${hoistedLibraryFunctionDefinitions}
 ${hoistedArrowFunctions}
-${codegenToplevelStatements?.content ?? ""}`,
+${codegenToplevelDeclarations?.content ?? ""}
+${codegenModuleInit?.content ?? ""}`,
     })
   }
 
@@ -328,5 +419,51 @@ class_name Foo
 ${LibraryFunctions.ts_new_set.definition("__ts_new_set")}
 static var _cues = __ts_new_set()
 var owners = __ts_new_set()
+  `,
+}
+
+export const testModuleStatementsLandInStaticInit: Test = {
+  ts: `
+const thresholds = [4, 8]
+for (const t of thresholds) {
+  void t
+}
+let guard = 0
+while (guard < 2) {
+  guard += 1
+}
+  `,
+  expected: `
+class_name __Mod_Test_4064or
+static var thresholds = [4, 8]
+static var guard: int = 0
+
+static func _static_init():
+  for t in thresholds:
+    null
+  while guard < 2:
+    guard += 1
+  `,
+}
+
+export const testModuleInitCallableTargetsModuleClass: Test = {
+  ts: `
+function warn(kind: string) {
+  print(kind)
+}
+[1, 2].forEach((n) => warn(n === 1 ? "one" : "many"))
+  `,
+  expected: `
+class_name __Mod_Test_4064or
+${LibraryFunctions.ts_array_for_each.definition("__ts_array_for_each")}
+${LibraryFunctions.ts_call_fn.definition("__ts_call_fn")}
+${LibraryFunctions.ts_truthy.definition("__ts_truthy")}
+static func __gen(n, captures):
+  return warn("one" if n == 1 else "many")
+static func warn(kind: String):
+  print(kind)
+
+static func _static_init():
+  __ts_array_for_each([1, 2], [Callable(__Mod_Test_4064or, "__gen"), {}])
   `,
 }
