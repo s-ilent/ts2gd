@@ -3,10 +3,30 @@ import ts from "typescript"
 import { ParseNodeType, ParseState, combine } from "../parse_node"
 import { Test } from "../tests/test"
 
+import { resolveLabeledJump } from "./label_utils"
+
 export const parseBreakStatement = (
   node: ts.BreakStatement,
   props: ParseState
 ): ParseNodeType => {
+  if (node.label) {
+    const resolved = resolveLabeledJump(
+      props,
+      node.label.text,
+      false,
+      props.mostRecentControlStructureIsSwitch
+    )
+
+    if (resolved.matched) {
+      return combine({
+        parent: node,
+        nodes: [],
+        props,
+        parsedStrings: () => resolved.lines.join("\n") + "\n",
+      })
+    }
+  }
+
   if (props.mostRecentControlStructureIsSwitch) {
     return combine({
       parent: node,

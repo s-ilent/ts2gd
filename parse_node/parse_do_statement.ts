@@ -3,6 +3,14 @@ import ts from "typescript"
 import { ParseNodeType, ParseState, combine } from "../parse_node"
 import { Test } from "../tests/test"
 
+import {
+  adoptPendingLabel,
+  labelFlagDeclarations,
+  labelFlagResets,
+  labelPropagationChecks,
+  unlabeledEntry,
+} from "./label_utils"
+
 export const parseDoStatement = (
   node: ts.DoStatement,
   props: ParseState
@@ -11,10 +19,20 @@ export const parseDoStatement = (
 
   props.scope.enterScope()
 
+  const incoming = props.labelStack ?? []
+  const entry = props.pendingLabel
+    ? adoptPendingLabel(props)
+    : unlabeledEntry("")
+  const bodyProps = {
+    ...newProps,
+    pendingLabel: undefined,
+    labelStack: [...incoming, entry],
+  }
+
   const result = combine({
     parent: node,
     nodes: [node.expression, node.statement],
-    props: newProps,
+    props: bodyProps,
     addIndent: true,
     parsedObjs: (expr, statement) => {
       const beforeLines =
@@ -32,15 +50,23 @@ export const parseDoStatement = (
       // the condition check sits at the bottom of the loop. The condition's
       // hoisted lines (e.g. from a postfix increment in the condition) run
       // after the check on every pass, matching JS evaluation order.
-      return `${beforeLines}
+      const decls = labelFlagDeclarations(entry)
+      const resets = labelFlagResets(entry)
+      const checks = labelPropagationChecks(incoming)
+      const declBlock = decls.length > 0 ? decls.join("\n") + "\n" : ""
+      const resetBlock =
+        resets.length > 0 ? resets.map((l) => `  ${l}`).join("\n") + "\n" : ""
+      const checkBlock = checks.length > 0 ? checks.join("\n") + "\n" : ""
+
+      return `${declBlock}${beforeLines}
 while true:
-  ${statement.content.replace(/^\n+/, "")}
+${resetBlock}  ${statement.content.replace(/^\n+/, "")}
   ${beforeLines}
   if not ${expr.content}:
     ${afterLines}
     break
   ${afterLines}
-`
+${checkBlock}`
     },
   })
 

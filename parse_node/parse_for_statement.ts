@@ -8,6 +8,14 @@ import {
 } from "../parse_node"
 import { Test } from "../tests/test"
 
+import {
+  adoptPendingLabel,
+  labelFlagDeclarations,
+  labelFlagResets,
+  labelPropagationChecks,
+  unlabeledEntry,
+} from "./label_utils"
+
 export const parseForStatement = (
   node: ts.ForStatement,
   props: ParseState
@@ -60,11 +68,23 @@ export const parseForStatement = (
     incrementor: incrementLines.join("\n"),
   }
 
+  const incrementor = incrementLines.join("\n")
+  const incoming = props.labelStack ?? []
+  const entry = props.pendingLabel
+    ? adoptPendingLabel(props)
+    : unlabeledEntry(incrementor)
+  entry.incrementor = incrementor
+  const bodyProps = {
+    ...props,
+    pendingLabel: undefined,
+    labelStack: [...incoming, entry],
+  }
+
   const result = combine({
     parent: node,
     addIndent: true,
     nodes: [node.condition, node.statement],
-    props,
+    props: bodyProps,
     parsedStrings: (cond, statement) => {
       // A statement whose emission is entirely an extra line (e.g. a bare
       // `x--`) produces content starting with a newline; strip it so the
@@ -75,12 +95,20 @@ export const parseForStatement = (
         statement = "pass"
       }
 
+      const decls = labelFlagDeclarations(entry)
+      const resets = labelFlagResets(entry)
+      const checks = labelPropagationChecks(incoming)
+      const declBlock = decls.length > 0 ? decls.join("\n") + "\n" : ""
+      const resetBlock =
+        resets.length > 0 ? resets.map((l) => `  ${l}`).join("\n") + "\n" : ""
+      const checkBlock = checks.length > 0 ? checks.join("\n") + "\n" : ""
+
       return `
-${initializer || ""}
+${declBlock}${initializer || ""}
 while ${cond || "true"}:
-  ${statement}
+${resetBlock}  ${statement}
   ${incrementLines.join("\n")}
-`
+${checkBlock}`
     },
   })
 

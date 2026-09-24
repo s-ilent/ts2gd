@@ -40,6 +40,7 @@ import { parseGetAccessor } from "./parse_node/parse_get_accessor"
 import { parseIdentifier } from "./parse_node/parse_identifier"
 import { parseIfStatement } from "./parse_node/parse_if_statement"
 import { parseImportDeclaration } from "./parse_node/parse_import_declaration"
+import { parseLabeledStatement } from "./parse_node/parse_labeled_statement"
 import { parseMethodDeclaration } from "./parse_node/parse_method_declaration"
 import { parseNewExpression } from "./parse_node/parse_new_expression"
 import { parseNoSubstitutionTemplateLiteral } from "./parse_node/parse_no_substitution_template_expression"
@@ -85,6 +86,13 @@ export type ParseState = {
   mostRecentForStatement?: {
     incrementor: string
   }
+  /**
+   * Stack of enclosing loop entries for labeled-statement lowering; every
+   * loop pushes an entry (labeled or not). See parse_node/label_utils.ts.
+   */
+  labelStack?: import("./parse_node/label_utils").LabelEntry[]
+  /** Set by a LabeledStatement wrapping a loop, consumed by the loop. */
+  pendingLabel?: string
   usages: Map<ts.Identifier, utils.VariableInfo>
   sourceFile: ts.SourceFile
   sourceFileAsset: AssetSourceFile
@@ -363,6 +371,8 @@ export const parseNode = (
       return parseCaseClause(genericNode as ts.CaseClause, props)
     case SyntaxKind.DefaultClause:
       return parseDefaultClause(genericNode as ts.DefaultClause, props)
+    case SyntaxKind.LabeledStatement:
+      return parseLabeledStatement(genericNode as ts.LabeledStatement, props)
     case SyntaxKind.WhileStatement:
       return parseWhileStatement(genericNode as ts.WhileStatement, props)
     case SyntaxKind.DoStatement:

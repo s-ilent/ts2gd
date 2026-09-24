@@ -3,6 +3,44 @@ import ts, { SyntaxKind } from "typescript"
 import { ParseState, combine, ParseNodeType } from "../parse_node"
 import { Test } from "../tests/test"
 
+import {
+  adoptPendingLabel,
+  labelFlagDeclarations,
+  labelFlagResets,
+  labelPropagationChecks,
+  unlabeledEntry,
+} from "./label_utils"
+
+const loopLabelParts = (props: ParseState) => {
+  const incoming = props.labelStack ?? []
+  const entry = props.pendingLabel
+    ? adoptPendingLabel(props)
+    : unlabeledEntry("")
+  const bodyProps = {
+    ...props,
+    pendingLabel: undefined,
+    labelStack: [...incoming, entry],
+  }
+
+  return {
+    bodyProps,
+    declBlock:
+      labelFlagDeclarations(entry).length > 0
+        ? labelFlagDeclarations(entry).join("\n") + "\n"
+        : "",
+    resetBlock:
+      labelFlagResets(entry).length > 0
+        ? labelFlagResets(entry)
+            .map((l) => `  ${l}`)
+            .join("\n") + "\n"
+        : "",
+    checkBlock:
+      labelPropagationChecks(incoming).length > 0
+        ? labelPropagationChecks(incoming).join("\n") + "\n"
+        : "",
+  }
+}
+
 export const parseForInStatement = (
   node: ts.ForInStatement,
   props: ParseState
@@ -18,28 +56,34 @@ export const parseForInStatement = (
       throw new Error("non-1 length of declarations in for...in")
     }
 
+    const { bodyProps, declBlock, resetBlock, checkBlock } =
+      loopLabelParts(props)
+
     result = combine({
       parent: node,
       nodes: [vdl.declarations[0].name, node.expression, node.statement],
-      props,
+      props: bodyProps,
       addIndent: true,
       parsedStrings: (name, expr, statement) => `
-for ${name} in ${expr}:
-  ${statement}
-`,
+${declBlock}for ${name} in ${expr}:
+${resetBlock}  ${statement}
+${checkBlock}`,
     })
   } else {
     const initExpr = node.initializer as ts.Expression
 
+    const { bodyProps, declBlock, resetBlock, checkBlock } =
+      loopLabelParts(props)
+
     result = combine({
       parent: node,
       nodes: [initExpr, node.expression, node.statement],
-      props,
+      props: bodyProps,
       addIndent: true,
       parsedStrings: (initExpr, expr, statement) => `
-for ${initExpr} in ${expr}:
-  ${statement}
-`,
+${declBlock}for ${initExpr} in ${expr}:
+${resetBlock}  ${statement}
+${checkBlock}`,
     })
   }
 

@@ -3,6 +3,14 @@ import ts from "typescript"
 import { ParseNodeType, ParseState, combine } from "../parse_node"
 import { Test } from "../tests/test"
 
+import {
+  adoptPendingLabel,
+  labelFlagDeclarations,
+  labelFlagResets,
+  labelPropagationChecks,
+  unlabeledEntry,
+} from "./label_utils"
+
 export const parseWhileStatement = (
   node: ts.WhileStatement,
   props: ParseState
@@ -11,10 +19,20 @@ export const parseWhileStatement = (
 
   props.scope.enterScope()
 
+  const incoming = props.labelStack ?? []
+  const entry = props.pendingLabel
+    ? adoptPendingLabel(props)
+    : unlabeledEntry("")
+  const bodyProps = {
+    ...newProps,
+    pendingLabel: undefined,
+    labelStack: [...incoming, entry],
+  }
+
   const result = combine({
     parent: node,
     nodes: [node.expression, node.statement],
-    props: newProps,
+    props: bodyProps,
     addIndent: true,
     parsedObjs: (expr, statement) => {
       const beforeLines =
@@ -31,12 +49,20 @@ export const parseWhileStatement = (
       // A statement whose emission is entirely an extra line (e.g. a bare
       // `x--`) produces content starting with a newline; strip it so the
       // body cannot escape the while block's indentation.
-      return `${beforeLines}
+      const decls = labelFlagDeclarations(entry)
+      const resets = labelFlagResets(entry)
+      const checks = labelPropagationChecks(incoming)
+      const head = decls.length > 0 ? decls.join("\n") + "\n" : ""
+      const resetBlock =
+        resets.length > 0 ? resets.map((l) => `  ${l}`).join("\n") + "\n" : ""
+      const checkBlock = checks.length > 0 ? checks.join("\n") + "\n" : ""
+
+      return `${head}${beforeLines}
 while ${expr.content}:
-  ${afterLines}
+${resetBlock}  ${afterLines}
   ${statement.content.replace(/^\n+/, "")}
   ${beforeLines}
-`
+${checkBlock}`
     },
   })
 
@@ -101,5 +127,121 @@ x += 1
 while x < 10:
   print(x)
   x += 1
+`,
+}
+
+export const testWhileLabeledContinueFromNestedLoop: Test = {
+  ts: `
+let n = 0
+outer: for (let i = 0; i < 3; i++) {
+  for (let j = 0; j < 3; j++) {
+    if (j == 1) {
+      continue outer
+    }
+    n += 1
+  }
+}
+  `,
+  expected: `
+class_name __Mod_Test_4064or
+static var n: int = 0
+var __ts_continue_outer = false
+var __ts_break_outer = false
+var i: int = 0
+while i < 3:
+  __ts_continue_outer = false
+  __ts_break_outer = false
+  var j: int = 0
+  while j < 3:
+    if j == 1:
+      j += 1
+      __ts_continue_outer = true
+      break
+    n += 1
+    j += 1
+  if __ts_continue_outer:
+    __ts_continue_outer = false
+    i += 1
+    continue
+  if __ts_break_outer:
+    break
+  i += 1
+`,
+}
+
+export const testWhileLabeledBreakFromNestedLoop: Test = {
+  ts: `
+outer: for (let i = 0; i < 3; i++) {
+  for (let j = 0; j < 3; j++) {
+    if (j == 1) {
+      break outer
+    }
+  }
+}
+  `,
+  expected: `
+class_name __Mod_Test_4064or
+var __ts_continue_outer = false
+var __ts_break_outer = false
+var i: int = 0
+while i < 3:
+  __ts_continue_outer = false
+  __ts_break_outer = false
+  var j: int = 0
+  while j < 3:
+    if j == 1:
+      j += 1
+      __ts_break_outer = true
+      break
+    j += 1
+  if __ts_continue_outer:
+    __ts_continue_outer = false
+    i += 1
+    continue
+  if __ts_break_outer:
+    break
+  i += 1
+`,
+}
+
+export const testDeepLabeledContinue: Test = {
+  ts: `
+outer: for (let i = 0; i < 2; i++) {
+  for (let j = 0; j < 2; j++) {
+    for (let k = 0; k < 2; k++) {
+      if (k == 1) continue outer
+      print(i, j, k)
+    }
+  }
+}
+  `,
+  expected: `
+class_name __Mod_Test_4064or
+var __ts_continue_outer = false
+var __ts_break_outer = false
+var i: int = 0
+while i < 2:
+  __ts_continue_outer = false
+  __ts_break_outer = false
+  var j: int = 0
+  while j < 2:
+    var k: int = 0
+    while k < 2:
+      if k == 1:
+        k += 1
+        __ts_continue_outer = true
+        break
+      print(i, j, k)
+      k += 1
+    if __ts_continue_outer or __ts_break_outer:
+      break
+    j += 1
+  if __ts_continue_outer:
+    __ts_continue_outer = false
+    i += 1
+    continue
+  if __ts_break_outer:
+    break
+  i += 1
 `,
 }

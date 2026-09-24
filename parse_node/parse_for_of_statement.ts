@@ -4,7 +4,44 @@ import { ParseState, combine, ParseNodeType } from "../parse_node"
 import { Test } from "../tests/test"
 
 import { getDestructuredNamesAndAccessStrings } from "./parse_variable_declaration"
+import {
+  adoptPendingLabel,
+  labelFlagDeclarations,
+  labelFlagResets,
+  labelPropagationChecks,
+  unlabeledEntry,
+} from "./label_utils"
 const { SyntaxKind } = ts
+
+const loopLabelParts = (props: ParseState) => {
+  const incoming = props.labelStack ?? []
+  const entry = props.pendingLabel
+    ? adoptPendingLabel(props)
+    : unlabeledEntry("")
+  const bodyProps = {
+    ...props,
+    pendingLabel: undefined,
+    labelStack: [...incoming, entry],
+  }
+
+  return {
+    bodyProps,
+    declBlock:
+      labelFlagDeclarations(entry).length > 0
+        ? labelFlagDeclarations(entry).join("\n") + "\n"
+        : "",
+    resetBlock:
+      labelFlagResets(entry).length > 0
+        ? labelFlagResets(entry)
+            .map((l) => `  ${l}`)
+            .join("\n") + "\n"
+        : "",
+    checkBlock:
+      labelPropagationChecks(incoming).length > 0
+        ? labelPropagationChecks(incoming).join("\n") + "\n"
+        : "",
+  }
+}
 
 export const parseForOfStatement = (
   node: ts.ForOfStatement,
@@ -28,15 +65,18 @@ export const parseForOfStatement = (
       // Common case - single variable in for... of
       // like for (const x of list)
 
+      const { bodyProps, declBlock, resetBlock, checkBlock } =
+        loopLabelParts(props)
+
       result = combine({
         parent: node,
         nodes: [node.expression, node.statement, name],
-        props,
+        props: bodyProps,
         addIndent: true,
         parsedStrings: (expr, statement, name) => `
-for ${name} in ${expr}:
-  ${statement}
-`,
+${declBlock}for ${name} in ${expr}:
+${resetBlock}  ${statement}
+${checkBlock}`,
       })
     } else {
       // Destructured case
@@ -52,6 +92,9 @@ for ${name} in ${expr}:
 
       const genName = props.scope.createUniqueName()
 
+      const { bodyProps, declBlock, resetBlock, checkBlock } =
+        loopLabelParts(props)
+
       result = combine({
         parent: node,
         nodes: [
@@ -59,31 +102,34 @@ for ${name} in ${expr}:
           node.statement,
           ...destructuredNames.map((d) => d.id),
         ],
-        props,
+        props: bodyProps,
         addIndent: true,
         parsedStrings: (expr, statement, ...nodes) => `
-for ${genName} in ${expr}:
+${declBlock}for ${genName} in ${expr}:
 ${nodes
   .map(
     (node, i) => `  var ${node} = ${genName}${destructuredNames[i].access}\n`
   )
   .join("")}
-  ${statement}
-`,
+${resetBlock}  ${statement}
+${checkBlock}`,
       })
     }
   } else {
     const initExpr = initializer as ts.Expression
 
+    const { bodyProps, declBlock, resetBlock, checkBlock } =
+      loopLabelParts(props)
+
     result = combine({
       parent: node,
       nodes: [initExpr, node.expression, node.statement],
-      props,
+      props: bodyProps,
       addIndent: true,
       parsedStrings: (expr, statement) => `
-for ${initExpr} in ${expr}:
-  ${statement}
-`,
+${declBlock}for ${initExpr} in ${expr}:
+${resetBlock}  ${statement}
+${checkBlock}`,
     })
   }
 
@@ -114,4 +160,35 @@ for __gen in [[1, 2]]:
   var b = __gen[1]
   print(a, b)
   `,
+}
+
+export const testForOfLabeledContinue: Test = {
+  ts: `
+const arr = [1, 2]
+outer: for (const v of arr) {
+  for (const w of arr) {
+    if (w == 2) continue outer
+    print(v)
+  }
+}
+  `,
+  expected: `
+class_name __Mod_Test_4064or
+static var arr = [1, 2]
+var __ts_continue_outer = false
+var __ts_break_outer = false
+for v in arr:
+  __ts_continue_outer = false
+  __ts_break_outer = false
+  for w in arr:
+    if w == 2:
+      __ts_continue_outer = true
+      break
+    print(v)
+  if __ts_continue_outer:
+    __ts_continue_outer = false
+    continue
+  if __ts_break_outer:
+    break
+`,
 }
