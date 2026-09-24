@@ -1,10 +1,57 @@
 import ts, { SyntaxKind } from "typescript"
 
-import { ParseNodeType, ParseState, combine } from "../parse_node"
+import {
+  ExtraLineType,
+  ParseNodeType,
+  ParseState,
+  combine,
+  parseNode,
+} from "../parse_node"
 import { Test } from "../tests/test"
 import { getGodotType } from "../ts_utils"
 
 import { LibraryFunctions } from "./library_functions"
+
+// Assignment operators whose expression form GDScript rejects.
+const assignmentTokens = new Set([
+  SyntaxKind.EqualsToken,
+  SyntaxKind.PlusEqualsToken,
+  SyntaxKind.MinusEqualsToken,
+  SyntaxKind.AsteriskEqualsToken,
+  SyntaxKind.SlashEqualsToken,
+  SyntaxKind.PercentEqualsToken,
+  SyntaxKind.AmpersandEqualsToken,
+  SyntaxKind.BarEqualsToken,
+  SyntaxKind.CaretEqualsToken,
+  SyntaxKind.LessThanLessThanEqualsToken,
+  SyntaxKind.GreaterThanGreaterThanEqualsToken,
+  SyntaxKind.GreaterThanGreaterThanGreaterThanEqualsToken,
+])
+
+// An assignment only lands in a real statement position when its direct
+// (parenthesis-unwrapping) parent is an expression statement, or when it
+// fills a for-loop initializer/incrementor slot (the for lowering emits
+// those as standalone statements).
+const isStatementPosition = (node: ts.BinaryExpression): boolean => {
+  let parent: ts.Node | undefined = node.parent
+
+  while (parent && ts.isParenthesizedExpression(parent)) {
+    parent = parent.parent
+  }
+
+  if (!parent) {
+    return false
+  }
+
+  if (ts.isExpressionStatement(parent)) {
+    return true
+  }
+
+  return (
+    ts.isForStatement(parent) &&
+    (parent.initializer === node || parent.incrementor === node)
+  )
+}
 
 export const parseBinaryExpression = (
   node: ts.BinaryExpression,
@@ -70,26 +117,56 @@ export const parseBinaryExpression = (
   // GDScript has no logical assignment operators; lower them onto ternary
   // assignments. The target is only evaluated for a read, so simple lvalues
   // are exact, and the right-hand side is evaluated at most once.
+  //
+  // An assignment in VALUE position (`return x ??= y`) must additionally
+  // split: the assignment becomes a hoisted line and the expression yields
+  // the assigned lvalue, because GDScript rejects assignments inside
+  // expressions.
   if (
     node.operatorToken.kind === SyntaxKind.QuestionQuestionEqualsToken ||
     node.operatorToken.kind === SyntaxKind.BarBarEqualsToken ||
     node.operatorToken.kind === SyntaxKind.AmpersandAmpersandEqualsToken
   ) {
-    return combine({
+    const lowered = (l: string, r: string): string => {
+      switch (node.operatorToken.kind) {
+        case SyntaxKind.QuestionQuestionEqualsToken:
+          return `${l} = (${l} if (${l}) != null else ${r})`
+        case SyntaxKind.BarBarEqualsToken:
+          return `${l} = (${l} if (${l}) else ${r})`
+        default:
+          return `${l} = (${r} if (${l}) else ${l})`
+      }
+    }
+
+    if (isStatementPosition(node)) {
+      return combine({
+        parent: node,
+        nodes: [node.left, node.right],
+        props,
+        parsedStrings: (l, r) => lowered(l, r),
+      })
+    }
+
+    const leftParsed = parseNode(node.left, props)
+    const rightParsed = parseNode(node.right, props)
+    const line = lowered(leftParsed.content, rightParsed.content)
+    const result = combine({
       parent: node,
-      nodes: [node.left, node.right],
+      nodes: [],
       props,
-      parsedStrings: (l, r) => {
-        switch (node.operatorToken.kind) {
-          case SyntaxKind.QuestionQuestionEqualsToken:
-            return `${l} = (${l} if (${l}) != null else ${r})`
-          case SyntaxKind.BarBarEqualsToken:
-            return `${l} = (${l} if (${l}) else ${r})`
-          default:
-            return `${l} = (${r} if (${l}) else ${l})`
-        }
-      },
+      parsedStrings: () => leftParsed.content,
     })
+
+    result.extraLines = [
+      ...(result.extraLines ?? []),
+      {
+        type: "before",
+        lineType: ExtraLineType.NullableIntermediateExpression,
+        line,
+      },
+    ]
+
+    return result
   }
 
   const checker = props.program.getTypeChecker()
@@ -142,6 +219,44 @@ export const parseBinaryExpression = (
   }
 
   const operatorKind = node.operatorToken.kind
+
+  // Plain and compound assignments in value position split the same way:
+  // hoist the assignment, yield the lvalue.
+  if (assignmentTokens.has(operatorKind) && !isStatementPosition(node)) {
+    const leftParsed = parseNode(node.left, props)
+    const rightParsed = parseNode(node.right, props)
+    const operatorText = node.operatorToken.getText()
+    const assignmentLine =
+      operatorText === ">>>="
+        ? `${leftParsed.content} = __ts_shr_unsigned(${leftParsed.content}, ${rightParsed.content})`
+        : `${leftParsed.content}${
+            needsLeftHandSpace ? " " : ""
+          }${operatorText} ${rightParsed.content}`
+    const assignment = combine({
+      parent: node,
+      nodes: [],
+      props,
+      parsedStrings: () => leftParsed.content,
+    })
+
+    if (operatorText === ">>>=") {
+      assignment.hoistedLibraryFunctions =
+        assignment.hoistedLibraryFunctions ?? new Set()
+      assignment.hoistedLibraryFunctions.add("ts_shr_unsigned")
+    }
+
+    assignment.extraLines = [
+      ...(assignment.extraLines ?? []),
+      {
+        type: "before",
+        lineType: ExtraLineType.NullableIntermediateExpression,
+        line: assignmentLine,
+      },
+    ]
+
+    assignment.content = leftParsed.content
+    return assignment
+  }
   const isBitwiseOp = [
     SyntaxKind.AmpersandToken,
     SyntaxKind.BarToken,
@@ -366,5 +481,42 @@ static var hp: float = 3.5
 static var mask: int = 1
 hp = int(hp) & mask
 print(hp)
+`,
+}
+
+export const testAssignmentExpressionInReturn: Test = {
+  ts: `
+let current: number | undefined;
+declare let defaults: number;
+function f(): number {
+  return current ??= defaults
+}
+  `,
+  expected: `
+class_name __Mod_Test_4064or
+static var current
+static func f():
+  current = (current if (current) != null else defaults)
+  return current
+`,
+}
+
+export const testAssignmentExpressionInCondition: Test = {
+  ts: `
+let x: number;
+let y: number;
+let z = 0;
+if ((x = y)) {
+  z = 1
+}
+  `,
+  expected: `
+class_name __Mod_Test_4064or
+static var x
+static var y
+static var z: int = 0
+x = y
+if (x):
+  z = 1
 `,
 }
