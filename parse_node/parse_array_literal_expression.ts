@@ -1,18 +1,84 @@
 import ts from "typescript"
 
-import { ParseNodeType, ParseState, combine, parseNode } from "../parse_node"
+import { ParseNodeType, ParseState, combine } from "../parse_node"
 import { Test } from "../tests/test"
+
+type ElementGroup = {
+  spread: boolean
+  elements: ts.Expression[]
+}
 
 export const parseArrayLiteralExpression = (
   node: ts.ArrayLiteralExpression,
   props: ParseState
 ): ParseNodeType => {
-  return combine({
+  const hasSpread = node.elements.some((elem) => ts.isSpreadElement(elem))
+
+  if (!hasSpread) {
+    return combine({
+      parent: node,
+      nodes: node.elements,
+      props,
+      parsedStrings: (...args) => `[${args.join(", ")}]`,
+    })
+  }
+
+  // Group the elements into consecutive runs of plain and spread items, e.g.
+  // [1, ...a, 2] becomes [1] | a | [2].
+  const groups: ElementGroup[] = []
+
+  for (const elem of node.elements) {
+    const spread = ts.isSpreadElement(elem)
+    const inner = spread ? (elem as ts.SpreadElement).expression : elem
+    const last = groups[groups.length - 1]
+
+    if (last && last.spread === spread) {
+      last.elements.push(inner)
+    } else {
+      groups.push({ spread, elements: [inner] })
+    }
+  }
+
+  const result = combine({
     parent: node,
-    nodes: node.elements,
+    nodes: groups.flatMap((group) => group.elements),
     props,
-    parsedStrings: (...args) => `[${args.join(", ")}]`,
+    parsedStrings: (...args) => {
+      let index = 0
+      const parts: string[] = []
+
+      for (const group of groups) {
+        const slice = args.slice(index, index + group.elements.length)
+        index += group.elements.length
+
+        parts.push(group.spread ? slice.join(", ") : `[${slice.join(", ")}]`)
+      }
+
+      // Fold left to right through the concat helper. A leading plain group
+      // seeds the result, so the source arrays are never mutated, matching
+      // JS spread semantics of always building a fresh array.
+      let accumulator: string | null = null
+
+      for (const part of parts) {
+        accumulator =
+          accumulator === null
+            ? part
+            : `__ts_array_concat(${accumulator}, ${part})`
+      }
+
+      // A lone spread ([...a]) must still produce a copy of a.
+      if (accumulator !== null && groups[0].spread && groups.length === 1) {
+        accumulator = `__ts_array_concat([], ${accumulator})`
+      }
+
+      return accumulator ?? "[]"
+    },
   })
+
+  result.hoistedLibraryFunctions = result.hoistedLibraryFunctions ?? new Set()
+  result.hoistedLibraryFunctions.add("array_concat")
+
+  return result
 }
 
 // Tests
@@ -30,4 +96,46 @@ export const testEmptyArrayLiteral: Test = {
 export const testSparseArrayLiteral: Test = {
   ts: "const s = [1, , 3]",
   expected: "class_name __Mod_Test_4064or\nstatic var _s = [1, null, 3]",
+}
+
+export const testSpreadMiddle: Test = {
+  ts: "const a = [1]\nconst c = [0, ...a, 2]",
+  expected: `
+class_name __Mod_Test_4064or
+${""}
+static func __ts_array_concat(base, extra):
+  var result = []
+
+  if base != null:
+    result.append_array(base)
+
+  if extra != null:
+    result.append_array(extra)
+
+  return result
+${""}
+static var a = [1]
+static var _c = __ts_array_concat(__ts_array_concat([0], a), [2])
+`,
+}
+
+export const testSpreadOnlyCopies: Test = {
+  ts: "const a = [1]\nconst c = [...a]",
+  expected: `
+class_name __Mod_Test_4064or
+${""}
+static func __ts_array_concat(base, extra):
+  var result = []
+
+  if base != null:
+    result.append_array(base)
+
+  if extra != null:
+    result.append_array(extra)
+
+  return result
+${""}
+static var a = [1]
+static var _c = __ts_array_concat([], a)
+`,
 }
