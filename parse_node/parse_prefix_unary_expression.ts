@@ -9,6 +9,7 @@ import {
   ParseNodeType,
 } from "../parse_node"
 import { Test } from "../tests/test"
+import { getGodotType } from "../ts_utils"
 const { SyntaxKind } = ts
 
 export const parsePrefixUnaryExpression = (
@@ -49,9 +50,23 @@ export const parsePrefixUnaryExpression = (
           return `+${operand}`
         case SyntaxKind.MinusToken:
           return `-${operand}`
-        case SyntaxKind.TildeToken:
-          // TODO: Error?
-          return `~${operand}`
+        case SyntaxKind.TildeToken: {
+          // JS runs ToInt32 on the operand; GDScript requires an int, so
+          // bool and float operands go through int().
+          const tildeType = props.program
+            .getTypeChecker()
+            .getTypeAtLocation(node.operand)
+          const tildeGodotType = getGodotType(
+            node.operand,
+            tildeType,
+            props,
+            false
+          )
+
+          return tildeGodotType === "bool" || tildeGodotType === "float"
+            ? `~int(${operand})`
+            : `~${operand}`
+        }
         case SyntaxKind.ExclamationToken:
           return `not ${operand}`
       }
@@ -156,5 +171,15 @@ if true:
   else:
     x += 1
     print(x)
+`,
+}
+
+export const testTildeFloatCoercion: Test = {
+  ts: "let x = 1.5\nconst y = ~x\nprint(y)",
+  expected: `
+class_name __Mod_Test_4064or
+static var x: float = 1.5
+static var y = ~int(x)
+print(y)
 `,
 }

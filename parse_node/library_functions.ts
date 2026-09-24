@@ -818,7 +818,7 @@ static func __ts_new_weak_map(initial = null):
     name: "ts_shr_unsigned",
     definition: () => `
 static func __ts_shr_unsigned(a, b):
-  return (a & 0xFFFFFFFF) >> b
+  return (int(a) & 0xFFFFFFFF) >> int(b)
 `,
   },
 
