@@ -36,3 +36,8 @@ class_name __Mod_Test_4064or
 static var _x: float = 1.0
   `,
 }
+
+export const testBigIntLiteral: Test = {
+  ts: "const n = 1n",
+  expected: "class_name __Mod_Test_4064or\nstatic var _n = 1",
+}

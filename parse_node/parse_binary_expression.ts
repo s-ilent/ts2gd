@@ -66,6 +66,31 @@ export const parseBinaryExpression = (
     return result
   }
 
+  // GDScript has no logical assignment operators; lower them onto ternary
+  // assignments. The target is only evaluated for a read, so simple lvalues
+  // are exact, and the right-hand side is evaluated at most once.
+  if (
+    node.operatorToken.kind === SyntaxKind.QuestionQuestionEqualsToken ||
+    node.operatorToken.kind === SyntaxKind.BarBarEqualsToken ||
+    node.operatorToken.kind === SyntaxKind.AmpersandAmpersandEqualsToken
+  ) {
+    return combine({
+      parent: node,
+      nodes: [node.left, node.right],
+      props,
+      parsedStrings: (l, r) => {
+        switch (node.operatorToken.kind) {
+          case SyntaxKind.QuestionQuestionEqualsToken:
+            return `${l} = (${l} if (${l}) != null else ${r})`
+          case SyntaxKind.BarBarEqualsToken:
+            return `${l} = (${l} if (${l}) else ${r})`
+          default:
+            return `${l} = (${r} if (${l}) else ${l})`
+        }
+      },
+    })
+  }
+
   const checker = props.program.getTypeChecker()
 
   const leftType = checker.getTypeAtLocation(node.left)
@@ -193,4 +218,31 @@ ${LibraryFunctions.ts_shr_unsigned.definition("__ts_shr_unsigned")}
 static var x: int = 8
 x = __ts_shr_unsigned(x, 1)
   `,
+}
+
+export const testNullishAssign: Test = {
+  ts: `let x: string | null = null\nx ??= "a"`,
+  expected: `
+class_name __Mod_Test_4064or
+static var x = null
+x = (x if (x) != null else "a")
+`,
+}
+
+export const testOrAssign: Test = {
+  ts: `let x = 0\nx ||= 5`,
+  expected: `
+class_name __Mod_Test_4064or
+static var x: int = 0
+x = (x if (x) else 5)
+`,
+}
+
+export const testAndAssign: Test = {
+  ts: `let x = 1\nx &&= 5`,
+  expected: `
+class_name __Mod_Test_4064or
+static var x: int = 1
+x = (5 if (x) else x)
+`,
 }

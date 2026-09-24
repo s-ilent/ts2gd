@@ -26,3 +26,8 @@ export const testEmptyArrayLiteral: Test = {
   ts: "[]",
   expected: "class_name __Mod_Test_4064or\n[]",
 }
+
+export const testSparseArrayLiteral: Test = {
+  ts: "const s = [1, , 3]",
+  expected: "class_name __Mod_Test_4064or\nstatic var _s = [1, null, 3]",
+}
