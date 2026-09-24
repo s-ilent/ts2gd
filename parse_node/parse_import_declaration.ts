@@ -267,6 +267,192 @@ const registerImportedName = (
   props.importedNames.set(localName.text, expression)
 }
 
+/**
+ * The TS file whose module actually declares an imported symbol. Re-export
+ * chains (barrel files using `export * from`) alias symbols declared in a
+ * different module, and bindings must load the declaring module rather than
+ * the barrel.
+ */
+const declaringTsPathFor = (
+  moduleSymbol: ts.Symbol | undefined,
+  fallback: string,
+  importer: ts.SourceFile
+): string => {
+  const decl = moduleSymbol?.declarations?.[0]
+
+  if (!decl) {
+    return fallback
+  }
+
+  const file = decl.getSourceFile().fileName
+
+  if (!file || file === importer.fileName || file === fallback) {
+    return fallback
+  }
+
+  if (file.endsWith(".d.ts")) {
+    return fallback
+  }
+
+  return file
+}
+
+type EffectiveBinding = {
+  /** TS file path whose module the binding should load. */
+  tsPath: string
+  /** The member name as seen by the declaring module. */
+  memberName: string
+}
+
+const specifierTargetPath = (
+  fromFile: ts.SourceFile,
+  spec: string
+): string | undefined => {
+  if (!spec.startsWith(".")) {
+    return undefined
+  }
+
+  return path.join(path.dirname(fromFile.fileName), spec) + ".ts"
+}
+
+const sourceFileExportsName = (
+  sf: ts.SourceFile,
+  name: string,
+  props: ParseState,
+  depth: number
+): boolean => {
+  if (depth > 8) {
+    return false
+  }
+
+  for (const st of sf.statements) {
+    if (ts.isVariableStatement(st)) {
+      const exported = st.modifiers?.some(
+        (m) => m.kind === ts.SyntaxKind.ExportKeyword
+      )
+
+      if (!exported) {
+        continue
+      }
+
+      for (const d of st.declarationList.declarations) {
+        if (
+          d.name.kind === ts.SyntaxKind.Identifier &&
+          d.name.getText() === name
+        ) {
+          return true
+        }
+      }
+    } else if (
+      (ts.isFunctionDeclaration(st) ||
+        ts.isClassDeclaration(st) ||
+        ts.isEnumDeclaration(st) ||
+        ts.isTypeAliasDeclaration(st)) &&
+      st.modifiers?.some((m) => m.kind === ts.SyntaxKind.ExportKeyword) &&
+      st.name?.text === name
+    ) {
+      return true
+    } else if (ts.isExportDeclaration(st) && st.moduleSpecifier) {
+      const spec = (st.moduleSpecifier as ts.StringLiteral).text
+      const targetPath = specifierTargetPath(sf, spec)
+      const targetSf = targetPath
+        ? props.program.getSourceFile(targetPath)
+        : undefined
+
+      if (!targetSf) {
+        continue
+      }
+
+      if (
+        st.exportClause?.kind === ts.SyntaxKind.NamedExports &&
+        (st.exportClause as ts.NamedExports).elements.some(
+          (el) => (el.propertyName ?? el.name).text === name
+        )
+      ) {
+        return true
+      }
+
+      if (
+        !st.exportClause &&
+        sourceFileExportsName(targetSf, name, props, depth + 1)
+      ) {
+        return true
+      }
+    }
+  }
+
+  return false
+}
+
+/**
+ * Resolves an imported name through a barrel file's re-export chain
+ * (`export * from ...` / `export { x } from ...`), because the type checker
+ * frequently leaves star-export aliases unresolved. Returns the declaring
+ * module's file path and the member name as seen by that module.
+ */
+const resolveEffectiveBinding = (
+  importedSf: ts.SourceFile | undefined,
+  name: string,
+  props: ParseState,
+  depth = 0
+): EffectiveBinding | undefined => {
+  if (!importedSf || depth > 8) {
+    return undefined
+  }
+
+  for (const st of importedSf.statements) {
+    if (!ts.isExportDeclaration(st) || !st.moduleSpecifier) {
+      continue
+    }
+
+    const spec = (st.moduleSpecifier as ts.StringLiteral).text
+    const targetPath = specifierTargetPath(importedSf, spec)
+    const targetSf = targetPath
+      ? props.program.getSourceFile(targetPath)
+      : undefined
+
+    if (!targetSf) {
+      continue
+    }
+
+    if (
+      st.exportClause?.kind === ts.SyntaxKind.NamedExports &&
+      (st.exportClause as ts.NamedExports).elements.some(
+        (el) => el.name.text === name
+      )
+    ) {
+      const element = (st.exportClause as ts.NamedExports).elements.find(
+        (el) => el.name.text === name
+      )!
+
+      const inner = resolveEffectiveBinding(
+        targetSf,
+        (element.propertyName ?? element.name).text,
+        props,
+        depth + 1
+      )
+
+      if (inner) {
+        return inner
+      }
+
+      return {
+        tsPath: targetSf.fileName,
+        memberName: (element.propertyName ?? element.name).text,
+      }
+    }
+
+    if (
+      !st.exportClause &&
+      sourceFileExportsName(targetSf, name, props, depth + 1)
+    ) {
+      return { tsPath: targetSf.fileName, memberName: name }
+    }
+  }
+
+  return undefined
+}
+
 export const parseImportDeclaration = (
   node: ts.ImportDeclaration,
   props: ParseState
@@ -396,6 +582,22 @@ export const parseImportDeclaration = (
         .getTypeChecker()
         .getSymbolAtLocation(element.name)
 
+      // Resolve barrel re-exports to their declaring module. The static
+      // scan only fires when the imported file actually re-exports the
+      // name, so plain imports are unaffected.
+      const effectiveBinding = resolveEffectiveBinding(
+        props.program.getSourceFile(pathToImportedTs),
+        (element.propertyName ?? element.name).text,
+        props
+      )
+      const bindingMemberName = effectiveBinding
+        ? effectiveBinding.memberName
+        : (element.propertyName ?? element.name).text
+      const bindingTsPath = effectiveBinding
+        ? effectiveBinding.tsPath
+        : pathToImportedTs
+      const dbgSf = props.program.getSourceFile(pathToImportedTs)
+
       // TODO rewrite this using new project obj
 
       if (isEnumType(type)) {
@@ -456,18 +658,21 @@ export const parseImportDeclaration = (
         }
 
         if (usedAsValue) {
+          const bindingPath = declaringTsPathFor(
+            moduleSymbol,
+            bindingTsPath,
+            node.getSourceFile()
+          )
           const { receiver } = receiverDeclarationLine(
             node,
-            pathToImportedTs,
+            bindingPath,
             props,
             importLines
           )
 
-          const memberName = (element.propertyName ?? element.name).text
-
           registerImportedBinding(
             localSymbol,
-            `${receiver}.${memberName}`,
+            `${receiver}.${bindingMemberName}`,
             props
           )
         }
@@ -504,16 +709,21 @@ export const parseImportDeclaration = (
         }
 
         if (usedAsValue) {
+          const bindingPath = declaringTsPathFor(
+            moduleSymbol,
+            bindingTsPath,
+            node.getSourceFile()
+          )
           const { receiver } = receiverDeclarationLine(
             node,
-            pathToImportedTs,
+            bindingPath,
             props,
             importLines
           )
 
           registerImportedBinding(
             localSymbol,
-            `${receiver}.${element.name.text}`,
+            `${receiver}.${bindingMemberName}`,
             props
           )
         }
@@ -546,16 +756,21 @@ export const parseImportDeclaration = (
       // receiver treatment below instead.
       if (typeString === "" || typeString === "any" || typeString === "error") {
         if (usedAsValue) {
+          const bindingPath = declaringTsPathFor(
+            moduleSymbol,
+            bindingTsPath,
+            node.getSourceFile()
+          )
           const { receiver } = receiverDeclarationLine(
             node,
-            pathToImportedTs,
+            bindingPath,
             props,
             importLines
           )
 
           registerImportedBinding(
             localSymbol,
-            `${receiver}.${element.name.text}`,
+            `${receiver}.${bindingMemberName}`,
             props
           )
         }
@@ -563,10 +778,17 @@ export const parseImportDeclaration = (
         continue
       }
 
-      const isAutoload = importedSourceFile?.isAutoload() ?? false
+      const declaringPath = declaringTsPathFor(
+        moduleSymbol,
+        bindingTsPath,
+        node.getSourceFile()
+      )
+      const declaringAsset = props.project
+        .sourceFiles()
+        .find((sf) => sf.fsPath === declaringPath)
+      const isAutoload = declaringAsset?.isAutoload() ?? false
       const resPath =
-        importedSourceFile?.resPath ??
-        resPathForModule(node, pathToImportedTs, props)
+        declaringAsset?.resPath ?? resPathForModule(node, declaringPath, props)
 
       if (!isAutoload && usedAsValue) {
         imports.push({
@@ -788,4 +1010,46 @@ static var __ts_import_Garden = load("res://garden.gd")
 __ts_import_Zoo.a()
 __ts_import_Garden.b()
   `,
+}
+
+export const testReExportStarBinding: Test = {
+  files: {
+    "barrel.ts": `export * from "./m"`,
+    "m.ts": `export const q = 1`,
+  },
+  ts: `
+import { q } from "./barrel"
+
+print(q)
+  `,
+  expected: `
+class_name __Mod_Test_4064or
+static var __ts_import_M = load("res://m.gd")
+print(__ts_import_M.q)
+  `,
+}
+
+export const testReExportClassBinding: Test = {
+  files: {
+    "barrel.ts": `export * from "./m"`,
+    "m.ts": `export class C {}`,
+  },
+  ts: `
+import { C } from "./barrel"
+
+const c = new C()
+print(c)
+  `,
+  expected: `
+class_name __Mod_Test_4064or
+static var C = load("res://m.gd")
+static var c = C.new()
+print(c)
+  `,
+}
+
+export const testExportStarEmitsNothing: Test = {
+  files: { "m.ts": `export const q = 1` },
+  ts: `export * from "./m"`,
+  expected: `class_name __Mod_Test_4064or`,
 }
