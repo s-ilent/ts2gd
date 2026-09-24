@@ -19,7 +19,7 @@ import { ensureOptionalParametersLast } from "../ts_utils"
  */
 const getFreeVariables = (
   node: ts.Node | undefined | null,
-  root: ts.ArrowFunction | ts.FunctionDeclaration,
+  root: ts.ArrowFunction | ts.FunctionDeclaration | ts.FunctionExpression,
   props: ParseState
 ): (ts.Identifier | ts.PropertyAccessExpression)[] => {
   if (!node) {
@@ -76,7 +76,21 @@ Declaration not provided for free variables. This is an internal ts2gd bug. Plea
       }
 
       if (isFreeVariable) {
-        return [node as ts.Identifier | ts.PropertyAccessExpression]
+        const found = [node as ts.Identifier | ts.PropertyAccessExpression]
+
+        // A free variable bound to a nested function drags that function's
+        // own free variables along: the parent's captures dict must carry
+        // them, because the child's call-site capture object is emitted
+        // inside the parent's scope.
+        if (
+          ts.isFunctionDeclaration(decl) ||
+          ts.isArrowFunction(decl) ||
+          ts.isFunctionExpression(decl)
+        ) {
+          found.push(...getFreeVariables(decl.body, decl, props))
+        }
+
+        return found
       } else {
         return []
       }
@@ -342,4 +356,35 @@ static func __gen(n: int, captures):
   return n * 2
 var make = [Callable(self, "__gen"), {}]
   `,
+}
+
+export const testTransitiveNestedFunctionCaptures: Test = {
+  ts: `
+export function outer(): boolean {
+  let playhead = 0;
+  let playRate = 1;
+  function crossed(frame: number): boolean {
+    return playhead >= frame && playhead - playRate < frame;
+  }
+  function footsteps(): boolean {
+    return crossed(3);
+  }
+  return footsteps();
+}
+  `,
+  expected: `
+class_name __Mod_Test_4064or
+static func __nested_crossed(frame: float, captures):
+  var playhead = captures.playhead
+  var playRate = captures.playRate
+  return playhead >= frame and playhead - playRate < frame
+static func __nested_footsteps(captures):
+  var playhead = captures.playhead
+  var playRate = captures.playRate
+  return __nested_crossed(3, {"playhead": playhead, "playRate": playRate})
+static func outer():
+  var playhead: int = 0
+  var playRate: int = 1
+  return __nested_footsteps({"playhead": playhead, "playRate": playRate})
+`,
 }
