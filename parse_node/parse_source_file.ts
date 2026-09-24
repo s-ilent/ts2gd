@@ -4,7 +4,7 @@ import { ErrorName, addError } from "../errors"
 import { ParseNodeType, ParseState, combine, parseNode } from "../parse_node"
 import { Test } from "../tests/test"
 
-import { LibraryFunctions } from "./library_functions"
+import { LibraryFunctions, LibraryFunctionName } from "./library_functions"
 import { registerNestedFunctionBindings } from "./parse_function_declaration"
 
 /**
@@ -105,7 +105,9 @@ export const parseSourceFile = (
     parsedClass: ParseNodeType
     classDecl: ts.ClassDeclaration | ts.ClassExpression
   }[] = []
-  let hoistedLibraryFunctionDefinitions = ""
+  // Helpers are collected by name and emitted exactly once per file, no
+  // matter how many classes or module-level statements requested them.
+  const hoistedLibraryFunctionNames = new Set<LibraryFunctionName>()
   let hoistedEnumImports = ""
   let hoistedArrowFunctions = ""
 
@@ -165,8 +167,7 @@ export const parseSourceFile = (
     }
 
     for (const lf of parsedStatement.hoistedLibraryFunctions ?? []) {
-      hoistedLibraryFunctionDefinitions +=
-        LibraryFunctions[lf].definition("__" + LibraryFunctions[lf].name) + "\n"
+      hoistedLibraryFunctionNames.add(lf)
     }
 
     for (const af of parsedStatement.hoistedArrowFunctions ?? []) {
@@ -189,8 +190,7 @@ export const parseSourceFile = (
       : undefined
 
   for (const lf of codegenToplevelStatements?.hoistedLibraryFunctions ?? []) {
-    hoistedLibraryFunctionDefinitions +=
-      LibraryFunctions[lf].definition("__" + LibraryFunctions[lf].name) + "\n"
+    hoistedLibraryFunctionNames.add(lf)
   }
 
   for (const af of codegenToplevelStatements?.hoistedArrowFunctions ?? []) {
@@ -200,6 +200,13 @@ export const parseSourceFile = (
   for (const fi of codegenToplevelStatements?.files ?? []) {
     files.push(fi)
   }
+
+  const hoistedLibraryFunctionDefinitions = [...hoistedLibraryFunctionNames]
+    .map(
+      (lf) =>
+        LibraryFunctions[lf].definition("__" + LibraryFunctions[lf].name) + "\n"
+    )
+    .join("")
 
   for (const { fileName, parsedClass, classDecl } of parsedClassDeclarations) {
     files.push({
@@ -307,4 +314,19 @@ class_name Test
 func go():
   breakpoint
 `,
+}
+
+export const testHelperEmittedOnceAcrossClassAndModuleScope: Test = {
+  ts: `
+const cues = new Set<string>()
+export class Foo {
+  private owners = new Set<string>()
+}
+  `,
+  expected: `
+class_name Foo
+${LibraryFunctions.ts_new_set.definition("__ts_new_set")}
+static var _cues = __ts_new_set()
+var owners = __ts_new_set()
+  `,
 }

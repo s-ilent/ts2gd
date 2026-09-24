@@ -5,7 +5,7 @@ import { Test } from "../tests/test"
 import { ensureOptionalParametersLast } from "../ts_utils"
 
 import { getCapturedScope } from "./parse_arrow_function"
-import { LibraryFunctions } from "./library_functions"
+import { LibraryFunctionName, LibraryFunctions } from "./library_functions"
 
 export const parseObjectLiteralExpression = (
   node: ts.ObjectLiteralExpression,
@@ -39,6 +39,11 @@ export const parseObjectLiteralExpression = (
     node: ts.ArrowFunction
     content: string
   }[] = []
+
+  // Lifted method bodies may themselves request runtime helpers and hoist
+  // their own generated functions; those must survive to the file level.
+  const methodHoistedLibraryFunctions = new Set<LibraryFunctionName>()
+  const methodHoistedArrowFunctions: ParseNodeType["hoistedArrowFunctions"] = []
   const methodAccessorNames = new Set<string>()
 
   const hoistFunctionLikeMember = (
@@ -47,7 +52,13 @@ export const parseObjectLiteralExpression = (
       | ts.GetAccessorDeclaration
       | ts.SetAccessorDeclaration,
     props: ParseState
-  ): { name: string; value: string; content: string } => {
+  ): {
+    name: string
+    value: string
+    content: string
+    hoistedLibraryFunctions?: Set<LibraryFunctionName>
+    hoistedArrowFunctions?: ParseNodeType["hoistedArrowFunctions"]
+  } => {
     const name = props.scope.createUniqueName()
     const { capturedScopeObject, unwrapCapturedScope } = getCapturedScope(
       member as unknown as ts.ArrowFunction,
@@ -61,12 +72,17 @@ export const parseObjectLiteralExpression = (
 
     props.scope.enterScope()
 
+    // Parameters are parsed before the body so that references inside the
+    // body resolve through the scope to the parameters' emitted (possibly
+    // renamed) names.
     const parsed = combine({
       parent: member,
-      nodes: [member.body, ...member.parameters],
+      nodes: [...member.parameters, member.body],
       props,
       addIndent: true,
-      parsedStrings: (body, ...args) => {
+      parsedStrings: (...allParsed) => {
+        const args = allParsed.slice(0, -1)
+        const body = allParsed[allParsed.length - 1]
         const signature = ensureOptionalParametersLast(
           [...args, "captures"].join(", ")
         )
@@ -93,6 +109,8 @@ ${unwrapCapturedScope}
       name,
       value: `[Callable(${callableTarget}, "${name}"), ${capturedScopeObject}]`,
       content: parsed.content,
+      hoistedLibraryFunctions: parsed.hoistedLibraryFunctions,
+      hoistedArrowFunctions: parsed.hoistedArrowFunctions,
     }
   }
 
@@ -121,6 +139,12 @@ ${unwrapCapturedScope}
       methodAccessorNames.add(key)
 
       const hoisted = hoistFunctionLikeMember(member, props)
+
+      for (const lf of hoisted.hoistedLibraryFunctions ?? []) {
+        methodHoistedLibraryFunctions.add(lf)
+      }
+
+      methodHoistedArrowFunctions.push(...(hoisted.hoistedArrowFunctions ?? []))
 
       hoistedMethodFunctions.push({
         name: hoisted.name,
@@ -286,7 +310,12 @@ ${pairs.map(([k, v]) => `  ${k}: ${v},`).join("\n")}
 
   return {
     ...result,
+    hoistedLibraryFunctions: new Set([
+      ...(result.hoistedLibraryFunctions ?? []),
+      ...methodHoistedLibraryFunctions,
+    ]),
     hoistedArrowFunctions: [
+      ...methodHoistedArrowFunctions,
       ...hoistedMethodFunctions,
       ...(result.hoistedArrowFunctions ?? []),
     ],
@@ -480,5 +509,37 @@ static var _obj = {
   "total": 5,
   "doubled": [Callable(__Mod_Test_4064or, "__gen"), {}],
 }
+  `,
+}
+
+export const testObjectLiteralMethodHoistsLibraryHelper: Test = {
+  ts: `
+export function make(): { tick: () => void } {
+  return {
+    tick(): void {
+      const roster: number[] = []
+      const rec = roster.find(r => r === 1)
+      void rec
+    },
+  }
+}
+void make
+  `,
+  expected: `
+class_name __Mod_Test_4064or
+${LibraryFunctions.ts_array_find.definition("__ts_array_find")}
+${LibraryFunctions.ts_call_fn.definition("__ts_call_fn")}
+${LibraryFunctions.ts_truthy.definition("__ts_truthy")}
+static func __gen1(r, captures):
+  return r == 1
+static func __gen(captures):
+  var roster = []
+  var rec = __ts_array_find(roster, [Callable(__Mod_Test_4064or, "__gen1"), {}])
+  null
+static func make():
+  return {
+    "tick": [Callable(__Mod_Test_4064or, "__gen"), {}],
+  }
+null
   `,
 }
