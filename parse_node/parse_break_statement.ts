@@ -64,7 +64,7 @@ class_name __Mod_Test_4064or
 
 
 static func _static_init():
-  static var x: int = 0
+  var x: int = 0
 
   while x < 10:
     x += 1
@@ -94,7 +94,7 @@ class_name __Mod_Test_4064or
 
 
 static func _static_init():
-  static var x: int = 0
+  var x: int = 0
 
   while x < 10:
     if x == 0:

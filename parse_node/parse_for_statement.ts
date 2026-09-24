@@ -140,7 +140,7 @@ class_name __Mod_Test_4064or
 
 
 static func _static_init():
-  static var i: int = 0
+  var i: int = 0
 
   while i < 6:
     print(i)
@@ -149,7 +149,7 @@ static func _static_init():
     i += 1
 
 
-  static var i1: int = 0
+  var i1: int = 0
 
   while i1 < 5:
     print(i1)
@@ -158,7 +158,7 @@ static func _static_init():
     i1 += 1
 
 
-  static var i2: int = 0
+  var i2: int = 0
 
   while i2 < 5:
     print(i2)
@@ -182,7 +182,7 @@ class_name __Mod_Test_4064or
 
 
 static func _static_init():
-  static var x: int = 0
+  var x: int = 0
 
   while x < 10:
     pass
@@ -205,7 +205,7 @@ class_name __Mod_Test_4064or
 
 
 static func _static_init():
-  static var i: int = 0
+  var i: int = 0
 
   while i < 10:
     print(i)
@@ -231,7 +231,7 @@ class_name __Mod_Test_4064or
 
 
 static func _static_init():
-  static var i: int = 1
+  var i: int = 1
 
   while i < 100:
     print(i)
@@ -260,7 +260,7 @@ class_name __Mod_Test_4064or
 
 
 static func _static_init():
-  static var i: int = 0
+  var i: int = 0
 
   while i < 10:
     if i == 4:
