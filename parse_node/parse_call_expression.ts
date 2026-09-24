@@ -828,6 +828,38 @@ export const parseCallExpression = (
       })
     }
 
+    // String.match(/re/) maps onto RegEx.search with receiver and argument
+    // swapped: the pattern argument becomes the RegEx instance and the
+    // string receiver becomes the subject. The result is a RegExMatch like
+    // exec, so element access on it rewrites through the same rule. The
+    // receiver test is literal-tolerant: a const initialized with a string
+    // literal carries the literal type, whose apparent type is string.
+    if (functionName === "match" && args.length === 1) {
+      const matchChecker = props.program.getTypeChecker()
+      const receiverApparent = matchChecker.typeToString(
+        matchChecker.getApparentType(
+          matchChecker.getTypeAtLocation(prop.expression)
+        )
+      )
+      const isStringReceiver =
+        isStringBase ||
+        receiverApparent === "string" ||
+        receiverApparent === "String"
+
+      if (
+        isStringReceiver &&
+        matchChecker.typeToString(matchChecker.getTypeAtLocation(args[0])) ===
+          "RegExp"
+      ) {
+        return combine({
+          parent: node,
+          nodes: [args[0], prop.expression],
+          props,
+          parsedStrings: (regex, subject) => `${regex}.search(${subject})`,
+        })
+      }
+    }
+
     if (functionName === "toLowerCase" && isStringBase) {
       return combine({
         parent: node,
@@ -2679,4 +2711,25 @@ static func __ts_new_array(size = null):
 static func blanks(n: float):
   return __ts_new_array(n).fill(null)
 `,
+}
+
+export const testStringMatchMapsToSearch: Test = {
+  ts: `
+const code = "Digit5"
+const m = code.match(/^(?:Digit|Numpad)([0-9])$/)
+const x = m[1]
+  `,
+  expected: `
+class_name __Mod_Test_4064or
+static func __ts_regex(pattern: String, flags: String) -> RegEx:
+  var regex = RegEx.new()
+  var effective = pattern
+  if flags.contains("i"):
+    effective = "(?i)" + effective
+  regex.compile(effective)
+  return regex
+static var code = "Digit5"
+static var m = __ts_regex("^(?:Digit|Numpad)([0-9])$", "").search(code)
+static var _x = m.get_string(1)
+  `,
 }
