@@ -3,6 +3,8 @@ import ts from "typescript"
 import { ParseNodeType, ParseState, combine } from "../parse_node"
 import { Test } from "../tests/test"
 
+import { escapeGdString } from "./parse_string_literal"
+
 export const parseRegularExpressionLiteral = (
   node: ts.RegularExpressionLiteral,
   props: ParseState
@@ -25,11 +27,14 @@ export const parseRegularExpressionLiteral = (
   const pattern = text.slice(1, lastSlash)
   const flags = text.slice(lastSlash + 1)
 
+  // The pattern keeps its JS backslash syntax (\d, \.); escape it so the
+  // GDScript string literal round-trips the backslashes to RegEx intact.
   const result = combine({
     parent: node,
     nodes: [],
     props,
-    parsedStrings: () => `__ts_regex("${pattern}", "${flags}")`,
+    parsedStrings: () =>
+      `__ts_regex("${escapeGdString(pattern)}", "${escapeGdString(flags)}")`,
   })
 
   result.hoistedLibraryFunctions = result.hoistedLibraryFunctions ?? new Set()
@@ -52,5 +57,22 @@ static func __ts_regex(pattern: String, flags: String) -> RegEx:
   regex.compile(effective)
   return regex
 static var _r = __ts_regex("abc", "g")
+`,
+}
+
+export const testRegexLiteralEscapes: Test = {
+  ts: "const r = /Texture_(\\d+)_(\\d+)/",
+  expected: `
+class_name __Mod_Test_4064or
+static func __ts_regex(pattern: String, flags: String) -> RegEx:
+  var regex = RegEx.new()
+  var effective = pattern
+
+  if flags.contains("i"):
+    effective = "(?i)" + effective
+
+  regex.compile(effective)
+  return regex
+static var _r = __ts_regex("Texture_(\\\\d+)_(\\\\d+)", "")
 `,
 }
