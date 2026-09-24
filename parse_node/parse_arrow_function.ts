@@ -285,24 +285,33 @@ export const parseArrowFunction = (
     nodes: [node.body, ...node.parameters],
     props,
     addIndent: true,
-    parsedStrings: (body, ...args) => {
+    parsedObjs: (bodyParsed, ...argParsed) => {
       const signature = ensureOptionalParametersLast(
-        [...args, "captures"].join(", ")
+        [...argParsed.map((a) => a.content), "captures"].join(", ")
       )
 
       if (node.body.kind === SyntaxKind.Block) {
         return `
 ${funcKind} ${name}(${signature}):
 ${unwrapCapturedScope}
-  ${body.trim() === "" ? "pass" : body}
+  ${bodyParsed.content.trim() === "" ? "pass" : bodyParsed.content}
         `
       } else {
-        // Single line arrow function, with implicit return.
+        // Single line arrow function, with implicit return. Hoisted
+        // intermediate lines produced while parsing the body expression
+        // belong inside the generated function, before the implicit return,
+        // since the body references the names they declare.
+        const extra = bodyParsed.extraLines ?? []
+        const before = extra
+          .filter((line) => line.type === "before")
+          .map((line) => "  " + line.line)
+          .join("\n")
+        bodyParsed.extraLines = extra.filter((line) => line.type !== "before")
 
         return `
 ${funcKind} ${name}(${signature}):
-${unwrapCapturedScope}
-  return ${body}
+${unwrapCapturedScope}${before ? "\n" + before : ""}
+  return ${bodyParsed.content}
         `
       }
     },
@@ -439,5 +448,31 @@ static func outer(ctx):
   var stats = __gen.stats
   var A: int = 2
   return __nested_resolve(1, {"stats": stats, "A": A, "rng": rng}) + stats
+`,
+}
+
+export const testArrowBodyHoistsNullableIntermediate: Test = {
+  ts: `
+interface Shape { kind: string; demo?: { kind: string } | null }
+
+function apply(f: (b: Shape) => boolean, b: Shape): boolean {
+  return f(b);
+}
+
+export function check(b: Shape): boolean {
+  return apply(b2 => b2.kind === "x" && b2.demo?.kind === "type1", b);
+}
+  `,
+  expected: `
+class_name __Mod_Test_4064or
+static func __gen(b2, captures):
+  var __gen1 = b2.demo
+  return b2.kind == "x" and (__gen1.kind if __gen1 != null else null) == "type1"
+
+static func apply(f, b):
+  return f[0].call(b, f[1])
+
+static func check(b):
+  return apply([Callable(__Mod_Test_4064or, "__gen"), {}], b)
 `,
 }
