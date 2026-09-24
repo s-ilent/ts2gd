@@ -15,6 +15,7 @@ import {
   isDictionary,
   isEnumType,
   isNullableNode,
+  resolvesToRegexMatch,
 } from "../ts_utils"
 
 import { LibraryFunctionName, LibraryFunctions } from "./library_functions"
@@ -491,6 +492,18 @@ export const parsePropertyAccessExpression = (
       if (rhs === "length" && isRhs(node)) {
         if (isArrayType(exprType)) {
           return `${lhs}.size()`
+        }
+
+        // A regexp group result (match[0]) is a string at runtime even
+        // when the producing call is untyped (empty RegExp interface), so
+        // its member lookups follow the string rules. Length on the match
+        // object itself keeps the raw spelling (no corpus usage; its JS
+        // semantics differ from any single Godot member).
+        if (
+          ts.isElementAccessExpression(node.expression) &&
+          resolvesToRegexMatch(node.expression.expression, tc)
+        ) {
+          return `${lhs}.length()`
         }
 
         if (exprType.flags & ts.TypeFlags.String) {

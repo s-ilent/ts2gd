@@ -483,3 +483,104 @@ export const ensureOptionalParametersLast = (paramString: string): string => {
     })
     .join(", ")
 }
+
+const regExResultTypePattern = /RegExp(Exec|Match)?Array\b/
+
+const isRegexMatchProducingCall = (
+  call: ts.CallExpression,
+  checker: ts.TypeChecker
+): boolean => {
+  const callee = call.expression
+
+  if (!ts.isPropertyAccessExpression(callee)) {
+    return false
+  }
+
+  const receiverTypeString = checker.typeToString(
+    checker.getTypeAtLocation(callee.expression)
+  )
+
+  if (callee.name.text === "exec") {
+    return (
+      receiverTypeString === "RegExp" ||
+      ts.isRegularExpressionLiteral(callee.expression)
+    )
+  }
+
+  if (callee.name.text === "match") {
+    // Literal-tolerant: a const initialized with a string literal carries
+    // the literal type, whose apparent type is the String interface.
+    const apparent = checker.typeToString(
+      checker.getApparentType(checker.getTypeAtLocation(callee.expression))
+    )
+
+    return apparent === "string" || apparent === "String"
+  }
+
+  return false
+}
+
+const unwrapAssertions = (expr: ts.Expression): ts.Expression | undefined => {
+  let current: ts.Expression | undefined = expr
+
+  while (
+    current &&
+    (ts.isNonNullExpression(current) || ts.isParenthesizedExpression(current))
+  ) {
+    current = current.expression
+  }
+
+  return current
+}
+
+/**
+ * Whether an expression evaluates to a Godot RegExMatch at runtime. The
+ * corpus compiles with an empty RegExp interface, so exec/match results are
+ * untyped (any) and a pure type-based test cannot see them; detection
+ * therefore follows the producing call syntactically:
+ *   - the expression IS a .exec(...) / .match(...) call on a RegExp or
+ *     string receiver, or
+ *   - the expression is a variable whose initializer is such a call
+ *     (non-null assertions and parentheses are unwrapped).
+ * When the surrounding project does declare the standard result types, the
+ * type-string test catches those shapes first.
+ */
+export const resolvesToRegexMatch = (
+  node: ts.Expression,
+  checker: ts.TypeChecker
+): boolean => {
+  if (
+    regExResultTypePattern.test(
+      checker.typeToString(checker.getTypeAtLocation(node))
+    )
+  ) {
+    return true
+  }
+
+  if (ts.isCallExpression(node)) {
+    return isRegexMatchProducingCall(node, checker)
+  }
+
+  if (ts.isIdentifier(node) || ts.isPropertyAccessExpression(node)) {
+    const decl = checker.getSymbolAtLocation(node)?.declarations?.[0]
+    let init: ts.Expression | undefined
+
+    if (decl && ts.isVariableDeclaration(decl)) {
+      init = decl.initializer
+    } else if (decl && ts.isPropertyDeclaration(decl)) {
+      init = decl.initializer
+    } else if (decl && ts.isParameter(decl)) {
+      init = decl.initializer
+    }
+
+    init = init ? unwrapAssertions(init) : undefined
+
+    return (
+      !!init &&
+      ts.isCallExpression(init) &&
+      isRegexMatchProducingCall(init, checker)
+    )
+  }
+
+  return false
+}
