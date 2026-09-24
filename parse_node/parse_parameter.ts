@@ -100,6 +100,20 @@ export const parseParameter = (
         return `${name}${initializer ? ` = ${magic}` : ""}`
       }
 
+      // Type-optional parameters (`pos?: Vec3`) carry no initializer but
+      // may still be omitted at call sites; without the magic default they
+      // compile as required parameters and every call that omits them
+      // fails the arity check. Fall back to null when not passed.
+      if (node.questionToken) {
+        initializers.push({
+          line: `${name} = (null if (typeof(${name}) == TYPE_STRING and ${name} == ${magic}) else ${name})`,
+          type: "after",
+          lineType: ExtraLineType.DefaultInitialization,
+        })
+
+        return `${name} = ${magic}`
+      }
+
       return `${unusedPrefix}${name}${typeString}${
         initializer ? " = null" : ""
       }`

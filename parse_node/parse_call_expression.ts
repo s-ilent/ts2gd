@@ -2087,7 +2087,8 @@ export function relay(def?: { childKinds?: string[] }): boolean {
   `,
   expected: `
 class_name __Mod_Test_4064or
-static func relay(def):
+static func relay(def = "[no value passed in]"):
+  def = (null if (typeof(def) == TYPE_STRING and def == "[no value passed in]") else def)
   var __gen = def
   var __gen1 = (__gen.childKinds if __gen != null else null)
   return (__gen1.includes if __gen1 != null else null).call("a") == true
