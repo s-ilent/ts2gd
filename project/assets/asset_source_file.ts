@@ -8,6 +8,7 @@ import chalk from "chalk"
 import { ErrorName, TsGdError, addError } from "../../errors"
 import { Scope } from "../../scope"
 import TsGdProject from "../project"
+import { getNodeDecorators } from "../../ts_utils"
 import { parseNode } from "../../parse_node"
 
 import { BaseAsset } from "./base_asset"
@@ -278,7 +279,7 @@ ${chalk.green(
       return false
     }
 
-    for (const dec of classNode.decorators ?? []) {
+    for (const dec of getNodeDecorators(classNode)) {
       if (dec.expression.getText() === "autoload") {
         return true
       }

@@ -4,6 +4,7 @@ import { UsageDomain } from "tsutils"
 import { ErrorName, addError } from "../errors"
 import { ParseNodeType, ParseState, combine, parseNode } from "../parse_node"
 import { Test } from "../tests/test"
+import { getNodeDecorators } from "../ts_utils"
 
 import { LibraryFunctions, LibraryFunctionName } from "./library_functions"
 import { preRegisterImportAliases } from "./parse_import_declaration"
@@ -38,7 +39,7 @@ const getClassDeclarationHeader = (
     }
   }
 
-  const isTool = !!node.decorators?.find(
+  const isTool = getNodeDecorators(node).some(
     (dec) => dec.expression.getText() === "tool"
   )
 

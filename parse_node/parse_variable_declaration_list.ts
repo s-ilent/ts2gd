@@ -89,8 +89,5 @@ class_name __Mod_Test_4064or
 static var _CUES = {
   0x28: "swing",
 }
-
-static func _static_init():
-  pass
 `,
 }

@@ -354,6 +354,12 @@ export const parseNode = (
       )
     case SyntaxKind.AsExpression:
       return parseNode((genericNode as ts.AsExpression).expression, props)
+    case SyntaxKind.SatisfiesExpression:
+      // Compile-time-only type assertion; the value expression is emitted.
+      return parseNode(
+        (genericNode as ts.SatisfiesExpression).expression,
+        props
+      )
     case SyntaxKind.NewExpression:
       return parseNewExpression(genericNode as ts.NewExpression, props)
     case SyntaxKind.PostfixUnaryExpression:

@@ -3,7 +3,7 @@ import ts, { SyntaxKind } from "typescript"
 import { ErrorName, addError } from "../errors"
 import { ParseNodeType, ParseState, combine } from "../parse_node"
 import { Test } from "../tests/test"
-import { getGodotType } from "../ts_utils"
+import { getNodeDecorators, getGodotType } from "../ts_utils"
 
 import {
   isDecoratedAsExportFlags,
@@ -86,7 +86,7 @@ export const parseClassDeclaration = (
     })
   }
 
-  const isAutoload = !!node.decorators?.find(
+  const isAutoload = getNodeDecorators(node).some(
     (dec) => dec.expression.getText() === "autoload"
   )
 

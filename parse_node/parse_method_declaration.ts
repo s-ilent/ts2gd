@@ -1,7 +1,7 @@
 import ts from "typescript"
 
 import { ParseNodeType, ParseState, combine } from "../parse_node"
-import { ensureOptionalParametersLast } from "../ts_utils"
+import { ensureOptionalParametersLast, getNodeDecorators } from "../ts_utils"
 import { Test } from "../tests/test"
 import { mangleMemberDeclName } from "../scope"
 
@@ -32,7 +32,7 @@ export const parseMethodDeclaration = (
   let isRemoteSync = false
   let isStatic = node.modifiers?.some((v) => v.getText() === "static") ?? false
 
-  for (const dec of node.decorators ?? []) {
+  for (const dec of getNodeDecorators(node)) {
     if (dec.expression.getText() === "remote") {
       isRemote = true
     }

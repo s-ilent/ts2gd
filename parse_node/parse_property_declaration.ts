@@ -5,7 +5,12 @@ import { ErrorName, addError } from "../errors"
 import { ParseNodeType, ParseState, combine } from "../parse_node"
 import { mangleMemberDeclName } from "../scope"
 import { Test } from "../tests/test"
-import { getGodotType, getTypeHierarchy, isEnumType } from "../ts_utils"
+import {
+  getNodeDecorators,
+  getGodotType,
+  getTypeHierarchy,
+  isEnumType,
+} from "../ts_utils"
 
 export const isDecoratedAsExports = (
   node:
@@ -13,7 +18,7 @@ export const isDecoratedAsExports = (
     | ts.GetAccessorDeclaration
     | ts.SetAccessorDeclaration
 ) => {
-  return !!node.decorators?.find(
+  return getNodeDecorators(node).some(
     (dec) =>
       dec.expression.getText() === "exports" ||
       (ts.isCallExpression(dec.expression) &&
@@ -28,7 +33,7 @@ export const parseExports = (
     | ts.SetAccessorDeclaration,
   props: ParseState
 ) => {
-  const decoration = node.decorators?.find(
+  const decoration = getNodeDecorators(node).find(
     (dec) =>
       dec.expression.getText() === "exports" ||
       (ts.isCallExpression(dec.expression) &&
@@ -191,7 +196,7 @@ export const isDecoratedAsExportFlags = (
     | ts.GetAccessorDeclaration
     | ts.SetAccessorDeclaration
 ): boolean => {
-  return !!node.decorators?.find((dec) =>
+  return getNodeDecorators(node).some((dec) =>
     dec.expression.getText().startsWith("export_flags")
   )
 }
@@ -203,7 +208,7 @@ export const parseExportFlags = (
     | ts.SetAccessorDeclaration,
   props: ParseState
 ): string => {
-  const decoration = node.decorators?.find((dec) =>
+  const decoration = getNodeDecorators(node).find((dec) =>
     dec.expression.getText().startsWith("export_flags")
   )
 

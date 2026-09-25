@@ -584,3 +584,13 @@ export const resolvesToRegexMatch = (
 
   return false
 }
+
+/**
+ * Decorators of a node. Legacy decorator handling was merged into the
+ * modifiers array on Node subtypes that support it; the old `decorators`
+ * property no longer carries them.
+ */
+export const getNodeDecorators = (node: ts.Node): readonly ts.Decorator[] =>
+  (ts.canHaveModifiers(node) ? node.modifiers : undefined)?.filter(
+    (m): m is ts.Decorator => m.kind === SyntaxKind.Decorator
+  ) ?? []
