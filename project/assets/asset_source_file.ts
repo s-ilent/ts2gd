@@ -44,6 +44,7 @@ export class AssetSourceFile extends BaseAsset {
   project: TsGdProject
 
   private _isAutoload: boolean
+  private _primaryClassResPath: string | undefined
 
   constructor(sourceFilePath: string, project: TsGdProject) {
     super()
@@ -70,6 +71,48 @@ export class AssetSourceFile extends BaseAsset {
     this.project = project
     this._isAutoload = !!this.project.godotProject.autoloads.find(
       (a) => a.resPath === this.resPath
+    )
+  }
+
+  /**
+   * The res path of the script carrying this module's runtime members.
+   * Multi-class modules compile each class into its own script named after
+   * the class and duplicate the module-level declarations into every one of
+   * those files, so the first declared class's script serves as the module's
+   * load target. Class-less modules emit at the asset path itself.
+   */
+  primaryClassResPath(): string {
+    if (this._primaryClassResPath === undefined) {
+      this._primaryClassResPath = this.resPath
+
+      const ast = this.getAst()
+
+      if (!("error" in ast)) {
+        const firstClass = ast.statements.find(
+          (st) =>
+            ts.isClassDeclaration(st) &&
+            st.name &&
+            !(st.modifiers ?? []).some((m) => m.getText() === "declare")
+        ) as ts.ClassDeclaration | undefined
+
+        if (firstClass?.name) {
+          this._primaryClassResPath = this.project.paths.fsPathToResPath(
+            this.gdContainingDirectory + firstClass.name.text + ".gd"
+          )
+        }
+      }
+    }
+
+    return this._primaryClassResPath
+  }
+
+  /**
+   * The res path of a named class's emitted script inside this module's
+   * directory.
+   */
+  classResPathFor(className: string): string {
+    return this.project.paths.fsPathToResPath(
+      this.gdContainingDirectory + className + ".gd"
     )
   }
 

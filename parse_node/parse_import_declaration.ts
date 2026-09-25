@@ -83,7 +83,7 @@ const resPathForModule = (
     .find((sf) => sf.fsPath === pathToImportedTs)
 
   if (importedSourceFile) {
-    return importedSourceFile.resPath
+    return importedSourceFile.primaryClassResPath()
   }
 
   try {
@@ -1023,8 +1023,9 @@ export const parseImportDeclaration = (
         .sourceFiles()
         .find((sf) => sf.fsPath === declaringPath)
       const isAutoload = declaringAsset?.isAutoload() ?? false
-      const resPath =
-        declaringAsset?.resPath ?? resPathForModule(node, declaringPath, props)
+      const resPath = declaringAsset
+        ? declaringAsset.classResPathFor(typeString)
+        : resPathForModule(node, declaringPath, props)
 
       if (!isAutoload && usedAsValue) {
         imports.push({
