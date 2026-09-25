@@ -540,9 +540,10 @@ export const parseCallExpression = (
         nodes: [...args],
         props,
         parsedStrings: (...parsed) =>
-          `${nestedBinding.name}(${[...parsed, nestedBinding.captures()].join(
-            ", "
-          )})`,
+          `${nestedBinding.isCoroutine ? "await " : ""}${nestedBinding.name}(${[
+            ...parsed,
+            nestedBinding.captures(),
+          ].join(", ")})`,
       })
     }
 

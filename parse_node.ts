@@ -142,7 +142,7 @@ export type ParseState = {
    */
   nestedFunctionBindings?: Map<
     ts.Symbol,
-    { name: string; captures: () => string }
+    { name: string; captures: () => string; isCoroutine?: boolean }
   >
 }
 
