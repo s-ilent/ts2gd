@@ -4,7 +4,19 @@ import { ParseNodeType, ParseState, combine } from "../parse_node"
 import { Test } from "../tests/test"
 import { mangleGdName, mangleMemberAccessName } from "../scope"
 
-import { LibraryFunctions } from "./library_functions"
+import { LibraryFunctions, LibraryFunctionName } from "./library_functions"
+
+/**
+ * Global classes that stand in for shim script resources loaded from
+ * res://_ts_shims. Bare value references compile to the loaded script
+ * (Error.new -> __ts_Error.new) and static members read off it.
+ */
+export const globalShimClassLibs: Record<string, LibraryFunctionName> = {
+  Error: "ts_error_class",
+  Date: "ts_date_class",
+  DataView: "ts_data_view_class",
+  WeakRef: "ts_weak_ref_class",
+}
 
 /**
  * Ambient JavaScript environment globals that stand in for a browser host.
@@ -76,6 +88,31 @@ export const parseIdentifier = (
     return result
   }
 
+  // Remaining global one-shot helpers map their bare identifier onto the
+  // hoisted helper function: calls compose naturally, and function-value
+  // positions pass the helper reference as a Callable.
+  const globalHelperIdents: Record<string, LibraryFunctionName> = {
+    Number: "ts_number",
+    Symbol: "ts_symbol",
+    structuredClone: "ts_structured_clone",
+    encodeURIComponent: "ts_encode_uri_component",
+  }
+
+  if (name in globalHelperIdents) {
+    const libName = globalHelperIdents[name]
+    const result = combine({
+      parent: node,
+      nodes: [],
+      props,
+      parsedStrings: () => `__${libName}`,
+    })
+
+    result.hoistedLibraryFunctions = result.hoistedLibraryFunctions ?? new Set()
+    result.hoistedLibraryFunctions.add(libName)
+
+    return result
+  }
+
   // The ambient decision is computed before parsing children so the helper
   // is only hoisted when the mapping will actually fire: the identifier must
   // resolve to no declaration and must not be a member name.
@@ -92,7 +129,13 @@ export const parseIdentifier = (
 
   // The global Error value maps to the shim class; the hoist is decided
   // before parsing so the load line only lands when the mapping fires.
-  const isGlobalError = !isAccessName && !scopeName && name === "Error"
+  const isGlobalShimClass =
+    !isAccessName && !scopeName && name in globalShimClassLibs
+
+  // The environment shim backs globalThis and feature-detected browser
+  // services in both value and member-base positions.
+  const isEnvShimBase =
+    !scopeName && (name === "globalThis" || name === "indexedDB")
 
   const result = combine({
     parent: node,
@@ -189,6 +232,18 @@ export const parseIdentifier = (
           return props.importedNames.get(node.text)!
         }
 
+        // The global object and feature-detected browser services resolve
+        // to the shared environment shim in both value and member-base
+        // positions; unassigned shim members read back null so feature
+        // tests (typeof x == "undefined") still hold.
+        if (node.text === "globalThis") {
+          return "__ts_env()"
+        }
+
+        if (node.text === "indexedDB") {
+          return "__ts_env().indexedDB"
+        }
+
         // Ambient JavaScript environment globals resolve to a shared
         // stand-in object; free environment functions become method calls
         // on it. Skipped when the identifier names a member, so member
@@ -205,9 +260,10 @@ export const parseIdentifier = (
           // The global Error constructor/value stands in for the shim script
           // resource: Error.new(...) becomes __ts_Error.new(...), and
           // instanceof Error is rewritten separately (is requires a type
-          // name, not a value).
-          if (node.text === "Error") {
-            return "__ts_Error"
+          // name, not a value). Other global classes with shims (Date,
+          // DataView, WeakRef) follow the same pattern.
+          if (node.text in globalShimClassLibs) {
+            return `__ts_${node.text}`
           }
         }
 
@@ -228,10 +284,10 @@ export const parseIdentifier = (
     },
   })
 
-  if (isAmbientGlobal || isGlobalError) {
+  if (isAmbientGlobal || isGlobalShimClass || isEnvShimBase) {
     result.hoistedLibraryFunctions = result.hoistedLibraryFunctions ?? new Set()
     result.hoistedLibraryFunctions.add(
-      isGlobalError ? "ts_error_class" : "ts_env"
+      isGlobalShimClass ? globalShimClassLibs[name] : "ts_env"
     )
   }
 
@@ -281,4 +337,129 @@ class_name __Mod_Test_4064or
 static func go(window: int):
   return window + 1
   `,
+}
+
+export const testGlobalShimClassesAndEnv: Test = {
+  ts: `
+\
+export class Test {
+  static stamp() {
+    return Date.now()
+  }
+  static view(bytes) {
+    return new DataView(bytes, 0, bytes.length)
+  }
+  static hold(obj) {
+    return new WeakRef(obj)
+  }
+  static globals() {
+    return globalThis
+  }
+  static hasStore() {
+    return typeof indexedDB == "undefined"
+  }
+  static castValue(values) {
+    return values.map(Number)
+  }
+}
+  `,
+  expected: `
+
+# This file has been autogenerated by ts2gd. DO NOT EDIT!
+
+
+
+class_name Test
+    
+
+
+static var __ts_Date = load("res://_ts_shims/ts_date.gd")
+
+
+static var __ts_DataView = load("res://_ts_shims/ts_data_view.gd")
+
+
+static var __ts_WeakRef = load("res://_ts_shims/ts_weak_ref.gd")
+
+
+static var __ts_env_instance = null
+
+static func __ts_env():
+  if __ts_env_instance == null:
+    __ts_env_instance = load("res://_ts_shims/ts_env.gd").new()
+  return __ts_env_instance
+
+
+static func __ts_typeof(v):
+  match typeof(v):
+    TYPE_NIL:
+      return "undefined"
+    TYPE_BOOL:
+      return "boolean"
+    TYPE_INT, TYPE_FLOAT:
+      return "number"
+    TYPE_STRING:
+      return "string"
+    TYPE_CALLABLE:
+      return "function"
+    _:
+      return "object"
+
+
+static func __ts_number(x):
+  if x is bool:
+    return 1.0 if x else 0.0
+  if x is String:
+    return x.to_float()
+  return float(x)
+
+
+static func __ts_array_map(arr, f):
+  var out := []
+  for item in arr:
+    out.append(__ts_call_fn(f, [item]))
+  return out
+
+
+static func __ts_call_fn(f, args):
+  if f is Array and f.size() == 2 and f[0] is Callable:
+    var all_args: Array = args.duplicate()
+    if f[1] is Dictionary and not f[1].is_empty():
+      all_args.append(f[1])
+    return f[0].callv(all_args)
+  if f is Callable:
+    return f.callv(args)
+  return null
+
+
+static func __ts_truthy(v):
+  match typeof(v):
+    TYPE_BOOL:
+      return v
+    TYPE_INT, TYPE_FLOAT:
+      return v != 0
+    TYPE_STRING:
+      return v != ""
+    TYPE_NIL:
+      return false
+    _:
+      return v != null
+
+
+
+
+
+static func stamp():
+  return __ts_Date.now()
+static func view(bytes):
+  return __ts_DataView.new(bytes, 0, bytes.length)
+static func hold(obj):
+  return __ts_WeakRef.new(obj)
+static func globals():
+  return __ts_env()
+static func hasStore():
+  return __ts_typeof(__ts_env().indexedDB) == "undefined"
+static func castValue(values):
+  return __ts_array_map(values, __ts_number)
+`,
 }

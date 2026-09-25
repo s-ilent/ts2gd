@@ -14,6 +14,7 @@ import { isArrayType, isDictionary, isNullableNode } from "../ts_utils"
 import { mangleGdName } from "../scope"
 
 import { LibraryFunctionName, LibraryFunctions } from "./library_functions"
+import { globalShimClassLibs } from "./parse_identifier"
 import { getCapturedScope } from "./parse_arrow_function"
 import { gdMathMember } from "./parse_property_access_expression"
 
@@ -311,6 +312,60 @@ export const parseCallExpression = (
         parsedStrings: (...parsed) => `str(${parsed.join(", ")})`,
       })
     }
+
+    // assert(condition, message) accepts any message value on the JS side;
+    // GDScript's assert requires a String, so non-string messages route
+    // through a helper that stringifies before asserting.
+    if (calleeName === "assert" && args.length === 2) {
+      const msgType = props.program.getTypeChecker().getTypeAtLocation(args[1])
+      const msgIsString = props.program
+        .getTypeChecker()
+        .typeToString(msgType)
+        .startsWith('"')
+
+      if (!msgIsString) {
+        const result = combine({
+          parent: node,
+          nodes: [...args],
+          props,
+          parsedStrings: (...parsed) => `__ts_assert(${parsed.join(", ")})`,
+        })
+
+        result.hoistedLibraryFunctions =
+          result.hoistedLibraryFunctions ?? new Set()
+        result.hoistedLibraryFunctions.add("ts_assert")
+
+        return result
+      }
+    }
+
+    // Global one-off functions without GDScript builtins route through
+    // hoisted helpers.
+    const globalHelperCalls: Record<string, [LibraryFunctionName, number]> = {
+      Symbol: ["ts_symbol", 1],
+      structuredClone: ["ts_structured_clone", 1],
+      encodeURIComponent: ["ts_encode_uri_component", 1],
+    }
+
+    if (
+      calleeName in globalHelperCalls &&
+      args.length >= 1 &&
+      args.length <= globalHelperCalls[calleeName][1]
+    ) {
+      const libName = globalHelperCalls[calleeName][0]
+      const result = combine({
+        parent: node,
+        nodes: [...args],
+        props,
+        parsedStrings: (...parsed) => `__${libName}(${parsed.join(", ")})`,
+      })
+
+      result.hoistedLibraryFunctions =
+        result.hoistedLibraryFunctions ?? new Set()
+      result.hoistedLibraryFunctions.add(libName)
+
+      return result
+    }
   }
 
   if (node.expression.kind === SyntaxKind.SuperKeyword) {
@@ -518,6 +573,28 @@ export const parseCallExpression = (
     const prop = node.expression as ts.PropertyAccessExpression
     const functionName = prop.name.getText()
 
+    // Static calls on global shim classes (Date.now()) resolve through
+    // the loaded shim script resource.
+    if (
+      ts.isIdentifier(prop.expression) &&
+      (prop.expression as ts.Identifier).text in globalShimClassLibs
+    ) {
+      const className = (prop.expression as ts.Identifier).text
+      const result = combine({
+        parent: node,
+        nodes: [...args],
+        props,
+        parsedStrings: (...parsed) =>
+          `__ts_${className}.${functionName}(${parsed.join(", ")})`,
+      })
+
+      result.hoistedLibraryFunctions =
+        result.hoistedLibraryFunctions ?? new Set()
+      result.hoistedLibraryFunctions.add(globalShimClassLibs[className])
+
+      return result
+    }
+
     const type = props.program
       .getTypeChecker()
       .getTypeAtLocation(prop.expression)
@@ -613,6 +690,39 @@ export const parseCallExpression = (
       baseTypeAsString === "Array" ||
       baseTypeAsString.startsWith("Array<") ||
       baseTypeAsString.startsWith("ReadonlyArray<")
+    // Aliased and error-typed receivers stringify under their own names
+    // (`ItemData1`, `error`); the apparent type resolves aliases to the
+    // underlying shape so structural routing still applies.
+    const apparentBaseType = props.program
+      .getTypeChecker()
+      .typeToString(
+        props.program
+          .getTypeChecker()
+          .getApparentType(
+            props.program.getTypeChecker().getTypeAtLocation(prop.expression)
+          )
+      )
+    const isArrayApparent =
+      isArrayBase ||
+      apparentBaseType.endsWith("]") ||
+      apparentBaseType === "Array" ||
+      apparentBaseType.startsWith("Array<") ||
+      apparentBaseType.startsWith("ReadonlyArray<")
+    const isUntypedBase = ["any", "unknown", "error", "void"].includes(
+      baseTypeAsString
+    )
+    // Members declared in project source (user classes) keep native call
+    // emission; only builtin-shaped receivers route through helpers. A
+    // member that resolves into the injected declaration files is library
+    // shaped (the alias type itself may still stringify under its own
+    // name), and untyped/error receivers resolve no member at all.
+    const memberDeclarations =
+      props.program.getTypeChecker().getSymbolAtLocation(prop.name)
+        ?.declarations ?? []
+    const isUserMember = memberDeclarations.some(
+      (d) => !d.getSourceFile().isDeclarationFile
+    )
+    const isLibMember = !isUserMember && memberDeclarations.length > 0
     const isNumberBase = ["float", "int", "number", "Number", "Float"].includes(
       baseTypeAsString
     )
@@ -680,7 +790,11 @@ export const parseCallExpression = (
     // JS slice always returns a fresh array with clamped, negative-tolerant
     // bounds; the no-arg form is a copy. GDScript's native slice requires
     // both arguments and String has none at all.
-    if (functionName === "slice" && isArrayBase) {
+    if (
+      functionName === "slice" &&
+      !isUserMember &&
+      (isArrayApparent || isUntypedBase || isLibMember)
+    ) {
       const result = combine({
         parent: node,
         nodes: [prop.expression, ...args],
@@ -719,9 +833,12 @@ export const parseCallExpression = (
     // JS fill/sort return the array, GDScript's return void; calls used as
     // expressions route through helpers that mutate and hand the array
     // back. Statement-position calls are also safe through the helper.
+    // Untyped and alias-typed receivers route too: GDScript resolves the
+    // member dynamically and only reports the void return at use sites.
     if (
       (functionName === "fill" || functionName === "sort") &&
-      isArrayBase &&
+      !isUserMember &&
+      (isArrayApparent || isUntypedBase || isLibMember) &&
       args.length === (functionName === "fill" ? 1 : 0)
     ) {
       const libName =
@@ -2705,11 +2822,16 @@ static func __ts_new_array(size = null):
   return a
 
 
+static func __ts_array_filled(arr, value):
+  arr.fill(value)
+  return arr
+
+
 
 
 
 static func blanks(n: float):
-  return __ts_new_array(n).fill(null)
+  return __ts_array_filled(__ts_new_array(n), null)
 `,
 }
 
@@ -2732,4 +2854,172 @@ static var code = "Digit5"
 static var m = __ts_regex("^(?:Digit|Numpad)([0-9])$", "").search(code)
 static var _x = m.get_string(1)
   `,
+}
+
+export const testUntypedReceiverArrayMethods: Test = {
+  ts: `
+\
+type NumberList = number[]
+export class Test {
+  static copy(data: NumberList) {
+    return data.slice()
+  }
+  static zeroed(out: number[]) {
+    return out.fill(0)
+  }
+  static ordered(items: { a: number }) {
+    return Object.keys(items).sort()
+  }
+}
+  `,
+  expected: `
+
+# This file has been autogenerated by ts2gd. DO NOT EDIT!
+
+
+
+class_name Test
+    
+
+
+static func __ts_array_slice(arr, start = null, end = null):
+  var n: int = arr.size()
+  var b: int = 0 if start == null else (start if start >= 0 else n + start)
+  var e: int = n if end == null else (end if end >= 0 else n + end)
+  b = max(b, 0)
+  e = min(e, n)
+  var out := []
+  for i in range(b, e):
+    out.append(arr[i])
+  return out
+
+
+static func __ts_array_filled(arr, value):
+  arr.fill(value)
+  return arr
+
+
+static func __ts_object_keys(obj):
+  if obj is Dictionary:
+    return obj.keys()
+  return []
+
+
+static func __ts_array_sorted(arr):
+  arr.sort()
+  return arr
+
+
+
+
+
+static func copy(data):
+  return __ts_array_slice(data)
+static func zeroed(out):
+  return __ts_array_filled(out, 0)
+static func ordered(items):
+  return __ts_array_sorted(__ts_object_keys(items))
+`,
+}
+
+export const testAssertStringifiesDynamicMessages: Test = {
+  ts: `
+\
+export class Test {
+  static check(value: number) {
+    assert(value > 0, new Error("bad " + value))
+    assert(value > 0, "must be positive")
+  }
+}
+  `,
+  expected: `
+
+# This file has been autogenerated by ts2gd. DO NOT EDIT!
+
+
+
+class_name Test
+    
+
+
+static var __ts_Error = load("res://_ts_shims/ts_error.gd")
+
+
+static func __ts_assert(condition, message = null):
+  if not __ts_truthy(condition):
+    var text := "Assertion failed"
+    if message != null:
+      text = str(message)
+    push_error(text)
+    assert(false, text)
+
+
+
+
+
+static func check(value: float):
+  __ts_assert(value > 0, __ts_Error.new("bad " + value))
+  assert(value > 0, "must be positive")
+`,
+}
+
+export const testGlobalOneOffHelpers: Test = {
+  ts: `
+\
+export class Test {
+  static token() {
+    return Symbol("mark")
+  }
+  static deepCopy(value) {
+    return structuredClone(value)
+  }
+  static escapePart(value: string) {
+    return encodeURIComponent(value)
+  }
+}
+  `,
+  expected: `
+
+# This file has been autogenerated by ts2gd. DO NOT EDIT!
+
+
+
+class_name Test
+    
+
+
+static var __ts_symbol_next_id := 0
+
+static func __ts_symbol(description = ""):
+  __ts_symbol_next_id += 1
+  return "symbol:%s#%d" % [str(description), __ts_symbol_next_id]
+
+
+static func __ts_structured_clone(value):
+  if value is Array or value is Dictionary:
+    return value.duplicate(true)
+  return value
+
+
+static func __ts_encode_uri_component(s):
+  var out := ""
+  for b in str(s).to_utf8_buffer():
+    var unreserved := (b >= 0x41 and b <= 0x5a) or (b >= 0x61 and b <= 0x7a) or (b >= 0x30 and b <= 0x39) or b == 0x2d or b == 0x5f or b == 0x2e or b == 0x7e
+    if unreserved:
+      out += char(b)
+    else:
+      out += "%%%02X" % b
+  return out
+
+
+
+
+
+static func token():
+  return __ts_symbol("mark")
+static func deepCopy(value):
+  return __ts_structured_clone(value)
+static func escapePart(value: String):
+  return __ts_encode_uri_component(value)
+`,
 }

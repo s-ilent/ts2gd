@@ -19,6 +19,7 @@ import {
 } from "../ts_utils"
 
 import { LibraryFunctionName, LibraryFunctions } from "./library_functions"
+import { globalShimClassLibs } from "./parse_identifier"
 
 const mathGlobals: Record<string, string> = {
   abs: "abs",
@@ -167,6 +168,28 @@ export const parsePropertyAccessExpression = (
 
       return result
     }
+  }
+
+  // Static members of global shim classes (Date.now, WeakRef-style
+  // statics) read off the loaded shim script resource. Instance members
+  // on shim instances flow through untouched; the class-name base is the
+  // only position remapped.
+  if (
+    ts.isIdentifier(node.expression) &&
+    (node.expression as ts.Identifier).text in globalShimClassLibs
+  ) {
+    const shimClassName = (node.expression as ts.Identifier).text
+    const result = combine({
+      parent: node,
+      nodes: [],
+      props,
+      parsedStrings: () => `__ts_${shimClassName}.${node.name.text}`,
+    })
+
+    result.hoistedLibraryFunctions = result.hoistedLibraryFunctions ?? new Set()
+    result.hoistedLibraryFunctions.add(globalShimClassLibs[shimClassName])
+
+    return result
   }
 
   // Promise statics compile to hoisted helpers. all() degrades to returning

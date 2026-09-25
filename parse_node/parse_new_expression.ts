@@ -4,6 +4,7 @@ import { ParseNodeType, ParseState, combine } from "../parse_node"
 import { Test } from "../tests/test"
 
 import { LibraryFunctionName, LibraryFunctions } from "./library_functions"
+import { globalShimClassLibs } from "./parse_identifier"
 
 const collectionShims: Record<string, LibraryFunctionName> = {
   Set: "ts_new_set",
@@ -52,20 +53,21 @@ export const parseNewExpression = (
   node: ts.NewExpression,
   props: ParseState
 ): ParseNodeType => {
-  // new Error(...) constructs the shim class resource.
+  // new Error(...) and friends construct the shim class resources.
   if (
     node.expression.kind === SyntaxKind.Identifier &&
-    (node.expression as ts.Identifier).text === "Error"
+    (node.expression as ts.Identifier).text in globalShimClassLibs
   ) {
+    const className = (node.expression as ts.Identifier).text
     const result = combine({
       parent: node,
       nodes: [...(node.arguments ?? [])],
       props,
-      parsedStrings: (...args) => `__ts_Error.new(${args.join(", ")})`,
+      parsedStrings: (...args) => `__ts_${className}.new(${args.join(", ")})`,
     })
 
     result.hoistedLibraryFunctions = result.hoistedLibraryFunctions ?? new Set()
-    result.hoistedLibraryFunctions.add("ts_error_class")
+    result.hoistedLibraryFunctions.add(globalShimClassLibs[className])
 
     return result
   }

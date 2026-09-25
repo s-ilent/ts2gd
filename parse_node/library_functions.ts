@@ -26,6 +26,13 @@ export type LibraryFunctionName =
   | "ts_array_filled"
   | "ts_array_sorted"
   | "ts_error_class"
+  | "ts_date_class"
+  | "ts_data_view_class"
+  | "ts_weak_ref_class"
+  | "ts_assert"
+  | "ts_symbol"
+  | "ts_structured_clone"
+  | "ts_encode_uri_component"
   | "ts_int32_from"
   | "ts_number"
   | "ts_new_set"
@@ -773,6 +780,76 @@ static func __ts_array_sorted(arr):
     name: "ts_error_class",
     definition: () => `
 static var __ts_Error = load("res://_ts_shims/ts_error.gd")
+`,
+  },
+
+  ts_date_class: {
+    name: "ts_date_class",
+    definition: () => `
+static var __ts_Date = load("res://_ts_shims/ts_date.gd")
+`,
+  },
+
+  ts_data_view_class: {
+    name: "ts_data_view_class",
+    definition: () => `
+static var __ts_DataView = load("res://_ts_shims/ts_data_view.gd")
+`,
+  },
+
+  ts_weak_ref_class: {
+    name: "ts_weak_ref_class",
+    definition: () => `
+static var __ts_WeakRef = load("res://_ts_shims/ts_weak_ref.gd")
+`,
+  },
+
+  ts_assert: {
+    name: "ts_assert",
+    definition: () => `
+static func __ts_assert(condition, message = null):
+  if not __ts_truthy(condition):
+    var text := "Assertion failed"
+    if message != null:
+      text = str(message)
+    push_error(text)
+    assert(false, text)
+`,
+  },
+
+  ts_symbol: {
+    name: "ts_symbol",
+    definition: () => `
+static var __ts_symbol_next_id := 0
+
+static func __ts_symbol(description = ""):
+  __ts_symbol_next_id += 1
+  return "symbol:%s#%d" % [str(description), __ts_symbol_next_id]
+`,
+  },
+
+  ts_structured_clone: {
+    name: "ts_structured_clone",
+    definition: () => `
+static func __ts_structured_clone(value):
+  if value is Array or value is Dictionary:
+    return value.duplicate(true)
+  return value
+`,
+  },
+
+  ts_encode_uri_component: {
+    name: "ts_encode_uri_component",
+    definition: () => `
+static func __ts_encode_uri_component(s):
+  var out := ""
+  for b in str(s).to_utf8_buffer():
+    var unreserved := (b >= 0x41 and b <= 0x5a) or (b >= 0x61 and b <= 0x7a) or (b >= 0x30 and b <= 0x39) or b == 0x2d or b == 0x5f or b == 0x2e or b == 0x7e
+    if unreserved:
+      out += char(b)
+    else:
+      out += "%%%02X" % b
+  return out
 `,
   },
 
