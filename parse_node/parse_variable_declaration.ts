@@ -126,15 +126,70 @@ export const parseVariableDeclaration = (
   if (node.name.kind === SyntaxKind.Identifier) {
     props.scope.addName(node.name)
 
+    // Detect references to the variable being declared inside its own
+    // initializer. JS allows them inside closures (the closure reads the
+    // final value when it runs); the eagerly-evaluated GDScript initializer
+    // would reference the variable before it exists. The references are
+    // nulled out at emission, the declaration splits into an assignment, and
+    // a late-binding pass points the captured slots at the final value.
+    const declSymbol = props.program
+      .getTypeChecker()
+      .getSymbolAtLocation(node.name)
+    let selfCapturing = false
+
+    if (node.initializer && declSymbol) {
+      const checker = props.program.getTypeChecker()
+
+      const findSelfReference = (n: ts.Node): void => {
+        if (
+          n !== node.name &&
+          ts.isIdentifier(n) &&
+          checker.getSymbolAtLocation(n) === declSymbol
+        ) {
+          selfCapturing = true
+        }
+
+        n.forEachChild(findSelfReference)
+      }
+
+      node.initializer.forEachChild(findSelfReference)
+    }
+
     const parsed = combine({
       parent: node,
       nodes: [node.name, node.initializer],
       props,
-      parsedStrings: (nodeName, init) =>
-        `${
-          isModuleLevel ? "static " : ""
-        }var ${unused}${nodeName}${typeString}${init ? " = " + init : ""}`,
+      parsedStrings: (nodeName, init) => {
+        if (!selfCapturing || !init) {
+          return `${
+            isModuleLevel ? "static " : ""
+          }var ${unused}${nodeName}${typeString}${init ? " = " + init : ""}`
+        }
+
+        // Null out references to the variable inside its own initializer.
+        // They only appear as captured values inside function-value tuples,
+        // so a quote-bounded token replacement is precise; dictionary keys
+        // carrying the same text are inside string literals and stay intact.
+        const nulled = init.replace(
+          new RegExp(`(?<!["\\w])${nodeName}(?![\\w"])`, "g"),
+          "null"
+        )
+        const sourceName =
+          node.name.kind === SyntaxKind.Identifier ? node.name.text : ""
+
+        if (isModuleLevel) {
+          return `static var ${unused}${nodeName}${typeString} = ${nulled}`
+        }
+
+        return `var ${nodeName}${typeString} = null\n${nodeName} = ${nulled}\n__ts_patch_captures(${nodeName}, "${sourceName}", ${nodeName})`
+      },
     })
+
+    if (selfCapturing && !isModuleLevel) {
+      parsed.hoistedLibraryFunctions =
+        parsed.hoistedLibraryFunctions ?? new Set()
+      parsed.hoistedLibraryFunctions.add("ts_patch_captures")
+    }
 
     props.inStaticContext = previousStaticContext
 
@@ -483,5 +538,56 @@ class_name __Mod_Test_4064or
 static var IP_ = { "cool": 55, "chargePower": 420 }
 static func range_(unit: float):
   return IP_.chargeUnits * unit
+  `,
+}
+
+export const testSelfCapturingInitializerSplitsAndPatches: Test = {
+  ts: `
+export class Test {
+  direct() {
+    const tick = () => {
+      tick()
+    }
+    return tick
+  }
+}
+  `,
+  expected: `
+class_name Test
+
+static func __ts_patch_captures(root, name, value):
+  __ts_patch_captures_walk(root, name, value, [])
+
+
+static func __ts_patch_captures_walk(node, name, value, seen):
+  if node == null:
+    return
+  if not (node is Array or node is Dictionary):
+    return
+  for prior in seen:
+    if is_same(prior, node):
+      return
+  seen.append(node)
+  if node is Array and node.size() == 2 and node[0] is Callable and node[1] is Dictionary:
+    var caps: Dictionary = node[1]
+    if caps.has(name) and caps[name] == null:
+      caps[name] = value
+    __ts_patch_captures_walk(caps, name, value, seen)
+  elif node is Dictionary:
+    for k in node:
+      __ts_patch_captures_walk(node[k], name, value, seen)
+  else:
+    for entry in node:
+      __ts_patch_captures_walk(entry, name, value, seen)
+
+static func __gen(captures):
+  var tick = captures.tick
+  tick[0].call(tick[1])
+
+func direct():
+  var tick = null
+  tick = [Callable(self, "__gen"), {"tick": null}]
+  __ts_patch_captures(tick, "tick", tick)
+  return tick
   `,
 }

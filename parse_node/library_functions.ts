@@ -30,6 +30,7 @@ export type LibraryFunctionName =
   | "ts_data_view_class"
   | "ts_weak_ref_class"
   | "ts_assert"
+  | "ts_patch_captures"
   | "ts_symbol"
   | "ts_structured_clone"
   | "ts_encode_uri_component"
@@ -416,6 +417,36 @@ static func __ts_object_has_own(obj, key):
     definition: () => `
 static func __ts_object_create(_proto = null):
   return {}
+`,
+  },
+
+  ts_patch_captures: {
+    name: "ts_patch_captures",
+    definition: () => `
+static func __ts_patch_captures(root, name, value):
+  __ts_patch_captures_walk(root, name, value, [])
+
+
+static func __ts_patch_captures_walk(node, name, value, seen):
+  if node == null:
+    return
+  if not (node is Array or node is Dictionary):
+    return
+  for prior in seen:
+    if is_same(prior, node):
+      return
+  seen.append(node)
+  if node is Array and node.size() == 2 and node[0] is Callable and node[1] is Dictionary:
+    var caps: Dictionary = node[1]
+    if caps.has(name) and caps[name] == null:
+      caps[name] = value
+    __ts_patch_captures_walk(caps, name, value, seen)
+  elif node is Dictionary:
+    for k in node:
+      __ts_patch_captures_walk(node[k], name, value, seen)
+  else:
+    for entry in node:
+      __ts_patch_captures_walk(entry, name, value, seen)
 `,
   },
 
