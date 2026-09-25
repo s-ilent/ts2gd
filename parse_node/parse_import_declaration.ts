@@ -395,6 +395,7 @@ const preRegisterNamedImportBindings = (
         memberName,
         localSymbol,
         element.name,
+        moduleSymbol,
         props
       )
       continue
@@ -431,6 +432,7 @@ const preRegisterNamedImportBindings = (
       memberName,
       localSymbol,
       element.name,
+      moduleSymbol,
       props
     )
   }
@@ -442,9 +444,18 @@ const reserveNamedBinding = (
   memberName: string,
   localSymbol: ts.Symbol | undefined,
   localName: ts.Identifier,
+  moduleSymbol: ts.Symbol | undefined,
   props: ParseState
 ): void => {
-  const { receiver } = receiverForModule(node, bindingTsPath, props)
+  // The main pass emits the receiver line under the declaring module's path
+  // (barrel re-exports resolve through it), so the reservation must key the
+  // receiver identically or use sites would name a receiver never emitted.
+  const receiverPath = declaringTsPathFor(
+    moduleSymbol,
+    bindingTsPath,
+    node.getSourceFile()
+  )
+  const { receiver } = receiverForModule(node, receiverPath, props)
   const expression = `${receiver}.${memberName}`
 
   if (localSymbol) {
