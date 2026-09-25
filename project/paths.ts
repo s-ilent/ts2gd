@@ -102,6 +102,13 @@ export class Paths {
           __dirname,
           args.tsgdPath
         )
+      } else {
+        // a bare file name relative to the working directory; without this
+        // the project root stays "." and every res:// path slices wrongly.
+        fullyQualifiedTs2gdPathWithFilename = path.join(
+          process.cwd(),
+          args.tsgdPath
+        )
       }
     } else {
       // Check if we can find the ts2gd.json in the current folder
