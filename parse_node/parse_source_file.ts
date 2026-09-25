@@ -1,4 +1,5 @@
 import ts, { SyntaxKind } from "typescript"
+import { UsageDomain } from "tsutils"
 
 import { ErrorName, addError } from "../errors"
 import { ParseNodeType, ParseState, combine, parseNode } from "../parse_node"
@@ -296,6 +297,13 @@ export const parseSourceFile = (
     files.push(fi)
   }
 
+  // The assert helper's template checks its condition through the truthiness
+  // helper, so emitting one must pull in the other regardless of whether any
+  // user code requested a truthiness check of its own.
+  if (hoistedLibraryFunctionNames.has("ts_assert")) {
+    hoistedLibraryFunctionNames.add("ts_truthy")
+  }
+
   const hoistedLibraryFunctionDefinitions = [...hoistedLibraryFunctionNames]
     .map(
       (lf) =>
@@ -303,12 +311,60 @@ export const parseSourceFile = (
     )
     .join("")
 
+  /**
+   * Names used as runtime values anywhere in the source file, by text. The
+   * usage map is keyed by identifier nodes, so this flattens it once for
+   * lookup by the per-file sibling receivers below.
+   */
+  const valueUsedNames = new Set<string>()
+
+  for (const [id, info] of props.usages.entries()) {
+    if (
+      id.kind === SyntaxKind.Identifier &&
+      info.uses.some((use) => use.domain & UsageDomain.Value)
+    ) {
+      valueUsedNames.add(id.text)
+    }
+  }
+
+  /**
+   * A module with several top-level classes compiles each class into its own
+   * script, so sibling classes stop being visible by name. Value-used
+   * siblings get a load() receiver in every sibling file (except the class's
+   * own file, where the class name already resolves), mirroring how
+   * cross-module class imports are emitted.
+   */
+  const siblingReceiversFor = (selfName: string): string => {
+    if (parsedClassDeclarations.length < 2) {
+      return ""
+    }
+
+    const dir = props.sourceFileAsset?.gdContainingDirectory ?? ""
+    const toRes = (fsPath: string): string =>
+      props.project?.paths?.fsPathToResPath
+        ? props.project.paths.fsPathToResPath(fsPath)
+        : "res://" + fsPath.replace(/^\/+/, "")
+
+    const lines = parsedClassDeclarations
+      .map((pc) => pc.classDecl.name?.text)
+      .filter(
+        (name): name is string =>
+          !!name && name !== selfName && valueUsedNames.has(name)
+      )
+      .map(
+        (name) => `static var ${name} = load("${toRes(dir + name + ".gd")}")\n`
+      )
+
+    return lines.join("")
+  }
+
   for (const { fileName, parsedClass, classDecl } of parsedClassDeclarations) {
     files.push({
       filePath: fileName,
       body: `
 ${getFileHeader()}
 ${getClassDeclarationHeader(classDecl, props)}    
+${siblingReceiversFor(classDecl.name?.text ?? "")}
 ${hoistedEnumImports}
 ${hoistedLibraryFunctionDefinitions}
 ${hoistedArrowFunctions}
@@ -368,6 +424,40 @@ export class Test2 { }
       {
         fileName: "/Users/johnfn/MyGame/compiled/Test2.gd",
         expected: `class_name Test2`,
+      },
+    ],
+  },
+}
+
+export const testSiblingClassReceiverAcrossSplitFiles: Test = {
+  ts: `
+export class Alpha {
+  build() {
+    return new Beta()
+  }
+}
+
+export class Beta {
+  value() {
+    return 7
+  }
+}
+  `,
+  expected: {
+    type: "multiple-files",
+    files: [
+      {
+        fileName: "/Users/johnfn/MyGame/compiled/Alpha.gd",
+        expected: `class_name Alpha
+static var Beta = load("res://Users/johnfn/MyGame/compiled/Beta.gd")
+func build():
+  return Beta.new()`,
+      },
+      {
+        fileName: "/Users/johnfn/MyGame/compiled/Beta.gd",
+        expected: `class_name Beta
+func value():
+  return 7`,
       },
     ],
   },

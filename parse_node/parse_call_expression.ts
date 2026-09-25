@@ -3051,7 +3051,18 @@ static func __ts_assert(condition, message = null):
     assert(false, text)
 
 
-
+static func __ts_truthy(v):
+  match typeof(v):
+    TYPE_BOOL:
+      return v
+    TYPE_INT, TYPE_FLOAT:
+      return v != 0
+    TYPE_STRING:
+      return v != ""
+    TYPE_NIL:
+      return false
+    _:
+      return v != null
 
 
 static func check(value: float):
