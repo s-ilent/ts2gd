@@ -87,29 +87,6 @@ export class Paths {
 
     if (args.tsgdPath) {
       ts2gdPath = args.tsgdPath
-
-      // relativeTs2gdPath is now a path of some sort, but it could be a relative path (e.g. "./ts2gd.json").
-      // Let's make it fully qualified.
-
-      if (ts2gdPath.startsWith("/")) {
-        // absolute path
-
-        fullyQualifiedTs2gdPathWithFilename = ts2gdPath
-      } else if (ts2gdPath.startsWith(".")) {
-        // some sort of relative path, so resolve it
-
-        fullyQualifiedTs2gdPathWithFilename = path.join(
-          __dirname,
-          args.tsgdPath
-        )
-      } else {
-        // a bare file name relative to the working directory; without this
-        // the project root stays "." and every res:// path slices wrongly.
-        fullyQualifiedTs2gdPathWithFilename = path.join(
-          process.cwd(),
-          args.tsgdPath
-        )
-      }
     } else {
       // Check if we can find the ts2gd.json in the current folder
 
@@ -125,7 +102,12 @@ export class Paths {
       ts2gdPath = ts2gdInCurrentFolderPath
     }
 
-    fullyQualifiedTs2gdPathWithFilename = ts2gdPath
+    // Fully qualify whatever form the path took. The raw argument must not
+    // flow through unchanged: a relative name leaves the project root as "."
+    // and every emitted res:// path slices against the wrong prefix.
+    fullyQualifiedTs2gdPathWithFilename = ts2gdPath.startsWith("/")
+      ? ts2gdPath
+      : path.join(process.cwd(), ts2gdPath)
 
     fullyQualifiedTs2gdPath = path.dirname(fullyQualifiedTs2gdPathWithFilename)
 
