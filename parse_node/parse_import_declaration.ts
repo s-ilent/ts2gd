@@ -88,7 +88,24 @@ const resPathForModule = (
 
   try {
     const absWithoutExtension = pathToImportedTs.replace(/\.ts$/, "")
-    const rootPath: string | undefined = props.project.paths?.rootPath
+    const project = props.project
+
+    // Mirror the asset mapping (source tree -> destination tree) so the res
+    // path points at the emitted script rather than the TS source location.
+    // The registry lookup above normally handles this, but during a sweep
+    // the imported file may not be registered yet.
+    const relFromSource = path.relative(
+      project.paths.sourceTsPath,
+      absWithoutExtension
+    )
+
+    if (!relFromSource.startsWith("..")) {
+      const gdPath = path.join(project.paths.destGdPath, relFromSource + ".gd")
+
+      return project.paths.fsPathToResPath(gdPath)
+    }
+
+    const rootPath: string | undefined = project.paths?.rootPath
     const rel =
       rootPath && absWithoutExtension.startsWith(rootPath + path.sep)
         ? path.relative(rootPath, absWithoutExtension)
@@ -302,6 +319,138 @@ export const preRegisterImportAliases = (
 
   if (namedBindings?.kind === SyntaxKind.NamespaceImport) {
     registerReceiver((namedBindings as ts.NamespaceImport).name)
+  }
+
+  preRegisterNamedImportBindings(node, pathToImportedTs, props)
+}
+
+/**
+ * Pre-registers named import bindings before class bodies parse. Named
+ * imports register their binding expressions during the normal import pass,
+ * which runs after class members parse, so uses inside class bodies would
+ * otherwise see no registration and emit the raw source name. This mirrors
+ * the value-binding decisions of the main pass; the main pass remains
+ * responsible for emitting the module receiver lines.
+ */
+const preRegisterNamedImportBindings = (
+  node: ts.ImportDeclaration,
+  pathToImportedTs: string,
+  props: ParseState
+): void => {
+  const namedBindings = node.importClause?.namedBindings
+
+  if (namedBindings?.kind !== SyntaxKind.NamedImports) {
+    return
+  }
+
+  const checker = props.program.getTypeChecker()
+
+  for (const element of (namedBindings as ts.NamedImports).elements) {
+    if (element.isTypeOnly) {
+      continue
+    }
+
+    const type = checker.getTypeAtLocation(element)
+
+    // Enums and scenes emit file-level consts named after the import; bare
+    // references resolve through those without a binding entry.
+    if (isEnumType(type) || type.symbol?.name === "PackedScene") {
+      continue
+    }
+
+    const localSymbol = checker.getSymbolAtLocation(element.name)
+    const importName = (element.propertyName ?? element.name).text
+
+    const effectiveBinding = resolveEffectiveBinding(
+      props.program.getSourceFile(pathToImportedTs),
+      importName,
+      props
+    )
+    const memberName = effectiveBinding
+      ? effectiveBinding.memberName
+      : importName
+    const bindingTsPath = effectiveBinding
+      ? effectiveBinding.tsPath
+      : pathToImportedTs
+
+    let moduleSymbol = localSymbol
+
+    if (moduleSymbol && moduleSymbol.flags & ts.SymbolFlags.Alias) {
+      try {
+        moduleSymbol = checker.getAliasedSymbol(moduleSymbol)
+      } catch {
+        // Keep the unresolved symbol; the declaration checks below decide.
+      }
+    }
+
+    const declKind = moduleSymbol?.declarations?.[0]?.kind
+    const isFnOrConst =
+      declKind === SyntaxKind.FunctionDeclaration ||
+      declKind === SyntaxKind.VariableDeclaration
+
+    if (isFnOrConst) {
+      reserveNamedBinding(
+        node,
+        bindingTsPath,
+        memberName,
+        localSymbol,
+        element.name,
+        props
+      )
+      continue
+    }
+
+    const importedSourceFile = props.project
+      .sourceFiles()
+      .find((sf) => sf.fsPath === bindingTsPath)
+    const aliasResolved = !!moduleSymbol && moduleSymbol !== localSymbol
+
+    let typeString = checker.typeToString(type)
+
+    if (typeString.startsWith("typeof ")) {
+      typeString = typeString.slice("typeof ".length)
+    }
+
+    // Classes with a resolvable identity emit a file-level static var named
+    // after the class from the main pass; bare references resolve through it
+    // from every context, so no binding entry is needed here.
+    if (
+      (importedSourceFile || aliasResolved) &&
+      typeString !== "" &&
+      typeString !== "any" &&
+      typeString !== "error"
+    ) {
+      continue
+    }
+
+    // Bindings from modules outside the project and value-used bindings
+    // whose type resolves to nothing reach through the module receiver.
+    reserveNamedBinding(
+      node,
+      bindingTsPath,
+      memberName,
+      localSymbol,
+      element.name,
+      props
+    )
+  }
+}
+
+const reserveNamedBinding = (
+  node: ts.ImportDeclaration,
+  bindingTsPath: string,
+  memberName: string,
+  localSymbol: ts.Symbol | undefined,
+  localName: ts.Identifier,
+  props: ParseState
+): void => {
+  const { receiver } = receiverForModule(node, bindingTsPath, props)
+  const expression = `${receiver}.${memberName}`
+
+  if (localSymbol) {
+    registerImportedBinding(localSymbol, expression, props)
+  } else {
+    registerImportedName(localName, expression, props)
   }
 }
 
@@ -1142,6 +1291,39 @@ static var __ts_import_Zones = load("res://zones.gd")
 
 static func _static_init():
   __ts_import_Zones.fieldZone(5)
+`,
+}
+
+export const testNamedImportResolvesInsideMethods: Test = {
+  files: { "util.ts": "export function doThing(x: int): int { return x }" },
+  ts: `
+import { doThing } from "./util"
+
+export class UsesUtil {
+  static stat(): int {
+    return doThing(1)
+  }
+
+  meth(): int {
+    return doThing(2)
+  }
+}
+  `,
+  expected: `
+# This file has been autogenerated by ts2gd. DO NOT EDIT!
+
+
+class_name UsesUtil
+
+
+
+static var __ts_import_Util = load("res://util.gd")
+
+static func stat():
+  return __ts_import_Util.doThing(1)
+
+func meth():
+  return __ts_import_Util.doThing(2)
 `,
 }
 
