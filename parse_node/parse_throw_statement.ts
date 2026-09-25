@@ -21,7 +21,21 @@ export const parseThrowStatement = (
       ? expression.arguments[0]
       : expression
 
-  return combine({
+  // GDScript's assert rejects non-string messages; thrown objects and
+  // other values route through the stringifying assert helper instead.
+  const thrownType = messageNode
+    ? props.program.getTypeChecker().getTypeAtLocation(messageNode)
+    : undefined
+  const thrownTypeString = messageNode
+    ? props.program.getTypeChecker().typeToString(thrownType!)
+    : "string"
+  const isStringMessage =
+    !messageNode ||
+    thrownTypeString === "string" ||
+    thrownTypeString === "String" ||
+    thrownTypeString.startsWith('"')
+
+  const result = combine({
     parent: node,
     nodes: messageNode ? [messageNode] : [],
     props,
@@ -29,12 +43,26 @@ export const parseThrowStatement = (
       const msg =
         message.trim().length > 0 ? message.trim() : '"unspecified error"'
 
-      return `
+      if (isStringMessage) {
+        return `
 push_error(${msg})
 assert(false, ${msg})
 `
+      }
+
+      return `
+push_error(str(${msg}))
+__ts_assert(false, ${msg})
+`
     },
   })
+
+  if (!isStringMessage) {
+    result.hoistedLibraryFunctions = result.hoistedLibraryFunctions ?? new Set()
+    result.hoistedLibraryFunctions.add("ts_assert")
+  }
+
+  return result
 }
 
 export const testThrowNewError: Test = {
