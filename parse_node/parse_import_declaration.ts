@@ -142,11 +142,16 @@ export const getImportResPathForEnum = (
   // Enums declared in the file being compiled race the project registry:
   // the asset registers itself as discovery reaches it, so consult the
   // current source file's asset directly for the self-referential case.
+  // The compiling asset's fsPath is project-relative while the checker
+  // spells source file names absolutely, so the self-referential case
+  // compares by suffix; registry entries match either spelling.
   const enumSourceFileAsset =
     props.project
       .sourceFiles()
       .find((sf) => sf.fsPath === enumSourceFile.fileName) ??
-    (props.sourceFileAsset.fsPath === enumSourceFile.fileName
+    (enumSourceFile.fileName.endsWith(
+      "/" + props.sourceFileAsset.fsPath.replace(/^\.\//, "")
+    )
       ? props.sourceFileAsset
       : undefined)
 
