@@ -1331,7 +1331,10 @@ export const parseCallExpression = (
         if (expression.kind === SyntaxKind.PropertyAccessExpression) {
           const pae = expression as ts.PropertyAccessExpression
 
-          if (pae.kind === SyntaxKind.PropertyAccessExpression) {
+          // Only the a.b.connect form carries a signal name to rewrite;
+          // receivers whose base is an identifier or call result connect
+          // dynamically and pass through as plain Object.connect calls.
+          if (pae.expression.kind === SyntaxKind.PropertyAccessExpression) {
             const pae2 = pae.expression as ts.PropertyAccessExpression
             let signalName = pae2.name.getText()
 
