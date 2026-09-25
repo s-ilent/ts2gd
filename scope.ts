@@ -22,7 +22,20 @@ export class Scope {
   getName(node: ts.BindingName): string | null {
     let ourSymbol = this.program.getTypeChecker().getSymbolAtLocation(node)
 
-    // Match the provided node to an existing name in scope by symbol reference.
+    return this.getNameBySymbol(ourSymbol)
+  }
+
+  /**
+   * Resolves a name by symbol rather than node. Shorthand property names
+   * carry a synthesized property symbol, so their value symbol must be
+   * resolved by the caller first to reach the declaration's registered name.
+   */
+  getNameBySymbol(ourSymbol: ts.Symbol | undefined): string | null {
+    if (!ourSymbol) {
+      return null
+    }
+
+    // Match the provided symbol to an existing name in scope by symbol reference.
     for (const scope of this.namesInScope.slice().reverse()) {
       for (const [otherNode, name] of scope) {
         if (!otherNode) {

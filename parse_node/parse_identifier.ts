@@ -116,7 +116,30 @@ export const parseIdentifier = (
   // The ambient decision is computed before parsing children so the helper
   // is only hoisted when the mapping will actually fire: the identifier must
   // resolve to no declaration and must not be a member name.
-  const scopeName = props.scope.getName(node)
+  //
+  // Shorthand property names carry a synthesized property symbol that matches
+  // no scope registration; re-resolve through the referenced value symbol so
+  // mangled declarations (duplicate names across sibling blocks) still line up.
+  const isShorthandName =
+    node.parent.kind === SyntaxKind.ShorthandPropertyAssignment &&
+    (node.parent as ts.ShorthandPropertyAssignment).name === node
+
+  const scopeName = (() => {
+    const direct = props.scope.getName(node)
+
+    if (direct || !isShorthandName) {
+      return direct
+    }
+
+    const valueSymbol = props.program
+      .getTypeChecker()
+      .getShorthandAssignmentValueSymbol(
+        node.parent as ts.ShorthandPropertyAssignment
+      )
+
+    return props.scope.getNameBySymbol(valueSymbol)
+  })()
+
   const isAccessName =
     node.parent.kind === SyntaxKind.PropertyAccessExpression
       ? (node.parent as ts.PropertyAccessExpression).name === node
@@ -494,4 +517,53 @@ func toString():
   return self.name
 
 `,
+}
+
+export const testShorthandUseResolvesMangledDeclaration: Test = {
+  ts: `
+function emit(x) {
+  print(x)
+}
+
+function handle(e) {
+  const k = e.kind
+  switch (k) {
+    case "a": {
+      const detail = "first"
+      emit({ detail })
+      break
+    }
+    case "b": {
+      const detail = "second"
+      emit({ detail })
+      break
+    }
+  }
+}
+
+export class ShorthandProbe {
+  go(e) {
+    handle(e)
+  }
+}
+  `,
+  expected: `
+class_name ShorthandProbe
+
+static func emit(x):
+  print(x)
+
+static func handle(e):
+  var k = e.kind
+  match k:
+    "a":
+      var detail = "first"
+      emit({ "detail": detail })
+    "b":
+      var detail1 = "second"
+      emit({ "detail": detail1 })
+
+func go(e):
+  handle(e)
+  `,
 }
