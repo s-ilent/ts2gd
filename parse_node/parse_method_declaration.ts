@@ -3,6 +3,7 @@ import ts from "typescript"
 import { ParseNodeType, ParseState, combine } from "../parse_node"
 import { ensureOptionalParametersLast } from "../ts_utils"
 import { Test } from "../tests/test"
+import { mangleMemberDeclName } from "../scope"
 
 const specialMethods = [
   { name: "_process", args: "_delta: float" },
@@ -15,7 +16,13 @@ export const parseMethodDeclaration = (
   node: ts.MethodDeclaration,
   props: ParseState
 ): ParseNodeType => {
-  const funcName = node.name.getText()
+  // Reserved GDScript names (preload, load, ...) mangle at the declaration
+  // so they match the symbol-resolved access sites, which follow the same
+  // rule.
+  const funcName = mangleMemberDeclName(
+    node.name.getText(),
+    node.getSourceFile()
+  )
 
   props.scope.enterScope()
 

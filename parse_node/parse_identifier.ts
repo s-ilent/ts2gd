@@ -137,7 +137,8 @@ export const parseIdentifier = (
   // The environment shim backs globalThis and feature-detected browser
   // services in both value and member-base positions.
   const isEnvShimBase =
-    !scopeName && (name === "globalThis" || name === "indexedDB")
+    !scopeName &&
+    (name === "globalThis" || name === "indexedDB" || name === "AudioContext")
 
   const result = combine({
     parent: node,
@@ -242,8 +243,8 @@ export const parseIdentifier = (
           return "__ts_env()"
         }
 
-        if (node.text === "indexedDB") {
-          return "__ts_env().indexedDB"
+        if (node.text === "indexedDB" || node.text === "AudioContext") {
+          return `__ts_env().${node.text}`
         }
 
         // Ambient JavaScript environment globals resolve to a shared
