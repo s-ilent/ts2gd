@@ -56,7 +56,10 @@ export const parseNewExpression = (
   // new Error(...) and friends construct the shim class resources.
   if (
     node.expression.kind === SyntaxKind.Identifier &&
-    (node.expression as ts.Identifier).text in globalShimClassLibs
+    Object.prototype.hasOwnProperty.call(
+      globalShimClassLibs,
+      (node.expression as ts.Identifier).text
+    )
   ) {
     const className = (node.expression as ts.Identifier).text
     const result = combine({

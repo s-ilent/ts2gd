@@ -176,7 +176,10 @@ export const parsePropertyAccessExpression = (
   // only position remapped.
   if (
     ts.isIdentifier(node.expression) &&
-    (node.expression as ts.Identifier).text in globalShimClassLibs
+    Object.prototype.hasOwnProperty.call(
+      globalShimClassLibs,
+      (node.expression as ts.Identifier).text
+    )
   ) {
     const shimClassName = (node.expression as ts.Identifier).text
     const result = combine({

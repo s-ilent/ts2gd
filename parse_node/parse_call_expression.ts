@@ -348,7 +348,7 @@ export const parseCallExpression = (
     }
 
     if (
-      calleeName in globalHelperCalls &&
+      Object.prototype.hasOwnProperty.call(globalHelperCalls, calleeName) &&
       args.length >= 1 &&
       args.length <= globalHelperCalls[calleeName][1]
     ) {
@@ -578,7 +578,10 @@ export const parseCallExpression = (
     // the loaded shim script resource.
     if (
       ts.isIdentifier(prop.expression) &&
-      (prop.expression as ts.Identifier).text in globalShimClassLibs
+      Object.prototype.hasOwnProperty.call(
+        globalShimClassLibs,
+        (prop.expression as ts.Identifier).text
+      )
     ) {
       const className = (prop.expression as ts.Identifier).text
       const result = combine({
