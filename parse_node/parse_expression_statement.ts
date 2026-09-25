@@ -3,10 +3,25 @@ import ts from "typescript"
 import { ParseNodeType, ParseState, combine } from "../parse_node"
 import { Test } from "../tests/test"
 
+// Error recovery for satisfies clauses surfaces expression statements
+// holding empty-text identifiers; valid source never contains those.
+const containsEmptyIdentifier = (node: ts.Node): boolean =>
+  (ts.isIdentifier(node) && node.text === "") ||
+  node.getChildren().some(containsEmptyIdentifier)
+
 export const parseExpressionStatement = (
   node: ts.ExpressionStatement,
   props: ParseState
 ): ParseNodeType => {
+  if (containsEmptyIdentifier(node.expression)) {
+    return combine({
+      parent: node,
+      nodes: [],
+      props,
+      parsedStrings: () => "",
+    })
+  }
+
   return combine({
     parent: node,
     nodes: node.expression,

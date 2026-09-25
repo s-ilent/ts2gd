@@ -467,9 +467,6 @@ class_name __Mod_Test_4064or
 
 
 static var _items = ["a"]
-static var _satisfies
-static var _readonly
-static var _Id
 
 `,
 }
