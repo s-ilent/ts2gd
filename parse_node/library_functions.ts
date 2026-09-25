@@ -52,6 +52,7 @@ export type LibraryFunctionName =
   | "ts_shr_unsigned"
   | "array_concat"
   | "ts_regex"
+  | "ts_regex_replace"
   | "ts_env"
   | "ts_promise_all"
   | "ts_promise_resolve"
@@ -162,6 +163,64 @@ static func __ts_regex(pattern: String, flags: String) -> RegEx:
 
   regex.compile(effective)
   return regex
+`,
+  },
+
+  ts_regex_replace: {
+    name: "ts_regex_replace",
+    definition: () => `
+static func __ts_regex_replace(subject, pattern, flags, repl):
+  var regex = RegEx.new()
+  var effective = pattern
+
+  if flags.contains("i"):
+    effective = "(?i)" + effective
+
+  if flags.contains("m"):
+    effective = "(?m)" + effective
+
+  if flags.contains("s"):
+    effective = "(?s)" + effective
+
+  regex.compile(effective)
+  var matches: Array = regex.search_all(subject)
+  var out := ""
+  var cursor := 0
+
+  for m in matches:
+    var start: int = m.get_start(0)
+    var call_args: Array = [m.get_string(0)]
+
+    for gi in range(1, m.get_group_count() + 1):
+      call_args.append(m.get_string(gi))
+
+    out += subject.substr(cursor, start - cursor)
+
+    if repl is Array and repl.size() == 2 and repl[0] is Callable:
+      call_args.append(repl[1])
+      out += repl[0].callv(call_args)
+    elif repl is Callable:
+      out += repl.callv(call_args)
+    else:
+      var expanded: String = repl
+      var dollar := String.chr(1)
+
+      expanded = expanded.replace("$$", dollar)
+      expanded = expanded.replace("$&", m.get_string(0))
+
+      for gi in range(1, m.get_group_count() + 1):
+        expanded = expanded.replace("$" + str(gi), m.get_string(gi))
+
+      expanded = expanded.replace(dollar, "$")
+      out += expanded
+
+    cursor = m.get_end(0)
+
+    if not flags.contains("g"):
+      break
+
+  out += subject.substr(cursor)
+  return out
 `,
   },
 

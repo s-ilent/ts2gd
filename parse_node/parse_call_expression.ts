@@ -13,6 +13,7 @@ import { Test } from "../tests/test"
 import { isArrayType, isDictionary, isNullableNode } from "../ts_utils"
 import { mangleGdName } from "../scope"
 
+import { escapeGdString } from "./parse_string_literal"
 import { LibraryFunctionName, LibraryFunctions } from "./library_functions"
 import { globalShimClassLibs } from "./parse_identifier"
 import { getCapturedScope } from "./parse_arrow_function"
@@ -1068,6 +1069,42 @@ export const parseCallExpression = (
           props,
           parsedStrings: (regex, subject) => `${regex}.search(${subject})`,
         })
+      }
+    }
+
+    // String.replace(/re/, repl) has no GDScript builtin counterpart: the
+    // native replace rejects a RegEx first argument. Route regex-literal
+    // replaces through a helper that owns search_all, $-expansion, and the
+    // callable protocol. The pattern and flags decompose at the emission
+    // site so the helper receives plain strings, mirroring __ts_regex. A
+    // RegExp-typed variable has no pattern text to extract and stays on the
+    // builtin call.
+    if (functionName === "replace" && args.length === 2) {
+      const firstArg = args[0]
+
+      if (
+        ts.isRegularExpressionLiteral(firstArg) &&
+        firstArg.text.lastIndexOf("/") > 0
+      ) {
+        const text = firstArg.text
+        const lastSlash = text.lastIndexOf("/")
+        const pattern = text.slice(1, lastSlash)
+        const flags = text.slice(lastSlash + 1)
+        const result = combine({
+          parent: node,
+          nodes: [prop.expression, args[1]],
+          props,
+          parsedStrings: (subject, repl) =>
+            `__ts_regex_replace(${subject}, "${escapeGdString(
+              pattern
+            )}", "${escapeGdString(flags)}", ${repl})`,
+        })
+
+        result.hoistedLibraryFunctions =
+          result.hoistedLibraryFunctions ?? new Set()
+        result.hoistedLibraryFunctions.add("ts_regex_replace")
+
+        return result
       }
     }
 
@@ -3208,4 +3245,104 @@ static func weakClocks():
   clocks.ts_set(1, 30)
   print(clocks.ts_get(1))
 `,
+}
+
+export const testRegexReplaceRoutesThroughHelper: Test = {
+  ts: `
+const src = "a1b2"
+const out = src.replace(/(\\d)/g, "<$1>")
+  `,
+  expected: `
+class_name __Mod_Test_4064or
+static func __ts_regex_replace(subject, pattern, flags, repl):
+  var regex = RegEx.new()
+  var effective = pattern
+  if flags.contains("i"):
+    effective = "(?i)" + effective
+  if flags.contains("m"):
+    effective = "(?m)" + effective
+  if flags.contains("s"):
+    effective = "(?s)" + effective
+  regex.compile(effective)
+  var matches: Array = regex.search_all(subject)
+  var out := ""
+  var cursor := 0
+  for m in matches:
+    var start: int = m.get_start(0)
+    var call_args: Array = [m.get_string(0)]
+    for gi in range(1, m.get_group_count() + 1):
+      call_args.append(m.get_string(gi))
+    out += subject.substr(cursor, start - cursor)
+    if repl is Array and repl.size() == 2 and repl[0] is Callable:
+      call_args.append(repl[1])
+      out += repl[0].callv(call_args)
+    elif repl is Callable:
+      out += repl.callv(call_args)
+    else:
+      var expanded: String = repl
+      var dollar := String.chr(1)
+      expanded = expanded.replace("$$", dollar)
+      expanded = expanded.replace("$&", m.get_string(0))
+      for gi in range(1, m.get_group_count() + 1):
+        expanded = expanded.replace("$" + str(gi), m.get_string(gi))
+      expanded = expanded.replace(dollar, "$")
+      out += expanded
+    cursor = m.get_end(0)
+    if not flags.contains("g"):
+      break
+  out += subject.substr(cursor)
+  return out
+static var src = "a1b2"
+static var _out = __ts_regex_replace(src, "(\\\\d)", "g", "<$1>")
+  `,
+}
+
+export const testRegexReplaceNonGlobal: Test = {
+  ts: `
+const src = "a1b2"
+const out = src.replace(/\\d/, "-")
+  `,
+  expected: `
+class_name __Mod_Test_4064or
+static func __ts_regex_replace(subject, pattern, flags, repl):
+  var regex = RegEx.new()
+  var effective = pattern
+  if flags.contains("i"):
+    effective = "(?i)" + effective
+  if flags.contains("m"):
+    effective = "(?m)" + effective
+  if flags.contains("s"):
+    effective = "(?s)" + effective
+  regex.compile(effective)
+  var matches: Array = regex.search_all(subject)
+  var out := ""
+  var cursor := 0
+  for m in matches:
+    var start: int = m.get_start(0)
+    var call_args: Array = [m.get_string(0)]
+    for gi in range(1, m.get_group_count() + 1):
+      call_args.append(m.get_string(gi))
+    out += subject.substr(cursor, start - cursor)
+    if repl is Array and repl.size() == 2 and repl[0] is Callable:
+      call_args.append(repl[1])
+      out += repl[0].callv(call_args)
+    elif repl is Callable:
+      out += repl.callv(call_args)
+    else:
+      var expanded: String = repl
+      var dollar := String.chr(1)
+      expanded = expanded.replace("$$", dollar)
+      expanded = expanded.replace("$&", m.get_string(0))
+      for gi in range(1, m.get_group_count() + 1):
+        expanded = expanded.replace("$" + str(gi), m.get_string(gi))
+      expanded = expanded.replace(dollar, "$")
+      out += expanded
+    cursor = m.get_end(0)
+    if not flags.contains("g"):
+      break
+  out += subject.substr(cursor)
+  return out
+static var src = "a1b2"
+static var _out = __ts_regex_replace(src, "\\\\d", "", "-")
+  `,
 }
