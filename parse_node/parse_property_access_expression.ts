@@ -504,7 +504,7 @@ export const parsePropertyAccessExpression = (
       const baseTypeString = tc.typeToString(exprType)
 
       if (
-        /(?:Readonly)?(?:Weak)?(?:Set|Map)\b/.test(baseTypeString) &&
+        /^(?:Readonly)?(?:Weak)?(?:Set|Map)\b/.test(baseTypeString) &&
         (rhs === "set" || rhs === "get")
       ) {
         return `${lhs}.ts_${rhs}`

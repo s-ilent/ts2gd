@@ -33,6 +33,7 @@ export type LibraryFunctionName =
   | "ts_symbol"
   | "ts_structured_clone"
   | "ts_encode_uri_component"
+  | "ts_typed_array_set"
   | "ts_int32_from"
   | "ts_number"
   | "ts_new_set"
@@ -850,6 +851,20 @@ static func __ts_encode_uri_component(s):
     else:
       out += "%%%02X" % b
   return out
+`,
+  },
+
+  ts_typed_array_set: {
+    name: "ts_typed_array_set",
+    definition: () => `
+static func __ts_typed_array_set(dest, src, offset = 0):
+  var start := int(offset)
+  var count: int = src.size()
+  for i in range(count):
+    var idx := start + i
+    if idx >= dest.size():
+      break
+    dest[idx] = src[i]
 `,
   },
 
