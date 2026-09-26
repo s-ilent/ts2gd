@@ -9,7 +9,10 @@
 extends RefCounted
 
 
-func glob(pattern, _options = null):
+# Static because the generated helper calls it on the loaded script resource
+# itself (load("...").glob(...)), and script-level calls resolve only static
+# members.
+static func glob(pattern, _options = null):
   var out := {}
   var clean: String = String(pattern).split("?")[0]
 
@@ -22,7 +25,7 @@ func glob(pattern, _options = null):
   return out
 
 
-func _walk(dir: String, segments: PackedStringArray, depth: int, out: Dictionary):
+static func _walk(dir: String, segments: PackedStringArray, depth: int, out: Dictionary):
   if depth >= segments.size():
     return
 
