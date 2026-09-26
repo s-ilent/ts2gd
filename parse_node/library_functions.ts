@@ -25,6 +25,7 @@ export type LibraryFunctionName =
   | "ts_string_slice"
   | "ts_array_filled"
   | "ts_array_sorted"
+  | "ts_array_push"
   | "ts_error_class"
   | "ts_date_class"
   | "ts_data_view_class"
@@ -941,6 +942,15 @@ static func __ts_encode_uri_component(s):
     else:
       out += "%%%02X" % b
   return out
+`,
+  },
+
+  ts_array_push: {
+    name: "ts_array_push",
+    definition: () => `
+static func __ts_array_push(arr, value):
+  arr.append(value)
+  return arr.size()
 `,
   },
 

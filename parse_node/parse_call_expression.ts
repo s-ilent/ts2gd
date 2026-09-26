@@ -770,13 +770,55 @@ export const parseCallExpression = (
 
     // JS String/Array member methods with no GDScript member equivalent
     // map onto helpers or native members by name.
-    const baseTypeAsString = props.program
-      .getTypeChecker()
-      .typeToString(
-        props.program.getTypeChecker().getTypeAtLocation(prop.expression)
-      )
+    const checker = props.program.getTypeChecker()
+    const baseType = checker.getTypeAtLocation(prop.expression)
+    const baseTypeAsString = checker.typeToString(baseType)
+
+    // Aliased and error-typed receivers stringify under their own names
+    // (`ItemData1`, `error`); the apparent type resolves aliases to the
+    // underlying shape so structural routing still applies.
+    const apparentType = checker.getApparentType(baseType)
+    const apparentBaseType = checker.typeToString(apparentType)
+
+    // The corpus compiles with noLib: builtin members resolve no
+    // declarations (so isLibMember below is false), and ALIAS-typed
+    // receivers stringify under the alias name for both the direct and the
+    // apparent type, hiding the array/string shape from display-string
+    // checks. The structural probes below see through both, while the
+    // display spellings stay for the cases that already work.
+    const hasIntrinsicSymbol = (type: ts.Type, names: string[]): boolean => {
+      const symbol = type.symbol
+
+      if (!symbol || !names.includes(symbol.name)) {
+        return false
+      }
+
+      // A project-source type may legally carry one of these names; its
+      // members must keep native emission.
+      const declarations = symbol.declarations ?? []
+
+      return !declarations.some((d) => !d.getSourceFile().isDeclarationFile)
+    }
+    const isIntrinsicArray = (type: ts.Type): boolean =>
+      hasIntrinsicSymbol(type, ["Array", "ReadonlyArray"])
+    const isStringLikeType = (type: ts.Type): boolean => {
+      if (type.flags & ts.TypeFlags.StringLike) {
+        return true
+      }
+
+      if (type.isUnion()) {
+        return type.types.every(isStringLikeType)
+      }
+
+      return hasIntrinsicSymbol(type, ["String"])
+    }
+
     const isStringBase =
-      baseTypeAsString === "String" || baseTypeAsString === "string"
+      baseTypeAsString === "String" ||
+      baseTypeAsString === "string" ||
+      isStringLikeType(baseType) ||
+      isStringLikeType(apparentType)
+
     // Array-ish types surface under many spellings (`number[]`,
     // `readonly T[]`, tuples, `Array<T>`), none of which stringify as
     // "Array"; key on the shape rather than one exact name.
@@ -784,25 +826,15 @@ export const parseCallExpression = (
       baseTypeAsString.endsWith("]") ||
       baseTypeAsString === "Array" ||
       baseTypeAsString.startsWith("Array<") ||
-      baseTypeAsString.startsWith("ReadonlyArray<")
-    // Aliased and error-typed receivers stringify under their own names
-    // (`ItemData1`, `error`); the apparent type resolves aliases to the
-    // underlying shape so structural routing still applies.
-    const apparentBaseType = props.program
-      .getTypeChecker()
-      .typeToString(
-        props.program
-          .getTypeChecker()
-          .getApparentType(
-            props.program.getTypeChecker().getTypeAtLocation(prop.expression)
-          )
-      )
+      baseTypeAsString.startsWith("ReadonlyArray<") ||
+      isIntrinsicArray(baseType)
     const isArrayApparent =
       isArrayBase ||
       apparentBaseType.endsWith("]") ||
       apparentBaseType === "Array" ||
       apparentBaseType.startsWith("Array<") ||
-      apparentBaseType.startsWith("ReadonlyArray<")
+      apparentBaseType.startsWith("ReadonlyArray<") ||
+      isIntrinsicArray(apparentType)
     const isUntypedBase = ["any", "unknown", "error", "void"].includes(
       baseTypeAsString
     )
@@ -949,6 +981,31 @@ export const parseCallExpression = (
       result.hoistedLibraryFunctions =
         result.hoistedLibraryFunctions ?? new Set()
       result.hoistedLibraryFunctions.add(libName)
+
+      return result
+    }
+
+    // JS Array.push appends any number of values and returns the array's new
+    // length; GDScript arrays expose append and return void (or null from a
+    // bare expression). The helper appends one value and reports the size, so
+    // multi-argument pushes nest and the outermost call yields JS's return.
+    if (
+      functionName === "push" &&
+      !isUserMember &&
+      (isArrayApparent || isUntypedBase || isLibMember) &&
+      args.length > 0
+    ) {
+      const result = combine({
+        parent: node,
+        nodes: [prop.expression, ...args],
+        props,
+        parsedStrings: (expr, ...parsed) =>
+          parsed.reduce((acc, cur) => `__ts_array_push(${acc}, ${cur})`, expr),
+      })
+
+      result.hoistedLibraryFunctions =
+        result.hoistedLibraryFunctions ?? new Set()
+      result.hoistedLibraryFunctions.add("ts_array_push")
 
       return result
     }
@@ -3345,4 +3402,93 @@ static func __ts_regex_replace(subject, pattern, flags, repl):
 static var src = "a1b2"
 static var _out = __ts_regex_replace(src, "\\\\d", "", "-")
   `,
+}
+
+export const testAliasTypedArrayPushRoutesToHelper: Test = {
+  ts: `
+type NumberList = number[];
+
+export class Test {
+  static add(values: NumberList, v: number): number {
+    return values.push(v)
+  }
+}
+  `,
+  expected: `# This file has been autogenerated by ts2gd. DO NOT EDIT!
+
+
+
+class_name Test
+    
+
+
+
+static func __ts_array_push(arr, value):
+  arr.append(value)
+  return arr.size()
+
+
+
+
+
+static func add(values, v: float):
+  return __ts_array_push(values, v)`,
+}
+
+export const testAliasTypedSliceRoutesToHelpers: Test = {
+  ts: `
+type NumberList = number[];
+type Name = string;
+
+export class Test {
+  static tail(values: NumberList): NumberList {
+    return values.slice()
+  }
+
+  static rest(name: Name): string {
+    return name.slice(1)
+  }
+}
+  `,
+  expected: `# This file has been autogenerated by ts2gd. DO NOT EDIT!
+
+
+
+class_name Test
+    
+
+
+
+static func __ts_array_slice(arr, start = null, end = null):
+  var n: int = arr.size()
+  var b: int = 0 if start == null else (start if start >= 0 else n + start)
+  var e: int = n if end == null else (end if end >= 0 else n + end)
+  b = max(b, 0)
+  e = min(e, n)
+  var out := []
+  for i in range(b, e):
+    out.append(arr[i])
+  return out
+
+
+static func __ts_string_slice(s, start = null, end = null):
+  var n: int = s.length()
+  var b: int = 0 if start == null else (start if start >= 0 else n + start)
+  var e: int = n if end == null else (end if end >= 0 else n + end)
+  b = max(b, 0)
+  e = min(e, n)
+  var out := ""
+  for i in range(b, e):
+    out += s[i]
+  return out
+
+
+
+
+
+
+static func tail(values):
+  return __ts_array_slice(values)
+static func rest(name):
+  return __ts_string_slice(name, 1)`,
 }
