@@ -79,7 +79,19 @@ export const parseVariableDeclaration = (
 
   const type = declaredType ?? inferredType
   const usages = props.usages.get(node.name as ts.Identifier)
-  const unused = usages?.uses.length === 0 ? "_" : ""
+
+  // The unused-prefix mangle silences GDScript's unused-variable warning,
+  // but the usage map is file-local: an exported declaration whose ONLY
+  // consumers live in other modules reports zero uses here and would be
+  // renamed out from under its importers (`__ts_import_Mod.X` reads the
+  // original name). Exported declarations keep their declared name.
+  const isExported =
+    node.parent?.parent != null &&
+    ts.isVariableStatement(node.parent.parent) &&
+    node.parent.parent.modifiers?.some(
+      (m) => m.kind === SyntaxKind.ExportKeyword
+    ) === true
+  const unused = !isExported && usages?.uses.length === 0 ? "_" : ""
   const typeString = type ? `: ${type}` : ""
 
   if (node.name.kind === SyntaxKind.Identifier) {
