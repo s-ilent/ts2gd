@@ -835,9 +835,14 @@ export const parseCallExpression = (
       apparentBaseType.startsWith("Array<") ||
       apparentBaseType.startsWith("ReadonlyArray<") ||
       isIntrinsicArray(apparentType)
-    const isUntypedBase = ["any", "unknown", "error", "void"].includes(
-      baseTypeAsString
-    )
+    const isUntypedBase =
+      ["any", "unknown", "error", "void"].includes(baseTypeAsString) ||
+      // Unresolved imports surface as the any/error type while typeToString
+      // still prints the WRITTEN alias name (e.g. an imported-but-missing
+      // `ItemData1`); key on the flags so those receivers route too.
+      (baseType.flags &
+        (ts.TypeFlags.Any | ts.TypeFlags.Unknown | ts.TypeFlags.Void)) !==
+        0
     // Members declared in project source (user classes) keep native call
     // emission; only builtin-shaped receivers route through helpers. A
     // member that resolves into the injected declaration files is library

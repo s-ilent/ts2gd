@@ -772,19 +772,25 @@ export const parseImportDeclaration = (
       props
     )
 
+    // A raw binding's value comes from a runtime file read, which GDScript
+    // rejects in a `const` initializer; it needs a static variable. Path
+    // bindings stay const: a string literal is a constant expression.
+    const bindingKeyword = isRawAssetQuery(moduleSpecifier)
+      ? "static var"
+      : "const"
+
     if (node.importClause.name) {
       importLines.push(
-        `const ${node.importClause.name.text} = ${assetBindingExpression(
-          moduleSpecifier,
-          assetResPath
-        )}`
+        `${bindingKeyword} ${
+          node.importClause.name.text
+        } = ${assetBindingExpression(moduleSpecifier, assetResPath)}`
       )
     }
 
     if (namedBindings?.kind === SyntaxKind.NamedImports) {
       for (const element of (namedBindings as ts.NamedImports).elements) {
         importLines.push(
-          `const ${element.name.text} = ${assetBindingExpression(
+          `${bindingKeyword} ${element.name.text} = ${assetBindingExpression(
             moduleSpecifier,
             assetResPath
           )}`
@@ -1283,7 +1289,7 @@ class_name __Mod_Test_4064or
 
 
 
-const raw = FileAccess.get_file_as_string("res://data/level.json")
+static var raw = FileAccess.get_file_as_string("res://data/level.json")
 
 static func _static_init():
   print(FileAccess.get_file_as_string("res://data/level.json"))
