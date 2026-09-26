@@ -86,7 +86,7 @@ class_name __Mod_Test_4064or
 
 
 
-static var _CUES = {
+static var CUES = {
   0x28: "swing",
 }
 `,
