@@ -308,10 +308,17 @@ export class TsGdProject {
           continue
         }
 
+        const source = path.join(shimsSourceDir, file)
         const dest = path.join(shimsDestDir, file)
 
-        if (!fs.existsSync(dest)) {
-          fs.copyFileSync(path.join(shimsSourceDir, file), dest)
+        // Refresh stale copies so shim fixes reach existing projects;
+        // shims are tool-owned files and are never user-edited.
+        const needsCopy =
+          !fs.existsSync(dest) ||
+          fs.statSync(source).mtimeMs > fs.statSync(dest).mtimeMs
+
+        if (needsCopy) {
+          fs.copyFileSync(source, dest)
         }
       }
     } catch {
